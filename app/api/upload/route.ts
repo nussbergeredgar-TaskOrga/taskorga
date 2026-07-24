@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { put } from "@vercel/blob";
-import { getServerSession, type Session } from "next-auth/next";
+import { getServerSession } from "next-auth/next";
+import type { Session } from "next-auth";
 import { authOptions } from "@/lib/auth";
 
 // Serverless-Funktionen bei Vercel haben standardmäßig ein Request-Body-Limit
