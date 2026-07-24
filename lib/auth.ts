@@ -38,14 +38,14 @@ export const authOptions = {
     }),
   ],
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user }: { token: any; user: any }) {
       if (user) {
         token.userId = (user as any).id;
         token.companyId = (user as any).companyId;
       }
       return token;
     },
-    async session({ session, token }) {
+    async session({ session, token }: { session: any; token: any }) {
       if (session.user) {
         (session.user as any).id = token.userId;
         (session.user as any).companyId = token.companyId;
