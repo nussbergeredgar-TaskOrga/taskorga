@@ -1,10 +1,12 @@
-import type { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 
-export const authOptions: NextAuthOptions = {
-  session: { strategy: "jwt" },
+// Hinweis: Bewusst ohne expliziten "NextAuthOptions"-Typ, da dieser Import
+// je nach next-auth-Version/TypeScript-Konfiguration Build-Fehler auf Vercel
+// verursacht hat. TypeScript leitet den Typ hier automatisch korrekt ab.
+export const authOptions = {
+  session: { strategy: "jwt" as const },
   pages: {
     signIn: "/login",
   },
