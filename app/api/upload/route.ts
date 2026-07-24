@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { put } from "@vercel/blob";
-import { getServerSession } from "next-auth";
+import { getServerSession, type Session } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 
 // Serverless-Funktionen bei Vercel haben standardmäßig ein Request-Body-Limit
@@ -8,7 +8,7 @@ import { authOptions } from "@/lib/auth";
 const MAX_SIZE = 4.5 * 1024 * 1024;
 
 export async function POST(request: Request) {
-  const session = await getServerSession(authOptions);
+  const session = (await getServerSession(authOptions)) as Session | null;
   if (!session?.user) {
     return NextResponse.json({ error: "Nicht eingeloggt." }, { status: 401 });
   }

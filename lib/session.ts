@@ -1,4 +1,4 @@
-import { getServerSession } from "next-auth";
+import { getServerSession, type Session } from "next-auth/next";
 import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -8,7 +8,7 @@ import { prisma } from "@/lib/prisma";
  * wenn niemand eingeloggt ist.
  */
 export async function getCurrentCompany() {
-  const session = await getServerSession(authOptions);
+  const session = (await getServerSession(authOptions)) as Session | null;
   if (!session?.user?.companyId) {
     redirect("/login");
   }
@@ -26,7 +26,7 @@ export async function getCurrentCompany() {
 
 /** Liefert den eingeloggten Nutzer. Leitet zu /login um, wenn nicht eingeloggt. */
 export async function getCurrentUser() {
-  const session = await getServerSession(authOptions);
+  const session = (await getServerSession(authOptions)) as Session | null;
   if (!session?.user) {
     redirect("/login");
   }
