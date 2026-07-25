@@ -60,6 +60,36 @@ export async function createInquiry(
   redirect("/anfragen");
 }
 
+export async function createInquiryQuick(
+  customerId: string,
+  data: { title: string; source?: string }
+) {
+  if (!data.title.trim()) return;
+  const company = await getCurrentCompany();
+
+  const inquiry = await prisma.inquiry.create({
+    data: {
+      companyId: company.id,
+      customerId,
+      title: data.title,
+      source: data.source?.trim() || null,
+    },
+  });
+
+  await prisma.activity.create({
+    data: {
+      companyId: company.id,
+      customerId,
+      inquiryId: inquiry.id,
+      type: "inquiry.created",
+      message: `Neue Anfrage „${inquiry.title}“ wurde angelegt.`,
+    },
+  });
+
+  revalidatePath(`/kunden/${customerId}`);
+  revalidatePath("/anfragen");
+}
+
 const STATUS_LABELS: Record<InquiryStatus, string> = {
   NEW: "Neu",
   CALLBACK_SCHEDULED: "Rückruf geplant",

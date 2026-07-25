@@ -2,6 +2,7 @@
 
 import { useFormState, useFormStatus } from "react-dom";
 import { createInquiry, type InquiryFormState } from "@/lib/actions/inquiries";
+import { CustomerAutocomplete } from "@/components/customer-autocomplete";
 
 const initialState: InquiryFormState = {};
 
@@ -31,18 +32,7 @@ export function InquiryForm({
         <label htmlFor="customerId" className="block text-sm font-medium text-ink-700 mb-1.5">
           Kunde <span className="text-danger">*</span>
         </label>
-        <select
-          id="customerId"
-          name="customerId"
-          className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 transition-colors bg-white"
-        >
-          <option value="">Bitte auswählen …</option>
-          {customers.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
-          ))}
-        </select>
+        <CustomerAutocomplete customers={customers} name="customerId" />
         {state.errors?.customerId && (
           <p className="text-xs text-danger mt-1">{state.errors.customerId[0]}</p>
         )}

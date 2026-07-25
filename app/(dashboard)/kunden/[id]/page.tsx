@@ -6,6 +6,7 @@ import { Tabs } from "@/components/tabs";
 import { AddComment } from "@/components/add-comment";
 import { AppointmentTab } from "@/components/appointment-tab";
 import { DocumentTab } from "@/components/document-tab";
+import { InlineInquiryForm } from "@/components/inline-inquiry-form";
 import { KpiCard } from "@/components/kpi-card";
 import { formatDistanceToNow } from "date-fns";
 import { de } from "date-fns/locale";
@@ -145,19 +146,23 @@ export default async function KundeDetailPage({
             },
             {
               label: "Anfragen",
-              content:
-                customer.inquiries.length === 0 ? (
-                  <EmptyRow text="Noch keine Anfragen. (Anlegen folgt im Anfragen-Workspace.)" />
-                ) : (
-                  <ul className="space-y-2">
-                    {customer.inquiries.map((i) => (
-                      <li key={i.id} className="rounded-lg border-l-4 border-l-brand-500 bg-ink-50 p-3 text-sm">
-                        <span className="font-medium">{i.title}</span>
-                        <span className="text-ink-500 ml-2">{i.status}</span>
-                      </li>
-                    ))}
-                  </ul>
-                ),
+              content: (
+                <div>
+                  <InlineInquiryForm customerId={customer.id} />
+                  {customer.inquiries.length === 0 ? (
+                    <EmptyRow text="Noch keine Anfragen." />
+                  ) : (
+                    <ul className="space-y-2">
+                      {customer.inquiries.map((i) => (
+                        <li key={i.id} className="rounded-lg border-l-4 border-l-brand-500 bg-ink-50 p-3 text-sm">
+                          <span className="font-medium">{i.title}</span>
+                          <span className="text-ink-500 ml-2">{i.status}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              ),
             },
             {
               label: "Angebote",
