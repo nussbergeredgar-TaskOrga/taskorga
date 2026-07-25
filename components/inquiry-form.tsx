@@ -60,6 +60,20 @@ export function InquiryForm({
       </div>
 
       <div>
+        <label htmlFor="amount" className="block text-sm font-medium text-ink-700 mb-1.5">
+          Geschätzter Betrag (€)
+        </label>
+        <input
+          id="amount"
+          name="amount"
+          type="number"
+          step="0.01"
+          placeholder="z. B. 2500"
+          className="w-full max-w-xs rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 transition-colors font-mono"
+        />
+      </div>
+
+      <div>
         <label htmlFor="source" className="block text-sm font-medium text-ink-700 mb-1.5">
           Quelle
         </label>

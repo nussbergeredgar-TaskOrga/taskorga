@@ -12,11 +12,18 @@ const inquirySchema = z.object({
   title: z.string().min(2, "Titel muss mindestens 2 Zeichen haben"),
   description: z.string().optional(),
   source: z.string().optional(),
+  amount: z.string().optional(),
 });
 
 export type InquiryFormState = {
   errors?: Record<string, string[]>;
 };
+
+function parseAmount(raw?: string | null) {
+  if (!raw || !raw.trim()) return null;
+  const n = Number(raw.replace(",", "."));
+  return Number.isFinite(n) ? n : null;
+}
 
 export async function createInquiry(
   _prevState: InquiryFormState,
@@ -27,6 +34,7 @@ export async function createInquiry(
     title: formData.get("title"),
     description: formData.get("description"),
     source: formData.get("source"),
+    amount: formData.get("amount"),
   });
 
   if (!parsed.success) {
@@ -42,6 +50,7 @@ export async function createInquiry(
       title: parsed.data.title,
       description: parsed.data.description || null,
       source: parsed.data.source || null,
+      amount: parseAmount(parsed.data.amount),
     },
   });
 
@@ -62,7 +71,7 @@ export async function createInquiry(
 
 export async function createInquiryQuick(
   customerId: string,
-  data: { title: string; source?: string }
+  data: { title: string; source?: string; amount?: string }
 ) {
   if (!data.title.trim()) return;
   const company = await getCurrentCompany();
@@ -73,6 +82,7 @@ export async function createInquiryQuick(
       customerId,
       title: data.title,
       source: data.source?.trim() || null,
+      amount: parseAmount(data.amount),
     },
   });
 
@@ -88,6 +98,19 @@ export async function createInquiryQuick(
 
   revalidatePath(`/kunden/${customerId}`);
   revalidatePath("/anfragen");
+}
+
+export async function updateInquiryAmount(inquiryId: string, amount: string) {
+  const inquiry = await prisma.inquiry.update({
+    where: { id: inquiryId },
+    data: { amount: parseAmount(amount) },
+  });
+  revalidatePath(`/anfragen/${inquiryId}`);
+  revalidatePath("/anfragen");
+  revalidatePath("/anfragen/gewonnen");
+  revalidatePath("/anfragen/verloren");
+  revalidatePath("/heute");
+  return inquiry;
 }
 
 const STATUS_LABELS: Record<InquiryStatus, string> = {
@@ -116,5 +139,9 @@ export async function updateInquiryStatus(inquiryId: string, status: InquiryStat
   });
 
   revalidatePath("/anfragen");
+  revalidatePath("/anfragen/gewonnen");
+  revalidatePath("/anfragen/verloren");
+  revalidatePath(`/anfragen/${inquiryId}`);
   revalidatePath(`/kunden/${inquiry.customerId}`);
+  revalidatePath("/heute");
 }

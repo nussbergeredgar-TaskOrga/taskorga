@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentCompany } from "@/lib/session";
 import { InquiryStatusActions } from "@/components/inquiry-status-actions";
 import { InquiryWorkflow } from "@/components/inquiry-workflow";
+import { InquiryAmount } from "@/components/inquiry-amount";
 
 export default async function AnfrageDetailPage({ params }: { params: { id: string } }) {
   const company = await getCurrentCompany();
@@ -36,6 +37,9 @@ export default async function AnfrageDetailPage({ params }: { params: { id: stri
           </Link>
           {inquiry.source && ` · Quelle: ${inquiry.source}`}
         </p>
+        <div className="mt-2">
+          <InquiryAmount inquiryId={inquiry.id} amount={inquiry.amount != null ? Number(inquiry.amount) : null} />
+        </div>
       </div>
 
       <div className="rounded-card border border-ink-100 bg-white p-6 shadow-card">

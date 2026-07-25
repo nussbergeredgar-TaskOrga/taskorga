@@ -160,7 +160,10 @@ export default async function KundeDetailPage({
                             className="flex justify-between rounded-lg border-l-4 border-l-brand-500 bg-ink-50 p-3 text-sm hover:bg-ink-100 transition-colors"
                           >
                             <span className="font-medium">{i.title}</span>
-                            <span className="text-ink-500 ml-2">{i.status}</span>
+                            <span className="text-ink-500 ml-2">
+                              {i.status}
+                              {i.amount != null && ` · ${Number(i.amount).toLocaleString("de-DE")} €`}
+                            </span>
                           </Link>
                         </li>
                       ))}

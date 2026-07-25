@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import { Plus, Trophy, XCircle } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { getCurrentCompany } from "@/lib/session";
 import { AnfrageRow } from "@/components/anfrage-row";
@@ -7,7 +7,7 @@ import { AnfrageRow } from "@/components/anfrage-row";
 export default async function AnfragenPage() {
   const company = await getCurrentCompany();
 
-  const [steps, inquiries, wonInquiries, lostInquiries] = await Promise.all([
+  const [steps, inquiries, wonAgg, lostAgg] = await Promise.all([
     prisma.workflowStep.findMany({
       where: { companyId: company.id },
       orderBy: { order: "asc" },
@@ -20,17 +20,15 @@ export default async function AnfragenPage() {
         stepEntries: true,
       },
     }),
-    prisma.inquiry.findMany({
+    prisma.inquiry.aggregate({
       where: { companyId: company.id, status: "WON" },
-      orderBy: { updatedAt: "desc" },
-      include: { customer: { select: { id: true, name: true } } },
-      take: 20,
+      _sum: { amount: true },
+      _count: true,
     }),
-    prisma.inquiry.findMany({
+    prisma.inquiry.aggregate({
       where: { companyId: company.id, status: "LOST" },
-      orderBy: { updatedAt: "desc" },
-      include: { customer: { select: { id: true, name: true } } },
-      take: 20,
+      _sum: { amount: true },
+      _count: true,
     }),
   ]);
 
@@ -132,42 +130,30 @@ export default async function AnfragenPage() {
       )}
 
       <div className="grid sm:grid-cols-2 gap-4">
-        <div className="rounded-card border border-ink-100 bg-white p-5 shadow-card">
-          <h2 className="font-display font-semibold text-success mb-3">Gewonnen</h2>
-          {wonInquiries.length === 0 ? (
-            <p className="text-sm text-ink-300">Keine.</p>
-          ) : (
-            <div className="space-y-2">
-              {wonInquiries.map((inquiry) => (
-                <Link
-                  key={inquiry.id}
-                  href={`/anfragen/${inquiry.id}`}
-                  className="block rounded-lg bg-ink-50 px-3 py-2 text-sm hover:bg-ink-100 transition-colors"
-                >
-                  {inquiry.title} <span className="text-ink-500">· {inquiry.customer.name}</span>
-                </Link>
-              ))}
-            </div>
-          )}
-        </div>
-        <div className="rounded-card border border-ink-100 bg-white p-5 shadow-card">
-          <h2 className="font-display font-semibold text-danger mb-3">Verloren</h2>
-          {lostInquiries.length === 0 ? (
-            <p className="text-sm text-ink-300">Keine.</p>
-          ) : (
-            <div className="space-y-2">
-              {lostInquiries.map((inquiry) => (
-                <Link
-                  key={inquiry.id}
-                  href={`/anfragen/${inquiry.id}`}
-                  className="block rounded-lg bg-ink-50 px-3 py-2 text-sm hover:bg-ink-100 transition-colors"
-                >
-                  {inquiry.title} <span className="text-ink-500">· {inquiry.customer.name}</span>
-                </Link>
-              ))}
-            </div>
-          )}
-        </div>
+        <Link
+          href="/anfragen/gewonnen"
+          className="rounded-card border-l-4 border-l-success bg-white p-5 shadow-card hover:shadow-cardHover transition-shadow block"
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium text-ink-500">Gewonnen ({wonAgg._count})</span>
+            <Trophy size={18} className="text-success" />
+          </div>
+          <p className="mt-2 font-mono text-2xl font-medium text-ink-900">
+            {Number(wonAgg._sum.amount ?? 0).toLocaleString("de-DE")} €
+          </p>
+        </Link>
+        <Link
+          href="/anfragen/verloren"
+          className="rounded-card border-l-4 border-l-danger bg-white p-5 shadow-card hover:shadow-cardHover transition-shadow block"
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium text-ink-500">Verloren ({lostAgg._count})</span>
+            <XCircle size={18} className="text-danger" />
+          </div>
+          <p className="mt-2 font-mono text-2xl font-medium text-ink-900">
+            {Number(lostAgg._sum.amount ?? 0).toLocaleString("de-DE")} €
+          </p>
+        </Link>
       </div>
     </div>
   );

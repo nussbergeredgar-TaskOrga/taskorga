@@ -1,8 +1,11 @@
 import Link from "next/link";
-import { ListTodo, Wallet, FileText, TrendingUp } from "lucide-react";
+import { ListTodo, Wallet, FileText, TrendingUp, Trophy, XCircle } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { getCurrentCompany, getCurrentUser } from "@/lib/session";
 import { KpiCard } from "@/components/kpi-card";
+import { DashboardGrid } from "@/components/dashboard-grid";
+import { getDashboardLayout } from "@/lib/actions/dashboard";
+import { DEFAULT_WIDGETS } from "@/lib/dashboard-widgets";
 import { formatDistanceToNow, format } from "date-fns";
 import { de } from "date-fns/locale";
 
@@ -22,6 +25,9 @@ export default async function HeutePage() {
     openTasks,
     recentActivities,
     upcomingAppointments,
+    wonAgg,
+    lostAgg,
+    savedLayout,
   ] = await Promise.all([
     prisma.task.count({
       where: { companyId: company.id, status: { in: ["OPEN", "IN_PROGRESS"] } },
@@ -54,58 +60,107 @@ export default async function HeutePage() {
       take: 5,
       include: { customer: { select: { id: true, name: true } } },
     }),
+    prisma.inquiry.aggregate({
+      where: { companyId: company.id, status: "WON" },
+      _sum: { amount: true },
+      _count: true,
+    }),
+    prisma.inquiry.aggregate({
+      where: { companyId: company.id, status: "LOST" },
+      _sum: { amount: true },
+      _count: true,
+    }),
+    getDashboardLayout(),
   ]);
 
-  const kpis = [
-    {
-      label: "Offene Aufgaben",
-      value: String(openTasksCount),
-      icon: ListTodo,
-      accent: "border-l-brand-500",
-      href: "#offene-aufgaben",
-    },
-    {
-      label: "Offene Rechnungen",
-      value: `${Number(openInvoices._sum.totalGross ?? 0).toLocaleString("de-DE")} €`,
-      icon: FileText,
-      accent: "border-l-warning",
-      href: "/finanzen",
-    },
-    {
-      label: "Umsatz diesen Monat",
-      value: `${Number(paidThisMonth._sum.totalGross ?? 0).toLocaleString("de-DE")} €`,
-      icon: Wallet,
-      accent: "border-l-success",
-      href: "/finanzen",
-    },
-    {
-      label: "Neue Anfragen (Monat)",
-      value: String(newInquiriesThisMonth),
-      icon: TrendingUp,
-      accent: "border-l-turquoise-500",
-      href: "/anfragen",
-    },
-  ];
+  // Falls neue Standard-Widgets seit der letzten Speicherung dazugekommen
+  // sind (z.B. durch ein Update), werden sie am Ende ergänzt statt zu fehlen.
+  const savedIds = new Set((savedLayout ?? []).map((w) => w.id));
+  const missing = DEFAULT_WIDGETS.filter((w) => !savedIds.has(w.id)).map((w, i) => ({
+    ...w,
+    order: (savedLayout?.length ?? 0) + i,
+  }));
+  const layout = savedLayout ? [...savedLayout, ...missing] : DEFAULT_WIDGETS;
 
   const firstName = user.name?.split(" ")[0] ?? "";
 
-  return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-ink-900">Heute</h1>
-        <p className="text-sm text-ink-500 mt-1">
-          Guten Morgen{firstName ? `, ${firstName}` : ""}. Hier ist dein Überblick.
-        </p>
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {kpis.map((kpi) => (
-          <KpiCard key={kpi.label} {...kpi} />
-        ))}
-      </div>
-
-      <div className="grid md:grid-cols-3 gap-4">
-        <div id="offene-aufgaben" className="rounded-card border border-ink-100 bg-white p-5 shadow-card scroll-mt-6">
+  const widgetNodes = [
+    {
+      id: "kpi-offene-aufgaben",
+      node: (
+        <KpiCard
+          label="Offene Aufgaben"
+          value={String(openTasksCount)}
+          icon={ListTodo}
+          accent="border-l-brand-500"
+          href="#offene-aufgaben"
+        />
+      ),
+    },
+    {
+      id: "kpi-offene-rechnungen",
+      node: (
+        <KpiCard
+          label="Offene Rechnungen"
+          value={`${Number(openInvoices._sum.totalGross ?? 0).toLocaleString("de-DE")} €`}
+          icon={FileText}
+          accent="border-l-warning"
+          href="/finanzen"
+        />
+      ),
+    },
+    {
+      id: "kpi-umsatz-monat",
+      node: (
+        <KpiCard
+          label="Umsatz diesen Monat"
+          value={`${Number(paidThisMonth._sum.totalGross ?? 0).toLocaleString("de-DE")} €`}
+          icon={Wallet}
+          accent="border-l-success"
+          href="/finanzen"
+        />
+      ),
+    },
+    {
+      id: "kpi-neue-anfragen",
+      node: (
+        <KpiCard
+          label="Neue Anfragen (Monat)"
+          value={String(newInquiriesThisMonth)}
+          icon={TrendingUp}
+          accent="border-l-turquoise-500"
+          href="/anfragen"
+        />
+      ),
+    },
+    {
+      id: "kpi-gewonnen-summe",
+      node: (
+        <KpiCard
+          label={`Gewonnen (${wonAgg._count})`}
+          value={`${Number(wonAgg._sum.amount ?? 0).toLocaleString("de-DE")} €`}
+          icon={Trophy}
+          accent="border-l-success"
+          href="/anfragen/gewonnen"
+        />
+      ),
+    },
+    {
+      id: "kpi-verloren-summe",
+      node: (
+        <KpiCard
+          label={`Verloren (${lostAgg._count})`}
+          value={`${Number(lostAgg._sum.amount ?? 0).toLocaleString("de-DE")} €`}
+          icon={XCircle}
+          accent="border-l-danger"
+          href="/anfragen/verloren"
+        />
+      ),
+    },
+    {
+      id: "widget-offene-aufgaben-liste",
+      node: (
+        <div id="offene-aufgaben" className="rounded-card border border-ink-100 bg-white p-5 shadow-card scroll-mt-6 h-full">
           <h2 className="font-display font-semibold text-ink-900 mb-3">Offene Aufgaben</h2>
           {openTasks.length === 0 ? (
             <p className="text-sm text-ink-500">Keine offenen Aufgaben. 🎉</p>
@@ -132,8 +187,12 @@ export default async function HeutePage() {
             </ul>
           )}
         </div>
-
-        <div className="rounded-card border border-ink-100 bg-white p-5 shadow-card">
+      ),
+    },
+    {
+      id: "widget-naechste-termine",
+      node: (
+        <div className="rounded-card border border-ink-100 bg-white p-5 shadow-card h-full">
           <div className="flex items-center justify-between mb-3">
             <h2 className="font-display font-semibold text-ink-900">Nächste Termine</h2>
             <Link href="/termine" className="text-xs text-brand-700 hover:underline">
@@ -158,8 +217,12 @@ export default async function HeutePage() {
             </ul>
           )}
         </div>
-
-        <div className="rounded-card border border-ink-100 bg-white p-5 shadow-card">
+      ),
+    },
+    {
+      id: "widget-letzte-aktivitaeten",
+      node: (
+        <div className="rounded-card border border-ink-100 bg-white p-5 shadow-card h-full">
           <h2 className="font-display font-semibold text-ink-900 mb-3">Letzte Aktivitäten</h2>
           {recentActivities.length === 0 ? (
             <p className="text-sm text-ink-500">Noch keine Aktivitäten.</p>
@@ -176,7 +239,20 @@ export default async function HeutePage() {
             </ul>
           )}
         </div>
+      ),
+    },
+  ];
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-semibold text-ink-900">Heute</h1>
+        <p className="text-sm text-ink-500 mt-1">
+          Guten Morgen{firstName ? `, ${firstName}` : ""}. Hier ist dein Überblick.
+        </p>
       </div>
+
+      <DashboardGrid initialLayout={layout} widgetNodes={widgetNodes} />
     </div>
   );
 }

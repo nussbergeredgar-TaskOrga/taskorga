@@ -140,6 +140,7 @@ model Inquiry {
   description String?
   status      InquiryStatus @default(NEW)
   source      String? // z.B. "Telefon", "Website", "Empfehlung"
+  amount      Decimal? @db.Decimal(12, 2) // geschätzter/vereinbarter Wert
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
