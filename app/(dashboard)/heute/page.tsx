@@ -55,24 +55,28 @@ export default async function HeutePage() {
       value: String(openTasksCount),
       icon: ListTodo,
       accent: "border-l-brand-500",
+      href: "#offene-aufgaben",
     },
     {
       label: "Offene Rechnungen",
       value: `${Number(openInvoices._sum.totalGross ?? 0).toLocaleString("de-DE")} €`,
       icon: FileText,
       accent: "border-l-warning",
+      href: "/finanzen",
     },
     {
       label: "Umsatz diesen Monat",
       value: `${Number(paidThisMonth._sum.totalGross ?? 0).toLocaleString("de-DE")} €`,
       icon: Wallet,
       accent: "border-l-success",
+      href: "/finanzen",
     },
     {
       label: "Neue Anfragen (Monat)",
       value: String(newInquiriesThisMonth),
       icon: TrendingUp,
       accent: "border-l-turquoise-500",
+      href: "/anfragen",
     },
   ];
 
@@ -94,7 +98,7 @@ export default async function HeutePage() {
       </div>
 
       <div className="grid md:grid-cols-2 gap-4">
-        <div className="rounded-card border border-ink-100 bg-white p-5 shadow-card">
+        <div id="offene-aufgaben" className="rounded-card border border-ink-100 bg-white p-5 shadow-card scroll-mt-6">
           <h2 className="font-display font-semibold text-ink-900 mb-3">Offene Aufgaben</h2>
           {openTasks.length === 0 ? (
             <p className="text-sm text-ink-500">Keine offenen Aufgaben. 🎉</p>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
+import { upload } from "@vercel/blob/client";
 import { FileText, ExternalLink, Upload, Camera } from "lucide-react";
 import { addDocument } from "@/lib/actions/documents";
 
@@ -26,20 +27,23 @@ export function DocumentTab({ customerId, documents }: { customerId: string; doc
     setUploading(true);
 
     try {
-      const formData = new FormData();
-      formData.append("file", file);
+      // Lädt die Datei direkt vom Gerät zu Vercel Blob hoch (kein Umweg über
+      // unsere eigene Funktion), dadurch gibt es kein 4,5-MB-Limit mehr.
+      const blob = await upload(file.name, file, {
+        access: "public",
+        handleUploadUrl: "/api/upload",
+      });
 
-      const res = await fetch("/api/upload", { method: "POST", body: formData });
-      const data = await res.json();
-
-      if (!res.ok) {
-        setError(data.error || "Upload fehlgeschlagen.");
-        return;
-      }
-
-      startTransition(() => addDocument(customerId, data));
-    } catch {
-      setError("Upload fehlgeschlagen. Bitte erneut versuchen.");
+      startTransition(() =>
+        addDocument(customerId, {
+          fileName: file.name,
+          fileUrl: blob.url,
+          mimeType: file.type || "application/octet-stream",
+          fileSize: file.size,
+        })
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Upload fehlgeschlagen. Bitte erneut versuchen.");
     } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -51,7 +55,6 @@ export function DocumentTab({ customerId, documents }: { customerId: string; doc
     <div className="space-y-5">
       <div>
         <div className="flex flex-wrap gap-2">
-          {/* Beliebige Datei (PDF, Foto aus der Bibliothek, ...) */}
           <input
             ref={fileInputRef}
             type="file"
@@ -68,7 +71,6 @@ export function DocumentTab({ customerId, documents }: { customerId: string; doc
             Datei hochladen
           </label>
 
-          {/* Öffnet auf dem Handy direkt die Kamera (capture="environment") */}
           <input
             ref={cameraInputRef}
             type="file"
@@ -89,7 +91,6 @@ export function DocumentTab({ customerId, documents }: { customerId: string; doc
         </div>
 
         {uploading && <p className="text-xs text-ink-500 mt-1.5">Wird hochgeladen …</p>}
-        <p className="text-xs text-ink-300 mt-1.5">Max. 4,5 MB pro Datei.</p>
         {error && <p className="text-xs text-danger mt-1">{error}</p>}
       </div>
 

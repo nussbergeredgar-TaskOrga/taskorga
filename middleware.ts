@@ -11,5 +11,6 @@ export const config = {
     "/finanzen/:path*",
     "/einblicke/:path*",
     "/einstellungen/:path*",
+    "/suche/:path*",
   ],
 };
