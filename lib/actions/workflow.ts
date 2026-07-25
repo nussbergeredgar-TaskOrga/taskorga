@@ -69,6 +69,7 @@ export async function toggleStepEntry(inquiryId: string, stepId: string, done: b
     update: { completedAt: done ? new Date() : null },
   });
   revalidatePath(`/anfragen/${inquiryId}`);
+  revalidatePath("/anfragen");
 }
 
 export async function updateStepEntry(
