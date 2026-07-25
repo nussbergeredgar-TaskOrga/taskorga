@@ -154,9 +154,14 @@ export default async function KundeDetailPage({
                   ) : (
                     <ul className="space-y-2">
                       {customer.inquiries.map((i) => (
-                        <li key={i.id} className="rounded-lg border-l-4 border-l-brand-500 bg-ink-50 p-3 text-sm">
-                          <span className="font-medium">{i.title}</span>
-                          <span className="text-ink-500 ml-2">{i.status}</span>
+                        <li key={i.id}>
+                          <Link
+                            href={`/anfragen/${i.id}`}
+                            className="flex justify-between rounded-lg border-l-4 border-l-brand-500 bg-ink-50 p-3 text-sm hover:bg-ink-100 transition-colors"
+                          >
+                            <span className="font-medium">{i.title}</span>
+                            <span className="text-ink-500 ml-2">{i.status}</span>
+                          </Link>
                         </li>
                       ))}
                     </ul>

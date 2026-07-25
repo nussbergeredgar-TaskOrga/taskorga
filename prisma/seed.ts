@@ -50,6 +50,18 @@ async function main() {
     });
   }
 
+  const stepCount = await prisma.workflowStep.count({ where: { companyId: company.id } });
+  if (stepCount === 0) {
+    await prisma.workflowStep.createMany({
+      data: [
+        { companyId: company.id, label: "Rückruf geplant", order: 1 },
+        { companyId: company.id, label: "Telefonat erfolgt", order: 2 },
+        { companyId: company.id, label: "Angebot erstellt", order: 3 },
+        { companyId: company.id, label: "Angebot versendet", order: 4 },
+      ],
+    });
+  }
+
   console.log("Seed abgeschlossen:", company.name);
 }
 

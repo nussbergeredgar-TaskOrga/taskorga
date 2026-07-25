@@ -23,10 +23,13 @@ export function TopBar() {
     <header className="h-16 shrink-0 border-b border-ink-100 bg-white flex items-center gap-4 px-4 md:px-6">
       <form onSubmit={handleSearch} className="flex-1 max-w-xl">
         <div className="relative">
-          <Search
-            size={16}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-300"
-          />
+          <button
+            type="submit"
+            aria-label="Suchen"
+            className="absolute left-2.5 top-1/2 -translate-y-1/2 p-1 rounded text-ink-300 hover:text-brand-600 transition-colors"
+          >
+            <Search size={16} />
+          </button>
           <input
             type="text"
             value={query}

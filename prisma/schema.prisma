@@ -34,6 +34,7 @@ model Company {
   appointments Appointment[]
   automations Automation[]
   roles       Role[]
+  workflowSteps WorkflowStep[]
 }
 
 model User {
@@ -148,8 +149,45 @@ model Inquiry {
   documents    Document[]
   tasks        Task[]
   activities   Activity[]
+  stepEntries  InquiryStepEntry[]
 
   @@index([companyId, status])
+}
+
+// Die Schritte selbst sind pro Firma frei konfigurierbar (Wording,
+// Reihenfolge, neue Schritte) — verwaltet unter Einstellungen.
+model WorkflowStep {
+  id        String   @id @default(cuid())
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id])
+
+  label String
+  order Int
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  entries InquiryStepEntry[]
+
+  @@unique([companyId, order])
+  @@index([companyId])
+}
+
+// Pro Anfrage + Schritt: Erledigt-Status (grüner Haken), Notiz, Zeitpunkt.
+model InquiryStepEntry {
+  id        String       @id @default(cuid())
+  inquiryId String
+  inquiry   Inquiry      @relation(fields: [inquiryId], references: [id])
+  stepId    String
+  step      WorkflowStep @relation(fields: [stepId], references: [id])
+
+  note        String?
+  completedAt DateTime? // null = noch nicht erledigt; gesetzt = grüner Haken
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([inquiryId, stepId])
 }
 
 enum InquiryStatus {

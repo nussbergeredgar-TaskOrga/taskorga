@@ -44,10 +44,14 @@ function InquiryCard({ inquiry }: { inquiry: InquiryWithCustomer }) {
 
   return (
     <div className="rounded-lg border-l-4 border-l-brand-500 bg-white p-3 shadow-card space-y-2">
-      <Link href={`/kunden/${inquiry.customer.id}`} className="block">
-        <p className="text-sm font-medium text-ink-900 leading-snug">{inquiry.title}</p>
-        <p className="text-xs text-ink-500 mt-0.5">{inquiry.customer.name}</p>
-      </Link>
+      <div>
+        <Link href={`/anfragen/${inquiry.id}`} className="text-sm font-medium text-ink-900 leading-snug hover:underline block">
+          {inquiry.title}
+        </Link>
+        <Link href={`/kunden/${inquiry.customer.id}`} className="text-xs text-ink-500 mt-0.5 hover:underline block">
+          {inquiry.customer.name}
+        </Link>
+      </div>
       {(inquiry.status === "CALL_DONE" || inquiry.status === "QUOTE_CREATED") && (
         <Link
           href={`/angebote/neu?customerId=${inquiry.customer.id}&inquiryId=${inquiry.id}&title=${encodeURIComponent(inquiry.title)}`}
