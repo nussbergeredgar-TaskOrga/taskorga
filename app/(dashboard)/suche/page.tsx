@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Users, Inbox, FileText, Briefcase, Wallet } from "lucide-react";
+import { Users, Inbox, FileText, Briefcase, Wallet, type LucideIcon } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { getCurrentCompany } from "@/lib/session";
 
@@ -10,7 +10,7 @@ function ResultGroup({
   count,
 }: {
   title: string;
-  icon: React.ComponentType<{ size?: number; className?: string }>;
+  icon: LucideIcon;
   children: React.ReactNode;
   count: number;
 }) {
