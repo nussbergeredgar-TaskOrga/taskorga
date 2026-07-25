@@ -212,7 +212,8 @@ model Appointment {
   title       String
   type        AppointmentType @default(CALLBACK_REQUEST)
   requestedAt DateTime?  // vom Kunden gewünschter Zeitraum (grob)
-  scheduledAt DateTime?  // vom Unternehmen final geplant
+  scheduledAt DateTime?  // Von-Zeitpunkt
+  endAt       DateTime?  // Bis-Zeitpunkt
   status      AppointmentStatus @default(REQUESTED)
   notes       String?
 

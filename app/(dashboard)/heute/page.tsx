@@ -3,7 +3,7 @@ import { ListTodo, Wallet, FileText, TrendingUp } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { getCurrentCompany, getCurrentUser } from "@/lib/session";
 import { KpiCard } from "@/components/kpi-card";
-import { formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow, format } from "date-fns";
 import { de } from "date-fns/locale";
 
 export default async function HeutePage() {
@@ -21,6 +21,7 @@ export default async function HeutePage() {
     newInquiriesThisMonth,
     openTasks,
     recentActivities,
+    upcomingAppointments,
   ] = await Promise.all([
     prisma.task.count({
       where: { companyId: company.id, status: { in: ["OPEN", "IN_PROGRESS"] } },
@@ -46,6 +47,12 @@ export default async function HeutePage() {
       where: { companyId: company.id },
       orderBy: { createdAt: "desc" },
       take: 8,
+    }),
+    prisma.appointment.findMany({
+      where: { companyId: company.id, scheduledAt: { gte: new Date() } },
+      orderBy: { scheduledAt: "asc" },
+      take: 5,
+      include: { customer: { select: { id: true, name: true } } },
     }),
   ]);
 
@@ -97,7 +104,7 @@ export default async function HeutePage() {
         ))}
       </div>
 
-      <div className="grid md:grid-cols-2 gap-4">
+      <div className="grid md:grid-cols-3 gap-4">
         <div id="offene-aufgaben" className="rounded-card border border-ink-100 bg-white p-5 shadow-card scroll-mt-6">
           <h2 className="font-display font-semibold text-ink-900 mb-3">Offene Aufgaben</h2>
           {openTasks.length === 0 ? (
@@ -120,6 +127,32 @@ export default async function HeutePage() {
                       ) : null}
                     </p>
                   )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        <div className="rounded-card border border-ink-100 bg-white p-5 shadow-card">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="font-display font-semibold text-ink-900">Nächste Termine</h2>
+            <Link href="/termine" className="text-xs text-brand-700 hover:underline">
+              Alle ansehen
+            </Link>
+          </div>
+          {upcomingAppointments.length === 0 ? (
+            <p className="text-sm text-ink-500">Keine anstehenden Termine.</p>
+          ) : (
+            <ul className="space-y-2">
+              {upcomingAppointments.map((a) => (
+                <li key={a.id} className="text-sm border-l-2 border-turquoise-500 pl-3">
+                  <Link href={a.customer ? `/kunden/${a.customer.id}` : "/termine"} className="block hover:underline">
+                    <p className="text-ink-900">{a.title}</p>
+                    <p className="text-xs text-ink-500">
+                      {a.scheduledAt && format(a.scheduledAt, "dd.MM. HH:mm")} Uhr
+                      {a.customer && ` · ${a.customer.name}`}
+                    </p>
+                  </Link>
                 </li>
               ))}
             </ul>

@@ -9,7 +9,8 @@ type Appointment = {
   title: string;
   type: AppointmentType;
   status: AppointmentStatus;
-  requestedAt: Date | null;
+  scheduledAt: Date | null;
+  endAt: Date | null;
 };
 
 const STATUS_LABELS: Record<AppointmentStatus, string> = {
@@ -25,6 +26,14 @@ const TYPE_LABELS: Record<AppointmentType, string> = {
   MEETING: "Besprechung",
 };
 
+function formatRange(start: Date | null, end: Date | null) {
+  if (!start) return "";
+  const dateStr = start.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
+  const startTime = start.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
+  const endTime = end ? end.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }) : null;
+  return endTime ? `${dateStr}, ${startTime} – ${endTime} Uhr` : `${dateStr}, ${startTime} Uhr`;
+}
+
 export function AppointmentTab({
   customerId,
   appointments,
@@ -33,47 +42,83 @@ export function AppointmentTab({
   appointments: Appointment[];
 }) {
   const titleRef = useRef<HTMLInputElement>(null);
-  const dateRef = useRef<HTMLInputElement>(null);
+  const startRef = useRef<HTMLInputElement>(null);
+  const endRef = useRef<HTMLInputElement>(null);
   const [type, setType] = useState<AppointmentType>("CALLBACK_REQUEST");
+  const [error, setError] = useState("");
   const [pending, startTransition] = useTransition();
+
+  function submit() {
+    const title = titleRef.current?.value ?? "";
+    const startAt = startRef.current?.value ?? "";
+    const endAt = endRef.current?.value ?? "";
+    setError("");
+
+    if (!title.trim()) {
+      setError("Bitte einen Titel eingeben.");
+      return;
+    }
+    if (!startAt || !endAt) {
+      setError("Bitte Von- und Bis-Zeit angeben.");
+      return;
+    }
+    if (new Date(endAt) <= new Date(startAt)) {
+      setError("Die Bis-Zeit muss nach der Von-Zeit liegen.");
+      return;
+    }
+
+    startTransition(async () => {
+      await createAppointment(customerId, { title, type, startAt, endAt });
+      if (titleRef.current) titleRef.current.value = "";
+      if (startRef.current) startRef.current.value = "";
+      if (endRef.current) endRef.current.value = "";
+    });
+  }
 
   return (
     <div className="space-y-5">
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
+      <div className="space-y-2">
         <input
           ref={titleRef}
           placeholder="z. B. Rückruf wegen Wallbox"
-          className="sm:col-span-2 rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500"
+          className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500"
         />
-        <select
-          value={type}
-          onChange={(e) => setType(e.target.value as AppointmentType)}
-          className="rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-white"
-        >
-          <option value="CALLBACK_REQUEST">Rückruf</option>
-          <option value="ON_SITE_VISIT">Vor-Ort-Termin</option>
-          <option value="MEETING">Besprechung</option>
-        </select>
-        <input ref={dateRef} type="date" className="rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500" />
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          <select
+            value={type}
+            onChange={(e) => setType(e.target.value as AppointmentType)}
+            className="rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-white"
+          >
+            <option value="CALLBACK_REQUEST">Rückruf</option>
+            <option value="ON_SITE_VISIT">Vor-Ort-Termin</option>
+            <option value="MEETING">Besprechung</option>
+          </select>
+          <div>
+            <label className="block text-xs text-ink-500 mb-1">Von</label>
+            <input
+              ref={startRef}
+              type="datetime-local"
+              className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-ink-500 mb-1">Bis</label>
+            <input
+              ref={endRef}
+              type="datetime-local"
+              className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500"
+            />
+          </div>
+        </div>
+        {error && <p className="text-xs text-danger">{error}</p>}
       </div>
+
       <button
         disabled={pending}
-        onClick={() => {
-          const title = titleRef.current?.value ?? "";
-          if (!title.trim()) return;
-          startTransition(async () => {
-            await createAppointment(customerId, {
-              title,
-              type,
-              requestedAt: dateRef.current?.value || undefined,
-            });
-            if (titleRef.current) titleRef.current.value = "";
-            if (dateRef.current) dateRef.current.value = "";
-          });
-        }}
+        onClick={submit}
         className="rounded-lg bg-brand-500 text-white text-sm font-medium px-4 py-2 hover:bg-brand-600 disabled:opacity-60 transition-colors"
       >
-        Terminanfrage hinzufügen
+        Termin hinzufügen
       </button>
 
       <div className="space-y-2 pt-2">
@@ -82,8 +127,7 @@ export function AppointmentTab({
             <div>
               <p className="font-medium text-ink-900">{a.title}</p>
               <p className="text-xs text-ink-500">
-                {TYPE_LABELS[a.type]}
-                {a.requestedAt && ` · ${a.requestedAt.toLocaleDateString("de-DE")}`}
+                {TYPE_LABELS[a.type]} · {formatRange(a.scheduledAt, a.endAt)}
               </p>
             </div>
             <select

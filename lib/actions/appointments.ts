@@ -7,9 +7,9 @@ import type { AppointmentStatus, AppointmentType } from "@prisma/client";
 
 export async function createAppointment(
   customerId: string,
-  data: { title: string; type: AppointmentType; requestedAt?: string }
+  data: { title: string; type: AppointmentType; startAt: string; endAt: string }
 ) {
-  if (!data.title.trim()) return;
+  if (!data.title.trim() || !data.startAt || !data.endAt) return;
   const company = await getCurrentCompany();
 
   const appointment = await prisma.appointment.create({
@@ -18,7 +18,9 @@ export async function createAppointment(
       customerId,
       title: data.title,
       type: data.type,
-      requestedAt: data.requestedAt ? new Date(data.requestedAt) : null,
+      scheduledAt: new Date(data.startAt),
+      endAt: new Date(data.endAt),
+      status: "SCHEDULED",
     },
   });
 
@@ -28,11 +30,13 @@ export async function createAppointment(
       customerId,
       appointmentId: appointment.id,
       type: "appointment.created",
-      message: `Terminanfrage „${appointment.title}“ wurde angelegt.`,
+      message: `Termin „${appointment.title}“ wurde angelegt.`,
     },
   });
 
   revalidatePath(`/kunden/${customerId}`);
+  revalidatePath("/heute");
+  revalidatePath("/termine");
 }
 
 export async function updateAppointmentStatus(
@@ -42,4 +46,6 @@ export async function updateAppointmentStatus(
 ) {
   await prisma.appointment.update({ where: { id: appointmentId }, data: { status } });
   revalidatePath(`/kunden/${customerId}`);
+  revalidatePath("/heute");
+  revalidatePath("/termine");
 }
