@@ -3,6 +3,7 @@
 import { useRef, useState, useTransition } from "react";
 import { Plus } from "lucide-react";
 import { createAppointment } from "@/lib/actions/appointments";
+import { createInquiryQuick } from "@/lib/actions/inquiries";
 import { CustomerAutocomplete } from "@/components/customer-autocomplete";
 import type { AppointmentType } from "@prisma/client";
 
@@ -17,11 +18,13 @@ export function AppointmentQuickForm({
 }) {
   const [open, setOpen] = useState(false);
   const [customerId, setCustomerId] = useState("");
+  const [inquiryMode, setInquiryMode] = useState<"none" | "existing" | "new">("none");
   const [inquiryId, setInquiryId] = useState("");
   const titleRef = useRef<HTMLInputElement>(null);
   const startRef = useRef<HTMLInputElement>(null);
   const endRef = useRef<HTMLInputElement>(null);
   const amountRef = useRef<HTMLInputElement>(null);
+  const newInquiryTitleRef = useRef<HTMLInputElement>(null);
   const [type, setType] = useState<AppointmentType>("CALLBACK_REQUEST");
   const [error, setError] = useState("");
   const [pending, startTransition] = useTransition();
@@ -31,10 +34,12 @@ export function AppointmentQuickForm({
   function reset() {
     setCustomerId("");
     setInquiryId("");
+    setInquiryMode("none");
     if (titleRef.current) titleRef.current.value = "";
     if (startRef.current) startRef.current.value = "";
     if (endRef.current) endRef.current.value = "";
     if (amountRef.current) amountRef.current.value = "";
+    if (newInquiryTitleRef.current) newInquiryTitleRef.current.value = "";
     setError("");
   }
 
@@ -42,6 +47,7 @@ export function AppointmentQuickForm({
     const title = titleRef.current?.value ?? "";
     const startAt = startRef.current?.value ?? "";
     const endAt = endRef.current?.value ?? "";
+    const newInquiryTitle = newInquiryTitleRef.current?.value ?? "";
     setError("");
 
     if (!customerId) {
@@ -60,14 +66,25 @@ export function AppointmentQuickForm({
       setError("Die Bis-Zeit muss nach der Von-Zeit liegen.");
       return;
     }
+    if (inquiryMode === "new" && !newInquiryTitle.trim()) {
+      setError("Bitte einen Titel für die neue Anfrage eingeben.");
+      return;
+    }
 
     startTransition(async () => {
+      let finalInquiryId = inquiryMode === "existing" ? inquiryId : "";
+
+      if (inquiryMode === "new") {
+        const created = await createInquiryQuick(customerId, { title: newInquiryTitle });
+        finalInquiryId = created?.id ?? "";
+      }
+
       await createAppointment(customerId, {
         title,
         type,
         startAt,
         endAt,
-        inquiryId: inquiryId || undefined,
+        inquiryId: finalInquiryId || undefined,
         amount: amountRef.current?.value,
       });
       reset();
@@ -97,25 +114,79 @@ export function AppointmentQuickForm({
           onSelect={(id) => {
             setCustomerId(id);
             setInquiryId("");
+            setInquiryMode("none");
           }}
         />
       </div>
 
-      {customerId && relevantInquiries.length > 0 && (
+      {customerId && (
         <div>
-          <label className="block text-xs text-ink-500 mb-1">Zugehörige Anfrage (optional)</label>
-          <select
-            value={inquiryId}
-            onChange={(e) => setInquiryId(e.target.value)}
-            className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface"
-          >
-            <option value="">Keine</option>
-            {relevantInquiries.map((i) => (
-              <option key={i.id} value={i.id}>
-                {i.title}
-              </option>
-            ))}
-          </select>
+          <label className="block text-xs text-ink-500 mb-1">Zugehörige Anfrage</label>
+
+          {inquiryMode === "none" && (
+            <div className="flex flex-wrap gap-3">
+              {relevantInquiries.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setInquiryMode("existing")}
+                  className="text-xs text-brand-700 hover:underline"
+                >
+                  Bestehende Anfrage wählen
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setInquiryMode("new")}
+                className="text-xs text-brand-700 hover:underline"
+              >
+                + Neue Anfrage anlegen
+              </button>
+            </div>
+          )}
+
+          {inquiryMode === "existing" && (
+            <div className="flex items-center gap-2">
+              <select
+                value={inquiryId}
+                onChange={(e) => setInquiryId(e.target.value)}
+                className="flex-1 rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface"
+              >
+                <option value="">Bitte wählen …</option>
+                {relevantInquiries.map((i) => (
+                  <option key={i.id} value={i.id}>
+                    {i.title}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={() => {
+                  setInquiryMode("none");
+                  setInquiryId("");
+                }}
+                className="text-xs text-ink-500 hover:text-danger transition-colors whitespace-nowrap"
+              >
+                Entfernen
+              </button>
+            </div>
+          )}
+
+          {inquiryMode === "new" && (
+            <div className="flex items-center gap-2">
+              <input
+                ref={newInquiryTitleRef}
+                placeholder="Titel der neuen Anfrage …"
+                className="flex-1 rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500"
+              />
+              <button
+                type="button"
+                onClick={() => setInquiryMode("none")}
+                className="text-xs text-ink-500 hover:text-danger transition-colors whitespace-nowrap"
+              >
+                Entfernen
+              </button>
+            </div>
+          )}
         </div>
       )}
 

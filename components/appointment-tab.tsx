@@ -2,6 +2,7 @@
 
 import { useRef, useState, useTransition } from "react";
 import { createAppointment, updateAppointmentStatus } from "@/lib/actions/appointments";
+import { createInquiryQuick } from "@/lib/actions/inquiries";
 import type { AppointmentStatus, AppointmentType } from "@prisma/client";
 
 type Appointment = {
@@ -50,6 +51,8 @@ export function AppointmentTab({
   const amountRef = useRef<HTMLInputElement>(null);
   const [type, setType] = useState<AppointmentType>("CALLBACK_REQUEST");
   const [inquiryId, setInquiryId] = useState("");
+  const [showNewInquiry, setShowNewInquiry] = useState(false);
+  const newInquiryTitleRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState("");
   const [pending, startTransition] = useTransition();
 
@@ -73,19 +76,29 @@ export function AppointmentTab({
     }
 
     startTransition(async () => {
+      let finalInquiryId = inquiryId;
+      const newTitle = newInquiryTitleRef.current?.value ?? "";
+
+      if (showNewInquiry && newTitle.trim()) {
+        const created = await createInquiryQuick(customerId, { title: newTitle });
+        finalInquiryId = created?.id ?? "";
+      }
+
       await createAppointment(customerId, {
         title,
         type,
         startAt,
         endAt,
-        inquiryId: inquiryId || undefined,
+        inquiryId: finalInquiryId || undefined,
         amount: amountRef.current?.value,
       });
       if (titleRef.current) titleRef.current.value = "";
       if (startRef.current) startRef.current.value = "";
       if (endRef.current) endRef.current.value = "";
       if (amountRef.current) amountRef.current.value = "";
+      if (newInquiryTitleRef.current) newInquiryTitleRef.current.value = "";
       setInquiryId("");
+      setShowNewInquiry(false);
     });
   }
 
@@ -98,7 +111,7 @@ export function AppointmentTab({
           className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500"
         />
 
-        {inquiries.length > 0 && (
+        {inquiries.length > 0 && !showNewInquiry && (
           <select
             value={inquiryId}
             onChange={(e) => setInquiryId(e.target.value)}
@@ -111,6 +124,34 @@ export function AppointmentTab({
               </option>
             ))}
           </select>
+        )}
+
+        {!showNewInquiry ? (
+          <button
+            type="button"
+            onClick={() => {
+              setShowNewInquiry(true);
+              setInquiryId("");
+            }}
+            className="text-xs text-brand-700 hover:underline"
+          >
+            + Neue Anfrage anlegen
+          </button>
+        ) : (
+          <div className="flex items-center gap-2">
+            <input
+              ref={newInquiryTitleRef}
+              placeholder="Titel der neuen Anfrage …"
+              className="flex-1 rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500"
+            />
+            <button
+              type="button"
+              onClick={() => setShowNewInquiry(false)}
+              className="text-xs text-ink-500 hover:text-danger transition-colors whitespace-nowrap"
+            >
+              Entfernen
+            </button>
+          </div>
         )}
 
         <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">

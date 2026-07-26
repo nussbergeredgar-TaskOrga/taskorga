@@ -73,7 +73,7 @@ export async function createInquiryQuick(
   customerId: string,
   data: { title: string; source?: string; amount?: string }
 ) {
-  if (!data.title.trim()) return;
+  if (!data.title.trim()) return null;
   const company = await getCurrentCompany();
 
   const inquiry = await prisma.inquiry.create({
@@ -98,6 +98,8 @@ export async function createInquiryQuick(
 
   revalidatePath(`/kunden/${customerId}`);
   revalidatePath("/anfragen");
+
+  return inquiry;
 }
 
 export async function updateInquiryAmount(inquiryId: string, amount: string) {
