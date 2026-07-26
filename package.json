@@ -28,7 +28,8 @@
     "zod": "^3.23.8",
     "next-auth": "^4.24.7",
     "bcryptjs": "^2.4.3",
-    "@vercel/blob": "^0.24.1"
+    "@vercel/blob": "^0.24.1",
+    "@react-pdf/renderer": "^4.1.6"
   },
   "devDependencies": {
     "typescript": "^5.4.0",

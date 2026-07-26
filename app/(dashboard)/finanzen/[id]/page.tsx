@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, FileDown } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/session";
 import { InvoiceActions } from "@/components/invoice-actions";
@@ -36,7 +36,18 @@ export default async function RechnungDetailPage({ params }: { params: { id: str
             )}
           </p>
         </div>
-        <InvoiceActions invoiceId={invoice.id} status={invoice.status} />
+        <div className="flex items-center gap-2">
+          <a
+            href={`/api/rechnungen/${invoice.id}/pdf`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 rounded-lg border border-ink-100 text-ink-700 text-sm font-medium px-3 py-2 hover:bg-ink-50 transition-colors"
+          >
+            <FileDown size={15} />
+            PDF
+          </a>
+          <InvoiceActions invoiceId={invoice.id} status={invoice.status} />
+        </div>
       </div>
 
       <div className="rounded-card border border-ink-100 bg-surface overflow-hidden shadow-card">

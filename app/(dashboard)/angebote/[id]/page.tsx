@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, FileDown } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { QuoteActions } from "@/components/quote-actions";
 
@@ -24,7 +24,18 @@ export default async function AngebotDetailPage({ params }: { params: { id: stri
             {quote.number} · {quote.customer.name}
           </p>
         </div>
-        <QuoteActions quoteId={quote.id} status={quote.status} />
+        <div className="flex items-center gap-2">
+          <a
+            href={`/api/angebote/${quote.id}/pdf`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 rounded-lg border border-ink-100 text-ink-700 text-sm font-medium px-3 py-2 hover:bg-ink-50 transition-colors"
+          >
+            <FileDown size={15} />
+            PDF
+          </a>
+          <QuoteActions quoteId={quote.id} status={quote.status} />
+        </div>
       </div>
 
       <div className="rounded-card border border-ink-100 bg-surface overflow-hidden shadow-card">
