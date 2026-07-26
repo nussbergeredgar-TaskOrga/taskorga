@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getCurrentCompany } from "@/lib/session";
+import { getDashboardLayout, saveDashboardLayout } from "@/lib/actions/dashboard";
+import { DEFAULT_WIDGETS } from "@/lib/dashboard-widgets";
 import type { EntityKey } from "@/lib/custom-kpi";
 
 export type CustomKpiInput = {
@@ -33,7 +35,41 @@ export async function createCustomKpi(data: CustomKpiInput) {
 
 export async function deleteCustomKpi(id: string) {
   await prisma.customKpi.delete({ where: { id } });
+
+  // Falls die Kachel auf dem eigenen Dashboard lag, dort ebenfalls entfernen
+  const layout = await getDashboardLayout();
+  if (layout) {
+    const next = layout.filter((w) => w.id !== `custom:${id}`);
+    if (next.length !== layout.length) {
+      await saveDashboardLayout(next);
+    }
+  }
+
   revalidatePath("/heute");
+  revalidatePath("/einblicke");
+}
+
+export async function toggleKpiOnDashboard(kpiId: string, addIt: boolean) {
+  const widgetId = `custom:${kpiId}`;
+  const saved = await getDashboardLayout();
+  const layout = saved ?? DEFAULT_WIDGETS;
+  const existing = layout.find((w) => w.id === widgetId);
+
+  let next;
+  if (addIt) {
+    if (existing) {
+      next = layout.map((w) => (w.id === widgetId ? { ...w, visible: true } : w));
+    } else {
+      const maxOrder = layout.reduce((max, w) => Math.max(max, w.order), 0);
+      next = [...layout, { id: widgetId, visible: true, size: "sm" as const, order: maxOrder + 1 }];
+    }
+  } else {
+    next = layout.map((w) => (w.id === widgetId ? { ...w, visible: false } : w));
+  }
+
+  await saveDashboardLayout(next);
+  revalidatePath("/heute");
+  revalidatePath("/einblicke");
 }
 
 async function computeValue(
