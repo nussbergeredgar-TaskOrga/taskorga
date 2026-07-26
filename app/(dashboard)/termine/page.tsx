@@ -47,6 +47,11 @@ export default async function TerminePage({
     select: { id: true, name: true },
   });
 
+  const openInquiries = await prisma.inquiry.findMany({
+    where: { companyId: company.id, status: { notIn: ["WON", "LOST"] } },
+    select: { id: true, title: true, customerId: true },
+  });
+
   const prevMonth = format(subMonths(anchorDate, 1), "yyyy-MM");
   const nextMonth = format(addMonths(anchorDate, 1), "yyyy-MM");
 
@@ -90,7 +95,7 @@ export default async function TerminePage({
         </div>
       </div>
 
-      <AppointmentQuickForm customers={customers} />
+      <AppointmentQuickForm customers={customers} inquiries={openInquiries} />
 
       <div className="rounded-card border border-ink-100 bg-surface p-4 shadow-card overflow-x-auto">
         <div className="grid grid-cols-7 min-w-[640px] gap-px bg-ink-100 rounded-lg overflow-hidden">

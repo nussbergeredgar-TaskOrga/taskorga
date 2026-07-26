@@ -6,21 +6,35 @@ import { createAppointment } from "@/lib/actions/appointments";
 import { CustomerAutocomplete } from "@/components/customer-autocomplete";
 import type { AppointmentType } from "@prisma/client";
 
-export function AppointmentQuickForm({ customers }: { customers: { id: string; name: string }[] }) {
+type Inquiry = { id: string; title: string; customerId: string };
+
+export function AppointmentQuickForm({
+  customers,
+  inquiries,
+}: {
+  customers: { id: string; name: string }[];
+  inquiries: Inquiry[];
+}) {
   const [open, setOpen] = useState(false);
   const [customerId, setCustomerId] = useState("");
+  const [inquiryId, setInquiryId] = useState("");
   const titleRef = useRef<HTMLInputElement>(null);
   const startRef = useRef<HTMLInputElement>(null);
   const endRef = useRef<HTMLInputElement>(null);
+  const amountRef = useRef<HTMLInputElement>(null);
   const [type, setType] = useState<AppointmentType>("CALLBACK_REQUEST");
   const [error, setError] = useState("");
   const [pending, startTransition] = useTransition();
 
+  const relevantInquiries = inquiries.filter((i) => i.customerId === customerId);
+
   function reset() {
     setCustomerId("");
+    setInquiryId("");
     if (titleRef.current) titleRef.current.value = "";
     if (startRef.current) startRef.current.value = "";
     if (endRef.current) endRef.current.value = "";
+    if (amountRef.current) amountRef.current.value = "";
     setError("");
   }
 
@@ -48,7 +62,14 @@ export function AppointmentQuickForm({ customers }: { customers: { id: string; n
     }
 
     startTransition(async () => {
-      await createAppointment(customerId, { title, type, startAt, endAt });
+      await createAppointment(customerId, {
+        title,
+        type,
+        startAt,
+        endAt,
+        inquiryId: inquiryId || undefined,
+        amount: amountRef.current?.value,
+      });
       reset();
       setOpen(false);
     });
@@ -70,8 +91,33 @@ export function AppointmentQuickForm({ customers }: { customers: { id: string; n
     <div className="rounded-card border border-ink-100 bg-surface p-5 shadow-card space-y-3 max-w-xl">
       <div>
         <label className="block text-xs text-ink-500 mb-1">Kunde</label>
-        <CustomerAutocomplete customers={customers} name="customerId" onSelect={setCustomerId} />
+        <CustomerAutocomplete
+          customers={customers}
+          name="customerId"
+          onSelect={(id) => {
+            setCustomerId(id);
+            setInquiryId("");
+          }}
+        />
       </div>
+
+      {customerId && relevantInquiries.length > 0 && (
+        <div>
+          <label className="block text-xs text-ink-500 mb-1">Zugehörige Anfrage (optional)</label>
+          <select
+            value={inquiryId}
+            onChange={(e) => setInquiryId(e.target.value)}
+            className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface"
+          >
+            <option value="">Keine</option>
+            {relevantInquiries.map((i) => (
+              <option key={i.id} value={i.id}>
+                {i.title}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
       <div>
         <label className="block text-xs text-ink-500 mb-1">Titel</label>
@@ -82,7 +128,7 @@ export function AppointmentQuickForm({ customers }: { customers: { id: string; n
         />
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
         <div>
           <label className="block text-xs text-ink-500 mb-1">Art</label>
           <select
@@ -109,6 +155,16 @@ export function AppointmentQuickForm({ customers }: { customers: { id: string; n
             ref={endRef}
             type="datetime-local"
             className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500"
+          />
+        </div>
+        <div>
+          <label className="block text-xs text-ink-500 mb-1">Betrag (€)</label>
+          <input
+            ref={amountRef}
+            type="number"
+            step="0.01"
+            placeholder="optional"
+            className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 font-mono"
           />
         </div>
       </div>

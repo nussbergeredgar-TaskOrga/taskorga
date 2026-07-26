@@ -5,9 +5,22 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentCompany } from "@/lib/session";
 import type { AppointmentStatus, AppointmentType } from "@prisma/client";
 
+function parseAmount(raw?: string | null) {
+  if (!raw || !raw.trim()) return null;
+  const n = Number(raw.replace(",", "."));
+  return Number.isFinite(n) ? n : null;
+}
+
 export async function createAppointment(
   customerId: string,
-  data: { title: string; type: AppointmentType; startAt: string; endAt: string }
+  data: {
+    title: string;
+    type: AppointmentType;
+    startAt: string;
+    endAt: string;
+    inquiryId?: string;
+    amount?: string;
+  }
 ) {
   if (!data.title.trim() || !data.startAt || !data.endAt) return;
   const company = await getCurrentCompany();
@@ -16,11 +29,13 @@ export async function createAppointment(
     data: {
       companyId: company.id,
       customerId,
+      inquiryId: data.inquiryId || null,
       title: data.title,
       type: data.type,
       scheduledAt: new Date(data.startAt),
       endAt: new Date(data.endAt),
       status: "SCHEDULED",
+      amount: parseAmount(data.amount),
     },
   });
 
@@ -37,6 +52,8 @@ export async function createAppointment(
   revalidatePath(`/kunden/${customerId}`);
   revalidatePath("/heute");
   revalidatePath("/termine");
+  revalidatePath("/anfragen");
+  if (data.inquiryId) revalidatePath(`/anfragen/${data.inquiryId}`);
 }
 
 export async function updateAppointmentStatus(
@@ -48,4 +65,5 @@ export async function updateAppointmentStatus(
   revalidatePath(`/kunden/${customerId}`);
   revalidatePath("/heute");
   revalidatePath("/termine");
+  revalidatePath("/anfragen");
 }

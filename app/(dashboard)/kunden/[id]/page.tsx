@@ -227,7 +227,13 @@ export default async function KundeDetailPage({
             },
             {
               label: "Termine",
-              content: <AppointmentTab customerId={customer.id} appointments={customer.appointments} />,
+              content: (
+                <AppointmentTab
+                  customerId={customer.id}
+                  appointments={customer.appointments.map((a) => ({ ...a, amount: a.amount != null ? Number(a.amount) : null }))}
+                  inquiries={customer.inquiries.map((i) => ({ id: i.id, title: i.title }))}
+                />
+              ),
             },
             {
               label: "Dokumente",

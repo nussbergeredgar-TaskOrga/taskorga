@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Plus, Trophy, XCircle } from "lucide-react";
+import { Plus, Trophy, XCircle, Calendar } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { getCurrentCompany } from "@/lib/session";
 import { AnfrageRow } from "@/components/anfrage-row";
@@ -7,7 +7,7 @@ import { AnfrageRow } from "@/components/anfrage-row";
 export default async function AnfragenPage() {
   const company = await getCurrentCompany();
 
-  const [steps, inquiries, wonAgg, lostAgg] = await Promise.all([
+  const [steps, inquiries, wonAgg, lostAgg, scheduledAppointments] = await Promise.all([
     prisma.workflowStep.findMany({
       where: { companyId: company.id },
       orderBy: { order: "asc" },
@@ -29,6 +29,14 @@ export default async function AnfragenPage() {
       where: { companyId: company.id, status: "LOST" },
       _sum: { amount: true },
       _count: true,
+    }),
+    prisma.appointment.findMany({
+      where: { companyId: company.id, inquiryId: { not: null } },
+      orderBy: { scheduledAt: "asc" },
+      include: {
+        customer: { select: { id: true, name: true } },
+        inquiry: { select: { id: true, title: true } },
+      },
     }),
   ]);
 
@@ -70,6 +78,37 @@ export default async function AnfragenPage() {
           Neue Anfrage
         </Link>
       </div>
+
+      {scheduledAppointments.length > 0 && (
+        <div className="rounded-card border border-ink-100 bg-surface p-5 shadow-card">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="flex items-center gap-2 font-display font-semibold text-ink-900">
+              <Calendar size={16} className="text-turquoise-500" />
+              Terminiert
+            </h2>
+            <span className="text-xs font-mono text-ink-300">{scheduledAppointments.length}</span>
+          </div>
+          <div className="space-y-2">
+            {scheduledAppointments.map((a) => (
+              <Link
+                key={a.id}
+                href={a.inquiry ? `/anfragen/${a.inquiry.id}` : "/termine"}
+                className="flex items-center justify-between gap-3 rounded-lg border-l-4 border-l-turquoise-500 bg-ink-50 px-3 py-2.5 text-sm hover:bg-ink-100 transition-colors"
+              >
+                <div className="min-w-0">
+                  <span className="font-medium text-ink-900">{a.inquiry?.title ?? a.title}</span>
+                  <span className="text-ink-500 ml-2">{a.customer?.name}</span>
+                </div>
+                <div className="text-right shrink-0 font-mono text-xs text-ink-500">
+                  {a.scheduledAt && a.scheduledAt.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" })}
+                  {a.scheduledAt && ` ${a.scheduledAt.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })}`}
+                  {a.amount != null && ` · ${Number(a.amount).toLocaleString("de-DE")} €`}
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
 
       {steps.length === 0 ? (
         <div className="rounded-card border border-dashed border-ink-100 bg-surface p-8 text-center text-sm text-ink-500">
