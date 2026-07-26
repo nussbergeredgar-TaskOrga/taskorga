@@ -1,12 +1,13 @@
 import Link from "next/link";
-import { ListTodo, Wallet, FileText, TrendingUp, Trophy, XCircle } from "lucide-react";
+import { ListTodo, Wallet, FileText, TrendingUp, Trophy, XCircle, CalendarClock, CalendarCheck } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { getCurrentCompany, getCurrentUser } from "@/lib/session";
 import { KpiCard } from "@/components/kpi-card";
 import { DashboardGrid } from "@/components/dashboard-grid";
 import { getDashboardLayout } from "@/lib/actions/dashboard";
+import { getCustomKpiValues } from "@/lib/actions/custom-kpi";
 import { DEFAULT_WIDGETS } from "@/lib/dashboard-widgets";
-import { formatDistanceToNow, format } from "date-fns";
+import { formatDistanceToNow, format, isSameDay, startOfDay, endOfDay } from "date-fns";
 import { de } from "date-fns/locale";
 
 export default async function HeutePage() {
@@ -27,7 +28,10 @@ export default async function HeutePage() {
     upcomingAppointments,
     wonAgg,
     lostAgg,
+    todayAppointmentsCount,
+    scheduledAppointmentsAgg,
     savedLayout,
+    customKpis,
   ] = await Promise.all([
     prisma.task.count({
       where: { companyId: company.id, status: { in: ["OPEN", "IN_PROGRESS"] } },
@@ -70,21 +74,41 @@ export default async function HeutePage() {
       _sum: { amount: true },
       _count: true,
     }),
+    prisma.appointment.count({
+      where: { companyId: company.id, scheduledAt: { gte: startOfDay(new Date()), lte: endOfDay(new Date()) } },
+    }),
+    prisma.appointment.aggregate({
+      where: { companyId: company.id, status: "SCHEDULED" },
+      _sum: { amount: true },
+      _count: true,
+    }),
     getDashboardLayout(),
+    getCustomKpiValues(),
   ]);
 
-  // Falls neue Standard-Widgets seit der letzten Speicherung dazugekommen
-  // sind (z.B. durch ein Update), werden sie am Ende ergänzt statt zu fehlen.
+  const customWidgetIds = customKpis.map((k) => `custom:${k.id}`);
+  const allDefaultIds = [...DEFAULT_WIDGETS.map((w) => w.id), ...customWidgetIds];
+
+  // Neue Standard-Kacheln und neu erstellte eigene Kacheln ergänzen, falls sie
+  // in der gespeicherten Konfiguration noch fehlen. Gelöschte eigene Kacheln
+  // werden ausgefiltert.
   const savedIds = new Set((savedLayout ?? []).map((w) => w.id));
-  const missing = DEFAULT_WIDGETS.filter((w) => !savedIds.has(w.id)).map((w, i) => ({
+  const missingDefaults = DEFAULT_WIDGETS.filter((w) => !savedIds.has(w.id));
+  const missingCustom = customWidgetIds
+    .filter((id) => !savedIds.has(id))
+    .map((id) => ({ id, visible: true, size: "sm" as const, order: 0 }));
+  const missing = [...missingDefaults, ...missingCustom].map((w, i) => ({
     ...w,
     order: (savedLayout?.length ?? 0) + i,
   }));
-  const layout = savedLayout ? [...savedLayout, ...missing] : DEFAULT_WIDGETS;
+
+  const layout = (savedLayout ? [...savedLayout, ...missing] : [...DEFAULT_WIDGETS, ...missing]).filter((w) =>
+    allDefaultIds.includes(w.id)
+  );
 
   const firstName = user.name?.split(" ")[0] ?? "";
 
-  const widgetNodes = [
+  const widgetNodes: { id: string; label?: string; node: React.ReactNode }[] = [
     {
       id: "kpi-offene-aufgaben",
       node: (
@@ -158,6 +182,42 @@ export default async function HeutePage() {
       ),
     },
     {
+      id: "kpi-termine-heute",
+      node: (
+        <KpiCard
+          label="Heutige Termine"
+          value={String(todayAppointmentsCount)}
+          icon={CalendarClock}
+          accent="border-l-turquoise-500"
+          href="/termine"
+        />
+      ),
+    },
+    {
+      id: "kpi-termine-ausgemacht",
+      node: (
+        <KpiCard
+          label="Ausgemachte Termine"
+          value={String(scheduledAppointmentsAgg._count)}
+          icon={CalendarCheck}
+          accent="border-l-brand-500"
+          href="/termine"
+        />
+      ),
+    },
+    {
+      id: "kpi-termine-betrag",
+      node: (
+        <KpiCard
+          label="Termine Betrag"
+          value={`${Number(scheduledAppointmentsAgg._sum.amount ?? 0).toLocaleString("de-DE")} €`}
+          icon={Wallet}
+          accent="border-l-success"
+          href="/termine"
+        />
+      ),
+    },
+    {
       id: "widget-offene-aufgaben-liste",
       node: (
         <div id="offene-aufgaben" className="rounded-card border border-ink-100 bg-surface p-5 shadow-card scroll-mt-6 h-full">
@@ -210,6 +270,7 @@ export default async function HeutePage() {
                     <p className="text-xs text-ink-500">
                       {a.scheduledAt && format(a.scheduledAt, "dd.MM. HH:mm")} Uhr
                       {a.customer && ` · ${a.customer.name}`}
+                      {a.amount != null && ` · ${Number(a.amount).toLocaleString("de-DE")} €`}
                     </p>
                   </Link>
                 </li>
@@ -241,6 +302,21 @@ export default async function HeutePage() {
         </div>
       ),
     },
+    ...customKpis.map((kpi) => ({
+      id: `custom:${kpi.id}`,
+      label: kpi.label,
+      node: (
+        <KpiCard
+          label={kpi.label}
+          value={
+            kpi.aggregation === "sum"
+              ? `${kpi.value.toLocaleString("de-DE")} €`
+              : String(kpi.value)
+          }
+          accent={kpi.accent}
+        />
+      ),
+    })),
   ];
 
   return (
@@ -252,7 +328,11 @@ export default async function HeutePage() {
         </p>
       </div>
 
-      <DashboardGrid initialLayout={layout} widgetNodes={widgetNodes} />
+      <DashboardGrid
+        key={layout.map((w) => w.id).sort().join(",")}
+        initialLayout={layout}
+        widgetNodes={widgetNodes}
+      />
     </div>
   );
 }

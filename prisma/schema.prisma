@@ -46,6 +46,7 @@ model Company {
   automations Automation[]
   roles       Role[]
   workflowSteps WorkflowStep[]
+  customKpis  CustomKpi[]
 }
 
 model User {
@@ -608,6 +609,27 @@ model Automation {
 // ------------------------------------------------------------
 // DASHBOARD (individualisierbar)
 // ------------------------------------------------------------
+
+// Frei erstellbare Kennzahlen-Kacheln fürs Dashboard: Nutzer wählt einen
+// Datentyp (z.B. Anfragen), eine Berechnung (Anzahl/Summe) und optional
+// einen Status-Filter. Die Berechnung selbst passiert serverseitig fest
+// definiert je Datentyp (siehe lib/actions/custom-kpi.ts).
+model CustomKpi {
+  id        String   @id @default(cuid())
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id])
+
+  label       String
+  entity      String // "customers" | "inquiries" | "quotes" | "projects" | "invoices" | "appointments" | "expenses"
+  aggregation String // "count" | "sum"
+  sumField    String?
+  statusValue String?
+  accent      String  @default("border-l-brand-500")
+
+  createdAt DateTime @default(now())
+
+  @@index([companyId])
+}
 
 model Dashboard {
   id     String @id @default(cuid())

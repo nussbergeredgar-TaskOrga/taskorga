@@ -17,6 +17,8 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentCompany } from "@/lib/session";
 import { cn } from "@/lib/utils";
 import { AppointmentQuickForm } from "@/components/appointment-quick-form";
+import { KpiCard } from "@/components/kpi-card";
+import { CalendarCheck, CalendarClock, Wallet } from "lucide-react";
 
 export default async function TerminePage({
   searchParams,
@@ -65,6 +67,10 @@ export default async function TerminePage({
 
   const monthAppointments = appointments.filter((a) => a.scheduledAt && isSameMonth(a.scheduledAt, anchorDate));
 
+  const todayCount = appointments.filter((a) => a.scheduledAt && isSameDay(a.scheduledAt, new Date())).length;
+  const scheduledCount = monthAppointments.filter((a) => a.status === "SCHEDULED").length;
+  const monthAmount = monthAppointments.reduce((sum, a) => sum + Number(a.amount ?? 0), 0);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
@@ -96,6 +102,12 @@ export default async function TerminePage({
       </div>
 
       <AppointmentQuickForm customers={customers} inquiries={openInquiries} />
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <KpiCard label="Heutige Termine" value={String(todayCount)} icon={CalendarClock} accent="border-l-turquoise-500" />
+        <KpiCard label="Ausgemachte Termine (Monat)" value={String(scheduledCount)} icon={CalendarCheck} accent="border-l-brand-500" />
+        <KpiCard label="Betrag Termine (Monat)" value={`${monthAmount.toLocaleString("de-DE")} €`} icon={Wallet} accent="border-l-success" />
+      </div>
 
       <div className="rounded-card border border-ink-100 bg-surface p-4 shadow-card overflow-x-auto">
         <div className="grid grid-cols-7 min-w-[640px] gap-px bg-ink-100 rounded-lg overflow-hidden">
@@ -170,6 +182,7 @@ export default async function TerminePage({
                 <span className="font-mono text-xs text-ink-500">
                   {a.scheduledAt && format(a.scheduledAt, "dd.MM. HH:mm")}
                   {a.endAt && ` – ${format(a.endAt, "HH:mm")}`}
+                  {a.amount != null && ` · ${Number(a.amount).toLocaleString("de-DE")} €`}
                 </span>
               </Link>
             ))}
