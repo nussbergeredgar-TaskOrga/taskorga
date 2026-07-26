@@ -39,7 +39,9 @@ function UserRow({ user, currentUserId }: { user: TeamUser; currentUserId: strin
           value={user.roleName}
           disabled={pending}
           onChange={(e) =>
-            startTransition(() => updateUserRole(user.id, e.target.value as "Admin" | "Mitarbeiter"))
+            startTransition(async () => {
+              await updateUserRole(user.id, e.target.value as "Admin" | "Mitarbeiter");
+            })
           }
           className="text-xs rounded-lg border border-ink-100 px-2 py-1.5 bg-surface outline-none"
         >
@@ -51,7 +53,9 @@ function UserRow({ user, currentUserId }: { user: TeamUser; currentUserId: strin
             disabled={pending}
             onClick={() => {
               if (confirm(`${user.name} wirklich aus dem Team entfernen?`)) {
-                startTransition(() => deleteUser(user.id));
+                startTransition(async () => {
+                  await deleteUser(user.id);
+                });
               }
             }}
             className="p-1.5 text-ink-300 hover:text-danger transition-colors"
