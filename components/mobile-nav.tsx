@@ -2,28 +2,22 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  LayoutGrid,
-  Users,
-  Inbox,
-  Briefcase,
-  Wallet,
-  MoreHorizontal,
-} from "lucide-react";
+import { MoreHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { NAV_CATALOG, type NavItemConfig } from "@/lib/nav-items";
+import { ICON_MAP } from "@/lib/nav-icons";
 
-// Auf dem Handy ist wenig Platz: die 5 wichtigsten Workspaces direkt,
-// Einblicke/Einstellungen unter "Mehr".
-const primaryItems = [
-  { href: "/heute", label: "Heute", icon: LayoutGrid },
-  { href: "/kunden", label: "Kunden", icon: Users },
-  { href: "/anfragen", label: "Anfragen", icon: Inbox },
-  { href: "/arbeit", label: "Arbeit", icon: Briefcase },
-  { href: "/finanzen", label: "Finanzen", icon: Wallet },
-];
-
-export function MobileNav() {
+export function MobileNav({ config }: { config: NavItemConfig[] }) {
   const pathname = usePathname();
+  const byId = new Map(NAV_CATALOG.map((c) => [c.id, c]));
+  const visible = [...config].filter((c) => c.visible).sort((a, b) => a.order - b.order);
+  // Erste 5 sichtbare Punkte direkt im unteren Menü, Rest unter "Mehr"
+  const primary = visible.slice(0, 5);
+  const overflow = visible.slice(5);
+  const overflowActive = overflow.some((c) => {
+    const item = byId.get(c.id);
+    return item && pathname?.startsWith(item.href);
+  });
 
   return (
     <nav
@@ -31,12 +25,14 @@ export function MobileNav() {
       aria-label="Hauptnavigation"
     >
       <div className="flex items-stretch">
-        {primaryItems.map((item) => {
+        {primary.map((c) => {
+          const item = byId.get(c.id);
+          if (!item) return null;
           const active = pathname?.startsWith(item.href);
-          const Icon = item.icon;
+          const Icon = ICON_MAP[item.icon];
           return (
             <Link
-              key={item.href}
+              key={item.id}
               href={item.href}
               className={cn(
                 "flex-1 flex flex-col items-center justify-center gap-0.5 py-2.5 text-[11px] font-medium transition-colors",
@@ -48,18 +44,18 @@ export function MobileNav() {
             </Link>
           );
         })}
-        <Link
-          href="/einstellungen"
-          className={cn(
-            "flex-1 flex flex-col items-center justify-center gap-0.5 py-2.5 text-[11px] font-medium transition-colors",
-            pathname?.startsWith("/einstellungen") || pathname?.startsWith("/einblicke") || pathname?.startsWith("/termine")
-              ? "text-brand-600"
-              : "text-ink-300"
-          )}
-        >
-          <MoreHorizontal size={20} />
-          Mehr
-        </Link>
+        {overflow.length > 0 && (
+          <Link
+            href="/einstellungen"
+            className={cn(
+              "flex-1 flex flex-col items-center justify-center gap-0.5 py-2.5 text-[11px] font-medium transition-colors",
+              overflowActive ? "text-brand-600" : "text-ink-300"
+            )}
+          >
+            <MoreHorizontal size={20} />
+            Mehr
+          </Link>
+        )}
       </div>
     </nav>
   );

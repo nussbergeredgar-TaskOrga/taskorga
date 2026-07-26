@@ -2,31 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  LayoutGrid,
-  Users,
-  Inbox,
-  Calendar,
-  Briefcase,
-  Wallet,
-  BarChart3,
-  Settings,
-} from "lucide-react";
 import { cn } from "@/lib/utils";
+import { NAV_CATALOG, type NavItemConfig } from "@/lib/nav-items";
+import { ICON_MAP } from "@/lib/nav-icons";
 
-const items = [
-  { href: "/heute", label: "Heute", icon: LayoutGrid },
-  { href: "/kunden", label: "Kunden", icon: Users },
-  { href: "/anfragen", label: "Anfragen", icon: Inbox },
-  { href: "/termine", label: "Termine", icon: Calendar },
-  { href: "/arbeit", label: "Arbeit", icon: Briefcase },
-  { href: "/finanzen", label: "Finanzen", icon: Wallet },
-  { href: "/einblicke", label: "Einblicke", icon: BarChart3 },
-  { href: "/einstellungen", label: "Einstellungen", icon: Settings },
-];
-
-export function NavSidebar() {
+export function NavSidebar({ config }: { config: NavItemConfig[] }) {
   const pathname = usePathname();
+  const byId = new Map(NAV_CATALOG.map((c) => [c.id, c]));
+  const visible = [...config].filter((c) => c.visible).sort((a, b) => a.order - b.order);
 
   return (
     <aside className="hidden md:flex md:w-60 md:flex-col md:shrink-0 border-r border-ink-100 bg-surface">
@@ -36,12 +19,14 @@ export function NavSidebar() {
         </span>
       </div>
       <nav className="flex-1 px-3 py-2 space-y-1">
-        {items.map((item) => {
+        {visible.map((c) => {
+          const item = byId.get(c.id);
+          if (!item) return null;
           const active = pathname?.startsWith(item.href);
-          const Icon = item.icon;
+          const Icon = ICON_MAP[item.icon];
           return (
             <Link
-              key={item.href}
+              key={item.id}
               href={item.href}
               className={cn(
                 "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",

@@ -33,3 +33,23 @@ export async function getCurrentUser() {
   }
   return session.user;
 }
+
+/** Liefert den eingeloggten Nutzer inkl. Rolle aus der Datenbank (immer aktuell). */
+export async function getCurrentUserWithRole() {
+  const user = await getCurrentUser();
+  const dbUser = await prisma.user.findUnique({
+    where: { id: user.id },
+    include: { role: true },
+  });
+  if (!dbUser) redirect("/login");
+  return dbUser;
+}
+
+/** Nur für Admins zugänglich. Leitet Mitarbeiter zu /heute um. */
+export async function requireAdmin() {
+  const dbUser = await getCurrentUserWithRole();
+  if (dbUser.role?.name !== "Admin") {
+    redirect("/heute");
+  }
+  return dbUser;
+}

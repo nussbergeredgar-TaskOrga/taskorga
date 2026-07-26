@@ -15,14 +15,27 @@ async function main() {
 
   const passwordHash = await bcrypt.hash("demo1234", 10);
 
+  const adminRole = await prisma.role.upsert({
+    where: { companyId_name: { companyId: company.id, name: "Admin" } },
+    update: {},
+    create: { companyId: company.id, name: "Admin", permissions: {} },
+  });
+
+  await prisma.role.upsert({
+    where: { companyId_name: { companyId: company.id, name: "Mitarbeiter" } },
+    update: {},
+    create: { companyId: company.id, name: "Mitarbeiter", permissions: {} },
+  });
+
   await prisma.user.upsert({
     where: { email: "demo@taskorga.app" },
-    update: { passwordHash },
+    update: { passwordHash, roleId: adminRole.id },
     create: {
       companyId: company.id,
       email: "demo@taskorga.app",
       name: "Max Beispiel",
       passwordHash,
+      roleId: adminRole.id,
     },
   });
 

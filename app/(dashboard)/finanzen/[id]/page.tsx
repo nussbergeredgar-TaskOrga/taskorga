@@ -2,9 +2,11 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { prisma } from "@/lib/prisma";
+import { requireAdmin } from "@/lib/session";
 import { InvoiceActions } from "@/components/invoice-actions";
 
 export default async function RechnungDetailPage({ params }: { params: { id: string } }) {
+  await requireAdmin();
   const invoice = await prisma.invoice.findUnique({
     where: { id: params.id },
     include: { customer: true, items: { orderBy: { position: "asc" } }, project: true },

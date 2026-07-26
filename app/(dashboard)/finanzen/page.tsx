@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { getCurrentCompany } from "@/lib/session";
+import { requireAdmin } from "@/lib/session";
 import { statusColor } from "@/lib/utils";
 import { KpiCard } from "@/components/kpi-card";
 import { ExpenseForm } from "@/components/expense-form";
@@ -17,7 +17,8 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 export default async function FinanzenPage() {
-  const company = await getCurrentCompany();
+  const admin = await requireAdmin();
+  const company = { id: admin.companyId };
 
   const [invoices, expenses] = await Promise.all([
     prisma.invoice.findMany({

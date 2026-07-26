@@ -29,6 +29,19 @@
   body {
     @apply bg-ink-50 text-ink-900 font-body transition-colors duration-150;
   }
+
+  /* Alle Eingabefelder bekommen zentral eine theme-fähige Hintergrund- und
+     Textfarbe, damit sie im Dunkelmodus nicht als weiße Kästen erscheinen.
+     Einzelne Komponenten können das per className weiterhin überschreiben. */
+  input,
+  select,
+  textarea {
+    @apply bg-surface text-ink-900;
+  }
+  input::placeholder,
+  textarea::placeholder {
+    @apply text-ink-300;
+  }
   h1, h2, h3, h4 {
     @apply font-display;
   }
