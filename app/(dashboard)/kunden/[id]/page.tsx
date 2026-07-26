@@ -8,6 +8,7 @@ import { AppointmentTab } from "@/components/appointment-tab";
 import { DocumentTab } from "@/components/document-tab";
 import { InlineInquiryForm } from "@/components/inline-inquiry-form";
 import { KpiCard } from "@/components/kpi-card";
+import { getCustomerTabsConfig } from "@/lib/actions/customer-tabs";
 import { formatDistanceToNow } from "date-fns";
 import { de } from "date-fns/locale";
 
@@ -41,7 +42,10 @@ export default async function KundeDetailPage({
 }: {
   params: { id: string };
 }) {
-  const customer = await getCustomer(params.id);
+  const [customer, tabsConfig] = await Promise.all([
+    getCustomer(params.id),
+    getCustomerTabsConfig(),
+  ]);
   if (!customer) notFound();
 
   const openInvoicesTotal = customer.invoices
@@ -51,6 +55,179 @@ export default async function KundeDetailPage({
   const totalRevenue = customer.invoices
     .filter((i) => i.status === "PAID")
     .reduce((sum, i) => sum + Number(i.totalGross), 0);
+
+  const allTabs: Record<string, { label: string; content: React.ReactNode }> = {
+    uebersicht: {
+      label: "Übersicht",
+      content: (
+        <div className="space-y-4">
+          {customer.notes ? (
+            <p className="text-sm text-ink-700">{customer.notes}</p>
+          ) : (
+            <p className="text-sm text-ink-500">Keine Notizen hinterlegt.</p>
+          )}
+          <div className="text-sm text-ink-500 grid grid-cols-2 gap-2">
+            <span>Adresse</span>
+            <span className="text-ink-900">
+              {[customer.address, customer.zip, customer.city].filter(Boolean).join(", ") || "—"}
+            </span>
+          </div>
+        </div>
+      ),
+    },
+    timeline: {
+      label: "Timeline",
+      content: (
+        <div className="space-y-5">
+          <AddComment customerId={customer.id} />
+          <div className="space-y-3">
+            {[...customer.activities, ...customer.comments]
+              .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+              .map((entry) => (
+                <div key={entry.id} className="flex gap-3 text-sm border-l-2 border-ink-100 pl-3">
+                  <div className="flex-1">
+                    <p className="text-ink-900">
+                      {"message" in entry ? entry.message : entry.content}
+                    </p>
+                    <p className="text-xs text-ink-300 mt-0.5">
+                      {formatDistanceToNow(entry.createdAt, { addSuffix: true, locale: de })}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            {customer.activities.length === 0 && customer.comments.length === 0 && (
+              <EmptyRow text="Noch keine Einträge in der Timeline." />
+            )}
+          </div>
+        </div>
+      ),
+    },
+    anfragen: {
+      label: "Anfragen",
+      content: (
+        <div>
+          <InlineInquiryForm customerId={customer.id} />
+          {customer.inquiries.length === 0 ? (
+            <EmptyRow text="Noch keine Anfragen." />
+          ) : (
+            <ul className="space-y-2">
+              {customer.inquiries.map((i) => (
+                <li key={i.id}>
+                  <Link
+                    href={`/anfragen/${i.id}`}
+                    className="flex justify-between rounded-lg border-l-4 border-l-brand-500 bg-ink-50 p-3 text-sm hover:bg-ink-100 transition-colors"
+                  >
+                    <span className="font-medium">{i.title}</span>
+                    <span className="text-ink-500 ml-2">
+                      {i.status}
+                      {i.amount != null && ` · ${Number(i.amount).toLocaleString("de-DE")} €`}
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      ),
+    },
+    angebote: {
+      label: "Angebote",
+      content:
+        customer.quotes.length === 0 ? (
+          <EmptyRow text="Noch keine Angebote." />
+        ) : (
+          <ul className="space-y-2">
+            {customer.quotes.map((q) => (
+              <li key={q.id}>
+                <Link href={`/angebote/${q.id}`} className="rounded-lg border-l-4 border-l-brand-500 bg-ink-50 p-3 text-sm flex justify-between hover:bg-ink-100 transition-colors">
+                  <span className="font-medium">{q.title}</span>
+                  <span className="font-mono text-ink-500">{Number(q.totalGross).toLocaleString("de-DE")} €</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        ),
+    },
+    auftraege: {
+      label: "Aufträge",
+      content:
+        customer.projects.length === 0 ? (
+          <EmptyRow text="Noch keine Aufträge." />
+        ) : (
+          <ul className="space-y-2">
+            {customer.projects.map((p) => (
+              <li key={p.id}>
+                <Link href={`/arbeit/${p.id}`} className="block rounded-lg border-l-4 border-l-brand-500 bg-ink-50 p-3 text-sm hover:bg-ink-100 transition-colors">
+                  {p.title}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        ),
+    },
+    rechnungen: {
+      label: "Rechnungen",
+      content:
+        customer.invoices.length === 0 ? (
+          <EmptyRow text="Noch keine Rechnungen." />
+        ) : (
+          <ul className="space-y-2">
+            {customer.invoices.map((inv) => (
+              <li key={inv.id}>
+                <Link href={`/finanzen/${inv.id}`} className="rounded-lg border-l-4 border-l-warning bg-ink-50 p-3 text-sm flex justify-between hover:bg-ink-100 transition-colors">
+                  <span>{inv.number}</span>
+                  <span className="font-mono">{Number(inv.totalGross).toLocaleString("de-DE")} €</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        ),
+    },
+    termine: {
+      label: "Termine",
+      content: (
+        <AppointmentTab
+          customerId={customer.id}
+          appointments={customer.appointments.map((a) => ({ ...a, amount: a.amount != null ? Number(a.amount) : null }))}
+          inquiries={customer.inquiries.map((i) => ({ id: i.id, title: i.title }))}
+        />
+      ),
+    },
+    dokumente: {
+      label: "Dokumente",
+      content: <DocumentTab customerId={customer.id} documents={customer.documents} />,
+    },
+    aufgaben: {
+      label: "Aufgaben",
+      content:
+        customer.tasks.length === 0 ? (
+          <EmptyRow text="Keine offenen Aufgaben." />
+        ) : (
+          <ul className="space-y-2">
+            {customer.tasks.map((t) => (
+              <li key={t.id} className="rounded-lg bg-ink-50 p-3 text-sm">
+                {t.title}
+              </li>
+            ))}
+          </ul>
+        ),
+    },
+    finanzen: {
+      label: "Finanzen",
+      content: (
+        <div className="grid grid-cols-2 gap-4">
+          <KpiCard label="Gesamtumsatz" value={`${totalRevenue.toLocaleString("de-DE")} €`} accent="border-l-success" />
+          <KpiCard label="Offen" value={`${openInvoicesTotal.toLocaleString("de-DE")} €`} accent="border-l-warning" />
+        </div>
+      ),
+    },
+  };
+
+  const orderedTabs = tabsConfig
+    .filter((t) => t.visible)
+    .sort((a, b) => a.order - b.order)
+    .map((t) => allTabs[t.id])
+    .filter(Boolean);
 
   return (
     <div className="space-y-6">
@@ -97,174 +274,7 @@ export default async function KundeDetailPage({
 
       {/* Tabs */}
       <div className="rounded-card border border-ink-100 bg-surface p-6 shadow-card">
-        <Tabs
-          tabs={[
-            {
-              label: "Übersicht",
-              content: (
-                <div className="space-y-4">
-                  {customer.notes ? (
-                    <p className="text-sm text-ink-700">{customer.notes}</p>
-                  ) : (
-                    <p className="text-sm text-ink-500">Keine Notizen hinterlegt.</p>
-                  )}
-                  <div className="text-sm text-ink-500 grid grid-cols-2 gap-2">
-                    <span>Adresse</span>
-                    <span className="text-ink-900">
-                      {[customer.address, customer.zip, customer.city].filter(Boolean).join(", ") || "—"}
-                    </span>
-                  </div>
-                </div>
-              ),
-            },
-            {
-              label: "Timeline",
-              content: (
-                <div className="space-y-5">
-                  <AddComment customerId={customer.id} />
-                  <div className="space-y-3">
-                    {[...customer.activities, ...customer.comments]
-                      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
-                      .map((entry) => (
-                        <div key={entry.id} className="flex gap-3 text-sm border-l-2 border-ink-100 pl-3">
-                          <div className="flex-1">
-                            <p className="text-ink-900">
-                              {"message" in entry ? entry.message : entry.content}
-                            </p>
-                            <p className="text-xs text-ink-300 mt-0.5">
-                              {formatDistanceToNow(entry.createdAt, { addSuffix: true, locale: de })}
-                            </p>
-                          </div>
-                        </div>
-                      ))}
-                    {customer.activities.length === 0 && customer.comments.length === 0 && (
-                      <EmptyRow text="Noch keine Einträge in der Timeline." />
-                    )}
-                  </div>
-                </div>
-              ),
-            },
-            {
-              label: "Anfragen",
-              content: (
-                <div>
-                  <InlineInquiryForm customerId={customer.id} />
-                  {customer.inquiries.length === 0 ? (
-                    <EmptyRow text="Noch keine Anfragen." />
-                  ) : (
-                    <ul className="space-y-2">
-                      {customer.inquiries.map((i) => (
-                        <li key={i.id}>
-                          <Link
-                            href={`/anfragen/${i.id}`}
-                            className="flex justify-between rounded-lg border-l-4 border-l-brand-500 bg-ink-50 p-3 text-sm hover:bg-ink-100 transition-colors"
-                          >
-                            <span className="font-medium">{i.title}</span>
-                            <span className="text-ink-500 ml-2">
-                              {i.status}
-                              {i.amount != null && ` · ${Number(i.amount).toLocaleString("de-DE")} €`}
-                            </span>
-                          </Link>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              ),
-            },
-            {
-              label: "Angebote",
-              content:
-                customer.quotes.length === 0 ? (
-                  <EmptyRow text="Noch keine Angebote." />
-                ) : (
-                  <ul className="space-y-2">
-                    {customer.quotes.map((q) => (
-                      <li key={q.id}>
-                        <Link href={`/angebote/${q.id}`} className="rounded-lg border-l-4 border-l-brand-500 bg-ink-50 p-3 text-sm flex justify-between hover:bg-ink-100 transition-colors">
-                          <span className="font-medium">{q.title}</span>
-                          <span className="font-mono text-ink-500">{Number(q.totalGross).toLocaleString("de-DE")} €</span>
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                ),
-            },
-            {
-              label: "Aufträge",
-              content:
-                customer.projects.length === 0 ? (
-                  <EmptyRow text="Noch keine Aufträge." />
-                ) : (
-                  <ul className="space-y-2">
-                    {customer.projects.map((p) => (
-                      <li key={p.id}>
-                        <Link href={`/arbeit/${p.id}`} className="block rounded-lg border-l-4 border-l-brand-500 bg-ink-50 p-3 text-sm hover:bg-ink-100 transition-colors">
-                          {p.title}
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                ),
-            },
-            {
-              label: "Rechnungen",
-              content:
-                customer.invoices.length === 0 ? (
-                  <EmptyRow text="Noch keine Rechnungen." />
-                ) : (
-                  <ul className="space-y-2">
-                    {customer.invoices.map((inv) => (
-                      <li key={inv.id}>
-                        <Link href={`/finanzen/${inv.id}`} className="rounded-lg border-l-4 border-l-warning bg-ink-50 p-3 text-sm flex justify-between hover:bg-ink-100 transition-colors">
-                          <span>{inv.number}</span>
-                          <span className="font-mono">{Number(inv.totalGross).toLocaleString("de-DE")} €</span>
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                ),
-            },
-            {
-              label: "Termine",
-              content: (
-                <AppointmentTab
-                  customerId={customer.id}
-                  appointments={customer.appointments.map((a) => ({ ...a, amount: a.amount != null ? Number(a.amount) : null }))}
-                  inquiries={customer.inquiries.map((i) => ({ id: i.id, title: i.title }))}
-                />
-              ),
-            },
-            {
-              label: "Dokumente",
-              content: <DocumentTab customerId={customer.id} documents={customer.documents} />,
-            },
-            {
-              label: "Aufgaben",
-              content:
-                customer.tasks.length === 0 ? (
-                  <EmptyRow text="Keine offenen Aufgaben." />
-                ) : (
-                  <ul className="space-y-2">
-                    {customer.tasks.map((t) => (
-                      <li key={t.id} className="rounded-lg bg-ink-50 p-3 text-sm">
-                        {t.title}
-                      </li>
-                    ))}
-                  </ul>
-                ),
-            },
-            {
-              label: "Finanzen",
-              content: (
-                <div className="grid grid-cols-2 gap-4">
-                  <KpiCard label="Gesamtumsatz" value={`${totalRevenue.toLocaleString("de-DE")} €`} accent="border-l-success" />
-                  <KpiCard label="Offen" value={`${openInvoicesTotal.toLocaleString("de-DE")} €`} accent="border-l-warning" />
-                </div>
-              ),
-            },
-          ]}
-        />
+        <Tabs tabs={orderedTabs} />
       </div>
     </div>
   );

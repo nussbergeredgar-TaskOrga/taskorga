@@ -29,6 +29,16 @@ model Company {
   bic         String?
   invoiceFooterText String? // erscheint z.B. auf Rechnungen/Angeboten
   logoUrl     String?
+
+  // Angebots-/Rechnungsvorlage
+  showVatOnDocuments  Boolean @default(true) // aus für Kleinunternehmer (§19 UStG)
+  documentAccentColor String  @default("#2F5FFF")
+  documentIntroText   String? // erscheint über der Positionstabelle
+
+  // Firmenweite Anpassungen (nur Admin)
+  navLabels           Json? // { [navItemId]: "Eigener Menütext" }
+  customerTabsConfig  Json? // [{ id, visible, order }] für den Kundenstamm
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

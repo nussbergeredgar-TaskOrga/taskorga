@@ -1,7 +1,7 @@
 import { NavSidebar } from "@/components/nav-sidebar";
 import { TopBar } from "@/components/top-bar";
 import { MobileNav } from "@/components/mobile-nav";
-import { getNavConfig } from "@/lib/actions/nav";
+import { getNavConfig, getNavLabels } from "@/lib/actions/nav";
 import { DEFAULT_NAV, NAV_CATALOG } from "@/lib/nav-items";
 import { getCurrentUserWithRole } from "@/lib/session";
 
@@ -14,9 +14,10 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const [user, savedConfig] = await Promise.all([
+  const [user, savedConfig, labels] = await Promise.all([
     getCurrentUserWithRole(),
     getNavConfig(),
+    getNavLabels(),
   ]);
   const isAdmin = user.role?.name === "Admin";
 
@@ -28,12 +29,12 @@ export default async function DashboardLayout({
 
   return (
     <div className="flex h-screen w-full overflow-hidden">
-      <NavSidebar config={config} />
+      <NavSidebar config={config} labels={labels} />
       <div className="flex flex-1 flex-col min-w-0">
         <TopBar />
         <main className="flex-1 overflow-y-auto p-4 md:p-6 pb-20 md:pb-6">{children}</main>
       </div>
-      <MobileNav config={config} />
+      <MobileNav config={config} labels={labels} />
     </div>
   );
 }

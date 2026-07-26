@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import { NAV_CATALOG, type NavItemConfig } from "@/lib/nav-items";
 import { ICON_MAP } from "@/lib/nav-icons";
 
-export function MobileNav({ config }: { config: NavItemConfig[] }) {
+export function MobileNav({ config, labels }: { config: NavItemConfig[]; labels?: Record<string, string> }) {
   const pathname = usePathname();
   const byId = new Map(NAV_CATALOG.map((c) => [c.id, c]));
   const visible = [...config].filter((c) => c.visible).sort((a, b) => a.order - b.order);
@@ -40,7 +40,7 @@ export function MobileNav({ config }: { config: NavItemConfig[] }) {
               )}
             >
               <Icon size={20} strokeWidth={active ? 2.4 : 2} />
-              {item.label}
+              {labels?.[item.id] || item.label}
             </Link>
           );
         })}

@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import { NAV_CATALOG, type NavItemConfig } from "@/lib/nav-items";
 import { ICON_MAP } from "@/lib/nav-icons";
 
-export function NavSidebar({ config }: { config: NavItemConfig[] }) {
+export function NavSidebar({ config, labels }: { config: NavItemConfig[]; labels?: Record<string, string> }) {
   const pathname = usePathname();
   const byId = new Map(NAV_CATALOG.map((c) => [c.id, c]));
   const visible = [...config].filter((c) => c.visible).sort((a, b) => a.order - b.order);
@@ -36,7 +36,7 @@ export function NavSidebar({ config }: { config: NavItemConfig[] }) {
               )}
             >
               <Icon size={18} strokeWidth={2} />
-              {item.label}
+              {labels?.[item.id] || item.label}
             </Link>
           );
         })}

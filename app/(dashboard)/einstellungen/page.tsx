@@ -3,22 +3,27 @@ import { getCurrentUserWithRole } from "@/lib/session";
 import { WorkflowStepsManager } from "@/components/workflow-steps-manager";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { NavConfigManager } from "@/components/nav-config-manager";
+import { NavLabelManager } from "@/components/nav-label-manager";
+import { CustomerTabsManager } from "@/components/customer-tabs-manager";
 import { CompanyProfileForm } from "@/components/company-profile-form";
 import { ProfileForm } from "@/components/profile-form";
 import { TeamManager } from "@/components/team-manager";
-import { getNavConfig } from "@/lib/actions/nav";
+import { getNavConfig, getNavLabels } from "@/lib/actions/nav";
+import { getCustomerTabsConfig } from "@/lib/actions/customer-tabs";
 import { DEFAULT_NAV } from "@/lib/nav-items";
 
 export default async function EinstellungenPage() {
   const currentUser = await getCurrentUserWithRole();
   const isAdmin = currentUser.role?.name === "Admin";
 
-  const [steps, navConfig, company, users] = await Promise.all([
+  const [steps, navConfig, navLabels, customerTabs, company, users] = await Promise.all([
     prisma.workflowStep.findMany({
       where: { companyId: currentUser.companyId },
       orderBy: { order: "asc" },
     }),
     getNavConfig(),
+    getNavLabels(),
+    getCustomerTabsConfig(),
     prisma.company.findUniqueOrThrow({ where: { id: currentUser.companyId } }),
     isAdmin
       ? prisma.user.findMany({
@@ -62,6 +67,28 @@ export default async function EinstellungenPage() {
 
       {isAdmin && (
         <div className="rounded-card border border-ink-100 bg-surface p-6 shadow-card max-w-2xl">
+          <h2 className="font-display font-semibold text-ink-900 mb-1">Menü-Wording</h2>
+          <p className="text-sm text-ink-500 mb-4">
+            Eigene Bezeichnungen für die Menüpunkte – gilt firmenweit für alle Nutzer. Leer
+            lassen für den Standardtext.
+          </p>
+          <NavLabelManager initialLabels={navLabels} />
+        </div>
+      )}
+
+      {isAdmin && (
+        <div className="rounded-card border border-ink-100 bg-surface p-6 shadow-card max-w-2xl">
+          <h2 className="font-display font-semibold text-ink-900 mb-1">Kundenstamm-Tabs</h2>
+          <p className="text-sm text-ink-500 mb-4">
+            Lege fest, welche Tabs im Kundenprofil angezeigt werden und in welcher Reihenfolge –
+            gilt firmenweit für alle Nutzer.
+          </p>
+          <CustomerTabsManager initialConfig={customerTabs} />
+        </div>
+      )}
+
+      {isAdmin && (
+        <div className="rounded-card border border-ink-100 bg-surface p-6 shadow-card max-w-2xl">
           <h2 className="font-display font-semibold text-ink-900 mb-1">Anfragen-Workflow</h2>
           <p className="text-sm text-ink-500 mb-4">
             Diese Schritte erscheinen bei jeder Anfrage als Checkliste. Reihenfolge mit den
@@ -101,7 +128,8 @@ export default async function EinstellungenPage() {
 
       {!isAdmin && (
         <div className="rounded-card border border-dashed border-ink-100 bg-surface p-6 text-sm text-ink-500 max-w-2xl">
-          Firmenprofil, Benutzerverwaltung und der Anfragen-Workflow sind nur für Admins sichtbar.
+          Firmenprofil, Benutzerverwaltung, Menü-Wording, Kundenstamm-Tabs und der
+          Anfragen-Workflow sind nur für Admins sichtbar.
         </div>
       )}
     </div>
