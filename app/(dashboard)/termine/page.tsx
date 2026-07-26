@@ -16,6 +16,7 @@ import { de } from "date-fns/locale";
 import { prisma } from "@/lib/prisma";
 import { getCurrentCompany } from "@/lib/session";
 import { cn } from "@/lib/utils";
+import { AppointmentQuickForm } from "@/components/appointment-quick-form";
 
 export default async function TerminePage({
   searchParams,
@@ -40,6 +41,12 @@ export default async function TerminePage({
     include: { customer: { select: { id: true, name: true } } },
   });
 
+  const customers = await prisma.customer.findMany({
+    where: { companyId: company.id },
+    orderBy: { name: "asc" },
+    select: { id: true, name: true },
+  });
+
   const prevMonth = format(subMonths(anchorDate, 1), "yyyy-MM");
   const nextMonth = format(addMonths(anchorDate, 1), "yyyy-MM");
 
@@ -55,7 +62,7 @@ export default async function TerminePage({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-semibold text-ink-900">Termine</h1>
           <p className="text-sm text-ink-500 mt-1">
@@ -82,6 +89,8 @@ export default async function TerminePage({
           </Link>
         </div>
       </div>
+
+      <AppointmentQuickForm customers={customers} />
 
       <div className="rounded-card border border-ink-100 bg-surface p-4 shadow-card overflow-x-auto">
         <div className="grid grid-cols-7 min-w-[640px] gap-px bg-ink-100 rounded-lg overflow-hidden">

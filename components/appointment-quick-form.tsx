@@ -1,0 +1,138 @@
+"use client";
+
+import { useRef, useState, useTransition } from "react";
+import { Plus } from "lucide-react";
+import { createAppointment } from "@/lib/actions/appointments";
+import { CustomerAutocomplete } from "@/components/customer-autocomplete";
+import type { AppointmentType } from "@prisma/client";
+
+export function AppointmentQuickForm({ customers }: { customers: { id: string; name: string }[] }) {
+  const [open, setOpen] = useState(false);
+  const [customerId, setCustomerId] = useState("");
+  const titleRef = useRef<HTMLInputElement>(null);
+  const startRef = useRef<HTMLInputElement>(null);
+  const endRef = useRef<HTMLInputElement>(null);
+  const [type, setType] = useState<AppointmentType>("CALLBACK_REQUEST");
+  const [error, setError] = useState("");
+  const [pending, startTransition] = useTransition();
+
+  function reset() {
+    setCustomerId("");
+    if (titleRef.current) titleRef.current.value = "";
+    if (startRef.current) startRef.current.value = "";
+    if (endRef.current) endRef.current.value = "";
+    setError("");
+  }
+
+  function submit() {
+    const title = titleRef.current?.value ?? "";
+    const startAt = startRef.current?.value ?? "";
+    const endAt = endRef.current?.value ?? "";
+    setError("");
+
+    if (!customerId) {
+      setError("Bitte einen Kunden auswählen.");
+      return;
+    }
+    if (!title.trim()) {
+      setError("Bitte einen Titel eingeben.");
+      return;
+    }
+    if (!startAt || !endAt) {
+      setError("Bitte Von- und Bis-Zeit angeben.");
+      return;
+    }
+    if (new Date(endAt) <= new Date(startAt)) {
+      setError("Die Bis-Zeit muss nach der Von-Zeit liegen.");
+      return;
+    }
+
+    startTransition(async () => {
+      await createAppointment(customerId, { title, type, startAt, endAt });
+      reset();
+      setOpen(false);
+    });
+  }
+
+  if (!open) {
+    return (
+      <button
+        onClick={() => setOpen(true)}
+        className="flex items-center gap-1.5 rounded-lg bg-brand-500 text-white text-sm font-medium px-4 py-2.5 hover:bg-brand-600 transition-colors"
+      >
+        <Plus size={16} />
+        Neuer Termin
+      </button>
+    );
+  }
+
+  return (
+    <div className="rounded-card border border-ink-100 bg-surface p-5 shadow-card space-y-3 max-w-xl">
+      <div>
+        <label className="block text-xs text-ink-500 mb-1">Kunde</label>
+        <CustomerAutocomplete customers={customers} name="customerId" onSelect={setCustomerId} />
+      </div>
+
+      <div>
+        <label className="block text-xs text-ink-500 mb-1">Titel</label>
+        <input
+          ref={titleRef}
+          placeholder="z. B. Vor-Ort-Termin Wallbox"
+          className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500"
+        />
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+        <div>
+          <label className="block text-xs text-ink-500 mb-1">Art</label>
+          <select
+            value={type}
+            onChange={(e) => setType(e.target.value as AppointmentType)}
+            className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500"
+          >
+            <option value="CALLBACK_REQUEST">Rückruf</option>
+            <option value="ON_SITE_VISIT">Vor-Ort-Termin</option>
+            <option value="MEETING">Besprechung</option>
+          </select>
+        </div>
+        <div>
+          <label className="block text-xs text-ink-500 mb-1">Von</label>
+          <input
+            ref={startRef}
+            type="datetime-local"
+            className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500"
+          />
+        </div>
+        <div>
+          <label className="block text-xs text-ink-500 mb-1">Bis</label>
+          <input
+            ref={endRef}
+            type="datetime-local"
+            className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500"
+          />
+        </div>
+      </div>
+
+      {error && <p className="text-xs text-danger">{error}</p>}
+
+      <div className="flex gap-2">
+        <button
+          disabled={pending}
+          onClick={submit}
+          className="rounded-lg bg-brand-500 text-white text-sm font-medium px-4 py-2 hover:bg-brand-600 disabled:opacity-60 transition-colors"
+        >
+          {pending ? "Wird gespeichert …" : "Termin speichern"}
+        </button>
+        <button
+          onClick={() => {
+            reset();
+            setOpen(false);
+          }}
+          className="rounded-lg border border-ink-100 text-ink-700 text-sm font-medium px-4 py-2 hover:bg-ink-50 transition-colors"
+        >
+          Abbrechen
+        </button>
+      </div>
+    </div>
+  );
+}
