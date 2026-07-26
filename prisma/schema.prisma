@@ -404,6 +404,8 @@ model Expense {
   category String?
   amount   Decimal  @db.Decimal(12, 2)
   date     DateTime
+  status   ExpenseStatus @default(OPEN)
+  paidAt   DateTime?
   receiptDocumentId String?
 
   createdAt DateTime @default(now())
@@ -412,6 +414,11 @@ model Expense {
   documents Document[]
 
   @@index([companyId, date])
+}
+
+enum ExpenseStatus {
+  OPEN
+  PAID
 }
 
 // ------------------------------------------------------------
