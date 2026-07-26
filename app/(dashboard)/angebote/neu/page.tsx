@@ -34,7 +34,7 @@ export default async function NeuesAngebotPage({
 
       <h1 className="text-2xl font-semibold text-ink-900">Neues Angebot</h1>
 
-      <div className="rounded-card border border-ink-100 bg-white p-6 shadow-card">
+      <div className="rounded-card border border-ink-100 bg-surface p-6 shadow-card">
         <QuoteForm
           customers={customers}
           inquiries={inquiries}

@@ -43,7 +43,7 @@ export function KpiCard({
   );
 
   const className = cn(
-    "block rounded-card border-l-4 bg-white p-5 shadow-card transition-shadow",
+    "block rounded-card border-l-4 bg-surface p-5 shadow-card transition-shadow",
     href && "hover:shadow-cardHover cursor-pointer",
     accent
   );

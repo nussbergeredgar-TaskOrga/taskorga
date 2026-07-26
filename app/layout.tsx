@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Space_Grotesk, Inter, JetBrains_Mono } from "next/font/google";
 import { PwaRegister } from "@/components/pwa-register";
 import { Providers } from "@/components/providers";
+import { ThemeScript } from "@/components/theme-script";
 import "./globals.css";
 
 const display = Space_Grotesk({
@@ -55,6 +56,7 @@ export default function RootLayout({
   return (
     <html lang="de" className={`${display.variable} ${body.variable} ${mono.variable}`}>
       <body>
+        <ThemeScript />
         <Providers>{children}</Providers>
         <PwaRegister />
       </body>

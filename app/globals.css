@@ -3,11 +3,31 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --ink-50: 245 246 247;
+    --ink-100: 232 234 237;
+    --ink-300: 168 175 184;
+    --ink-500: 91 99 109;
+    --ink-700: 44 51 59;
+    --ink-900: 28 33 40;
+    --surface: 255 255 255;
+  }
+
+  .dark {
+    --ink-50: 17 20 25;
+    --ink-100: 38 43 51;
+    --ink-300: 113 121 133;
+    --ink-500: 156 163 175;
+    --ink-700: 209 213 219;
+    --ink-900: 243 244 246;
+    --surface: 26 30 37;
+  }
+
   html {
     @apply antialiased;
   }
   body {
-    @apply bg-ink-50 text-ink-900 font-body;
+    @apply bg-ink-50 text-ink-900 font-body transition-colors duration-150;
   }
   h1, h2, h3, h4 {
     @apply font-display;

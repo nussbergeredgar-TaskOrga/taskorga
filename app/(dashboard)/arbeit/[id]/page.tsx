@@ -37,12 +37,12 @@ export default async function AuftragDetailPage({ params }: { params: { id: stri
       </div>
 
       <div className="grid md:grid-cols-2 gap-4">
-        <div className="rounded-card border border-ink-100 bg-white p-5 shadow-card">
+        <div className="rounded-card border border-ink-100 bg-surface p-5 shadow-card">
           <h2 className="font-display font-semibold text-ink-900 mb-3">Aufgaben</h2>
           <TaskList projectId={project.id} tasks={project.tasks} />
         </div>
 
-        <div className="rounded-card border border-ink-100 bg-white p-5 shadow-card">
+        <div className="rounded-card border border-ink-100 bg-surface p-5 shadow-card">
           <h2 className="font-display font-semibold text-ink-900 mb-3">Rechnungen</h2>
           {project.invoices.length === 0 ? (
             <p className="text-sm text-ink-500">Noch keine Rechnung erstellt.</p>

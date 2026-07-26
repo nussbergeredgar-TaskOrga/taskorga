@@ -42,7 +42,7 @@ export default async function AnfrageDetailPage({ params }: { params: { id: stri
         </div>
       </div>
 
-      <div className="rounded-card border border-ink-100 bg-white p-6 shadow-card">
+      <div className="rounded-card border border-ink-100 bg-surface p-6 shadow-card">
         <InquiryStatusActions
           inquiryId={inquiry.id}
           status={inquiry.status}
@@ -51,20 +51,20 @@ export default async function AnfrageDetailPage({ params }: { params: { id: stri
         />
       </div>
 
-      <div className="rounded-card border border-ink-100 bg-white p-6 shadow-card">
+      <div className="rounded-card border border-ink-100 bg-surface p-6 shadow-card">
         <h2 className="font-display font-semibold text-ink-900 mb-5">Ablauf</h2>
         <InquiryWorkflow inquiryId={inquiry.id} steps={steps} entries={inquiry.stepEntries} />
       </div>
 
       {inquiry.description && (
-        <div className="rounded-card border border-ink-100 bg-white p-6 shadow-card">
+        <div className="rounded-card border border-ink-100 bg-surface p-6 shadow-card">
           <h2 className="font-display font-semibold text-ink-900 mb-2">Beschreibung</h2>
           <p className="text-sm text-ink-700">{inquiry.description}</p>
         </div>
       )}
 
       {inquiry.quotes.length > 0 && (
-        <div className="rounded-card border border-ink-100 bg-white p-6 shadow-card">
+        <div className="rounded-card border border-ink-100 bg-surface p-6 shadow-card">
           <h2 className="font-display font-semibold text-ink-900 mb-3">Angebote zu dieser Anfrage</h2>
           <ul className="space-y-2">
             {inquiry.quotes.map((q) => (

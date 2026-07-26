@@ -27,7 +27,7 @@ export function MobileNav() {
 
   return (
     <nav
-      className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-ink-100 pb-[env(safe-area-inset-bottom)]"
+      className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-surface border-t border-ink-100 pb-[env(safe-area-inset-bottom)]"
       aria-label="Hauptnavigation"
     >
       <div className="flex items-stretch">

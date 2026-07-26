@@ -37,7 +37,7 @@ export default async function AngebotePage() {
       </div>
 
       {quotes.length === 0 ? (
-        <div className="rounded-card border border-dashed border-ink-100 bg-white p-12 text-center">
+        <div className="rounded-card border border-dashed border-ink-100 bg-surface p-12 text-center">
           <p className="text-ink-500 text-sm">Noch keine Angebote vorhanden.</p>
         </div>
       ) : (
@@ -46,7 +46,7 @@ export default async function AngebotePage() {
             <Link
               key={q.id}
               href={`/angebote/${q.id}`}
-              className={`flex items-center justify-between rounded-lg border-l-4 bg-white p-4 shadow-card hover:shadow-cardHover transition-shadow ${statusColor[q.status]}`}
+              className={`flex items-center justify-between rounded-lg border-l-4 bg-surface p-4 shadow-card hover:shadow-cardHover transition-shadow ${statusColor[q.status]}`}
             >
               <div>
                 <p className="font-medium text-ink-900">{q.title}</p>

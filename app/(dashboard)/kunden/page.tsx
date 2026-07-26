@@ -33,7 +33,7 @@ export default async function KundenPage() {
       </div>
 
       {customers.length === 0 ? (
-        <div className="rounded-card border border-dashed border-ink-100 bg-white p-12 text-center">
+        <div className="rounded-card border border-dashed border-ink-100 bg-surface p-12 text-center">
           <p className="text-ink-500 text-sm">
             Noch keine Kunden vorhanden. Lege den ersten Kunden an, um loszulegen.
           </p>
@@ -44,7 +44,7 @@ export default async function KundenPage() {
             <Link
               key={customer.id}
               href={`/kunden/${customer.id}`}
-              className="rounded-card border-l-4 border-l-brand-500 bg-white p-5 shadow-card hover:shadow-cardHover transition-shadow"
+              className="rounded-card border-l-4 border-l-brand-500 bg-surface p-5 shadow-card hover:shadow-cardHover transition-shadow"
             >
               <div className="flex items-start justify-between">
                 <div>

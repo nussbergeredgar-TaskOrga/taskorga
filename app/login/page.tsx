@@ -44,7 +44,7 @@ function LoginForm() {
 
         <form
           onSubmit={handleSubmit}
-          className="bg-white rounded-card border border-ink-100 shadow-card p-6 space-y-4"
+          className="bg-surface rounded-card border border-ink-100 shadow-card p-6 space-y-4"
         >
           <div>
             <label htmlFor="email" className="block text-sm font-medium text-ink-700 mb-1.5">

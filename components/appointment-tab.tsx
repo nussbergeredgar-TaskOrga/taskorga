@@ -87,7 +87,7 @@ export function AppointmentTab({
           <select
             value={type}
             onChange={(e) => setType(e.target.value as AppointmentType)}
-            className="rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-white"
+            className="rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface"
           >
             <option value="CALLBACK_REQUEST">Rückruf</option>
             <option value="ON_SITE_VISIT">Vor-Ort-Termin</option>
@@ -138,7 +138,7 @@ export function AppointmentTab({
                   updateAppointmentStatus(a.id, customerId, e.target.value as AppointmentStatus)
                 )
               }
-              className="text-xs rounded-lg border border-ink-100 px-2 py-1 bg-white outline-none"
+              className="text-xs rounded-lg border border-ink-100 px-2 py-1 bg-surface outline-none"
             >
               {Object.entries(STATUS_LABELS).map(([value, label]) => (
                 <option key={value} value={value}>

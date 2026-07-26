@@ -20,7 +20,7 @@ export function TopBar() {
   }
 
   return (
-    <header className="h-16 shrink-0 border-b border-ink-100 bg-white flex items-center gap-4 px-4 md:px-6">
+    <header className="h-16 shrink-0 border-b border-ink-100 bg-surface flex items-center gap-4 px-4 md:px-6">
       <form onSubmit={handleSearch} className="flex-1 max-w-xl">
         <div className="relative">
           <button
@@ -35,7 +35,7 @@ export function TopBar() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Suchen … z. B. „Müller Wallbox Februar“"
-            className="w-full rounded-lg border border-ink-100 bg-ink-50 py-2 pl-9 pr-3 text-sm placeholder:text-ink-300 focus:bg-white focus:border-brand-500 outline-none transition-colors"
+            className="w-full rounded-lg border border-ink-100 bg-ink-50 py-2 pl-9 pr-3 text-sm placeholder:text-ink-300 focus:bg-surface focus:border-brand-500 outline-none transition-colors"
           />
         </div>
       </form>
@@ -58,7 +58,7 @@ export function TopBar() {
 
       <button
         onClick={() => signOut({ callbackUrl: "/login" })}
-        className="group relative h-9 w-9 rounded-full bg-ink-700 text-white flex items-center justify-center text-xs font-medium font-display hover:bg-ink-900 transition-colors"
+        className="group relative h-9 w-9 rounded-full bg-slate-700 text-white flex items-center justify-center text-xs font-medium font-display hover:bg-slate-900 transition-colors"
         aria-label="Abmelden"
         title="Abmelden"
       >

@@ -31,7 +31,7 @@ export default async function ArbeitPage() {
       </div>
 
       {projects.length === 0 ? (
-        <div className="rounded-card border border-dashed border-ink-100 bg-white p-12 text-center">
+        <div className="rounded-card border border-dashed border-ink-100 bg-surface p-12 text-center">
           <p className="text-ink-500 text-sm">
             Noch keine Aufträge. Nimm ein Angebot an, um den ersten Auftrag zu erzeugen.
           </p>
@@ -42,7 +42,7 @@ export default async function ArbeitPage() {
             <Link
               key={p.id}
               href={`/arbeit/${p.id}`}
-              className={`rounded-card border-l-4 bg-white p-5 shadow-card hover:shadow-cardHover transition-shadow ${statusColor[p.status]}`}
+              className={`rounded-card border-l-4 bg-surface p-5 shadow-card hover:shadow-cardHover transition-shadow ${statusColor[p.status]}`}
             >
               <h3 className="font-display font-semibold text-ink-900">{p.title}</h3>
               <p className="text-sm text-ink-500 mt-0.5">{p.customer.name} · {p.number}</p>

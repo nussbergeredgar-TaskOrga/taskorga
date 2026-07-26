@@ -43,7 +43,7 @@ function InquiryCard({ inquiry }: { inquiry: InquiryWithCustomer }) {
   const prev = prevStatus(inquiry.status);
 
   return (
-    <div className="rounded-lg border-l-4 border-l-brand-500 bg-white p-3 shadow-card space-y-2">
+    <div className="rounded-lg border-l-4 border-l-brand-500 bg-surface p-3 shadow-card space-y-2">
       <div>
         <Link href={`/anfragen/${inquiry.id}`} className="text-sm font-medium text-ink-900 leading-snug hover:underline block">
           {inquiry.title}

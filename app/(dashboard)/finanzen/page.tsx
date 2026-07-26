@@ -68,7 +68,7 @@ export default async function FinanzenPage() {
       </div>
 
       {invoices.length === 0 ? (
-        <div className="rounded-card border border-dashed border-ink-100 bg-white p-12 text-center">
+        <div className="rounded-card border border-dashed border-ink-100 bg-surface p-12 text-center">
           <p className="text-ink-500 text-sm">
             Noch keine Rechnungen. Erstelle eine Rechnung aus einem Auftrag im „Arbeit"-Workspace.
           </p>
@@ -79,7 +79,7 @@ export default async function FinanzenPage() {
             <Link
               key={inv.id}
               href={`/finanzen/${inv.id}`}
-              className={`flex items-center justify-between rounded-lg border-l-4 bg-white p-4 shadow-card hover:shadow-cardHover transition-shadow ${statusColor[inv.status]}`}
+              className={`flex items-center justify-between rounded-lg border-l-4 bg-surface p-4 shadow-card hover:shadow-cardHover transition-shadow ${statusColor[inv.status]}`}
             >
               <div>
                 <p className="font-medium text-ink-900">{inv.number}</p>
@@ -97,7 +97,7 @@ export default async function FinanzenPage() {
       )}
 
       {/* Meine Ausgaben */}
-      <div className="rounded-card border border-ink-100 bg-white p-6 shadow-card space-y-5">
+      <div className="rounded-card border border-ink-100 bg-surface p-6 shadow-card space-y-5">
         <div className="flex items-center justify-between">
           <h2 className="font-display font-semibold text-ink-900 text-lg">Meine Ausgaben</h2>
           <ExpenseForm />

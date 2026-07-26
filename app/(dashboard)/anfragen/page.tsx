@@ -72,7 +72,7 @@ export default async function AnfragenPage() {
       </div>
 
       {steps.length === 0 ? (
-        <div className="rounded-card border border-dashed border-ink-100 bg-white p-8 text-center text-sm text-ink-500">
+        <div className="rounded-card border border-dashed border-ink-100 bg-surface p-8 text-center text-sm text-ink-500">
           Noch keine Workflow-Schritte konfiguriert. Unter{" "}
           <Link href="/einstellungen" className="text-brand-700 hover:underline">
             Einstellungen
@@ -84,7 +84,7 @@ export default async function AnfragenPage() {
           {groups.map(({ step, items }) => {
             const stepTotal = items.reduce((sum, i) => sum + Number(i.amount ?? 0), 0);
             return (
-              <div key={step.id} className="rounded-card border border-ink-100 bg-white p-5 shadow-card">
+              <div key={step.id} className="rounded-card border border-ink-100 bg-surface p-5 shadow-card">
                 <div className="flex items-center justify-between mb-3">
                   <h2 className="font-display font-semibold text-ink-900">{step.label}</h2>
                   <div className="flex items-center gap-3 text-xs">
@@ -114,7 +114,7 @@ export default async function AnfragenPage() {
             );
           })}
 
-          <div className="rounded-card border border-ink-100 bg-white p-5 shadow-card">
+          <div className="rounded-card border border-ink-100 bg-surface p-5 shadow-card">
             <div className="flex items-center justify-between mb-3">
               <h2 className="font-display font-semibold text-ink-900">Alle Schritte erledigt</h2>
               <div className="flex items-center gap-3 text-xs">
@@ -149,7 +149,7 @@ export default async function AnfragenPage() {
       <div className="grid sm:grid-cols-2 gap-4">
         <Link
           href="/anfragen/gewonnen"
-          className="rounded-card border-l-4 border-l-success bg-white p-5 shadow-card hover:shadow-cardHover transition-shadow block"
+          className="rounded-card border-l-4 border-l-success bg-surface p-5 shadow-card hover:shadow-cardHover transition-shadow block"
         >
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium text-ink-500">Gewonnen ({wonAgg._count})</span>
@@ -161,7 +161,7 @@ export default async function AnfragenPage() {
         </Link>
         <Link
           href="/anfragen/verloren"
-          className="rounded-card border-l-4 border-l-danger bg-white p-5 shadow-card hover:shadow-cardHover transition-shadow block"
+          className="rounded-card border-l-4 border-l-danger bg-surface p-5 shadow-card hover:shadow-cardHover transition-shadow block"
         >
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium text-ink-500">Verloren ({lostAgg._count})</span>

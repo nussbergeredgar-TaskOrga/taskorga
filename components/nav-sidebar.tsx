@@ -29,7 +29,7 @@ export function NavSidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="hidden md:flex md:w-60 md:flex-col md:shrink-0 border-r border-ink-100 bg-white">
+    <aside className="hidden md:flex md:w-60 md:flex-col md:shrink-0 border-r border-ink-100 bg-surface">
       <div className="h-16 flex items-center px-6">
         <span className="font-display font-semibold text-lg text-ink-900">
           TaskOrga

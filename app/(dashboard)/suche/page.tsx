@@ -16,7 +16,7 @@ function ResultGroup({
 }) {
   if (count === 0) return null;
   return (
-    <div className="rounded-card border border-ink-100 bg-white p-5 shadow-card">
+    <div className="rounded-card border border-ink-100 bg-surface p-5 shadow-card">
       <h2 className="flex items-center gap-2 font-display font-semibold text-ink-900 mb-3">
         <Icon size={16} className="text-ink-300" />
         {title}
@@ -99,7 +99,7 @@ export default async function SuchePage({
       </div>
 
       {totalResults === 0 ? (
-        <div className="rounded-card border border-dashed border-ink-100 bg-white p-12 text-center">
+        <div className="rounded-card border border-dashed border-ink-100 bg-surface p-12 text-center">
           <p className="text-ink-500 text-sm">Keine Treffer für „{query}".</p>
         </div>
       ) : (

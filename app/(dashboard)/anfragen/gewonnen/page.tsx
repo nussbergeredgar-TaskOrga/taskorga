@@ -31,7 +31,7 @@ export default async function GewonnenPage() {
       </div>
 
       {inquiries.length === 0 ? (
-        <div className="rounded-card border border-dashed border-ink-100 bg-white p-12 text-center text-sm text-ink-500">
+        <div className="rounded-card border border-dashed border-ink-100 bg-surface p-12 text-center text-sm text-ink-500">
           Noch keine gewonnenen Anfragen.
         </div>
       ) : (
@@ -40,7 +40,7 @@ export default async function GewonnenPage() {
             <Link
               key={inquiry.id}
               href={`/anfragen/${inquiry.id}`}
-              className="flex items-center justify-between rounded-lg border-l-4 border-l-success bg-white p-4 shadow-card hover:shadow-cardHover transition-shadow"
+              className="flex items-center justify-between rounded-lg border-l-4 border-l-success bg-surface p-4 shadow-card hover:shadow-cardHover transition-shadow"
             >
               <div>
                 <p className="font-medium text-ink-900">{inquiry.title}</p>

@@ -83,7 +83,7 @@ export default async function TerminePage({
         </div>
       </div>
 
-      <div className="rounded-card border border-ink-100 bg-white p-4 shadow-card overflow-x-auto">
+      <div className="rounded-card border border-ink-100 bg-surface p-4 shadow-card overflow-x-auto">
         <div className="grid grid-cols-7 min-w-[640px] gap-px bg-ink-100 rounded-lg overflow-hidden">
           {["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"].map((d) => (
             <div key={d} className="bg-ink-50 px-2 py-1.5 text-xs font-medium text-ink-500 text-center">
@@ -100,7 +100,7 @@ export default async function TerminePage({
               <div
                 key={key}
                 className={cn(
-                  "bg-white min-h-[92px] p-1.5 align-top",
+                  "bg-surface min-h-[92px] p-1.5 align-top",
                   !inMonth && "bg-ink-50"
                 )}
               >
@@ -135,7 +135,7 @@ export default async function TerminePage({
         </div>
       </div>
 
-      <div className="rounded-card border border-ink-100 bg-white p-5 shadow-card">
+      <div className="rounded-card border border-ink-100 bg-surface p-5 shadow-card">
         <h2 className="font-display font-semibold text-ink-900 mb-3">
           Termine im {format(anchorDate, "MMMM", { locale: de })}
         </h2>

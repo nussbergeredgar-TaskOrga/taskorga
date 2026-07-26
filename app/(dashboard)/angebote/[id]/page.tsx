@@ -27,7 +27,7 @@ export default async function AngebotDetailPage({ params }: { params: { id: stri
         <QuoteActions quoteId={quote.id} status={quote.status} />
       </div>
 
-      <div className="rounded-card border border-ink-100 bg-white overflow-hidden shadow-card">
+      <div className="rounded-card border border-ink-100 bg-surface overflow-hidden shadow-card">
         <table className="w-full text-sm">
           <thead className="bg-ink-50 text-ink-500 text-xs uppercase">
             <tr>

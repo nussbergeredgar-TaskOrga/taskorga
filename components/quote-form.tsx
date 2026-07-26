@@ -61,7 +61,7 @@ export function QuoteForm({
             name="customerId"
             value={customerId}
             onChange={(e) => setCustomerId(e.target.value)}
-            className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-white"
+            className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface"
           >
             <option value="">Bitte auswählen …</option>
             {customers.map((c) => (
@@ -83,7 +83,7 @@ export function QuoteForm({
             id="inquiryId"
             name="inquiryId"
             defaultValue={defaultInquiryId || ""}
-            className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-white"
+            className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface"
           >
             <option value="">Keine</option>
             {relevantInquiries.map((i) => (

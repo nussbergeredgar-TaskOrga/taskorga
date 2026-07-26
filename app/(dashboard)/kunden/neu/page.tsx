@@ -17,7 +17,7 @@ export default function NeuerKundePage() {
         <h1 className="text-2xl font-semibold text-ink-900">Neuer Kunde</h1>
       </div>
 
-      <div className="rounded-card border border-ink-100 bg-white p-6 shadow-card">
+      <div className="rounded-card border border-ink-100 bg-surface p-6 shadow-card">
         <CustomerForm />
       </div>
     </div>

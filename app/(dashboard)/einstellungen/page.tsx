@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { getCurrentCompany } from "@/lib/session";
 import { WorkflowStepsManager } from "@/components/workflow-steps-manager";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export default async function EinstellungenPage() {
   const company = await getCurrentCompany();
@@ -18,7 +19,15 @@ export default async function EinstellungenPage() {
         </p>
       </div>
 
-      <div className="rounded-card border border-ink-100 bg-white p-6 shadow-card max-w-2xl">
+      <div className="rounded-card border border-ink-100 bg-surface p-6 shadow-card max-w-2xl">
+        <h2 className="font-display font-semibold text-ink-900 mb-1">Darstellung</h2>
+        <p className="text-sm text-ink-500 mb-4">
+          Wird auf diesem Gerät gespeichert und gilt für zukünftige Besuche.
+        </p>
+        <ThemeToggle />
+      </div>
+
+      <div className="rounded-card border border-ink-100 bg-surface p-6 shadow-card max-w-2xl">
         <h2 className="font-display font-semibold text-ink-900 mb-1">Anfragen-Workflow</h2>
         <p className="text-sm text-ink-500 mb-4">
           Diese Schritte erscheinen bei jeder Anfrage als Checkliste. Reihenfolge mit den

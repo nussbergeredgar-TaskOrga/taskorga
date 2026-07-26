@@ -160,7 +160,7 @@ export default async function HeutePage() {
     {
       id: "widget-offene-aufgaben-liste",
       node: (
-        <div id="offene-aufgaben" className="rounded-card border border-ink-100 bg-white p-5 shadow-card scroll-mt-6 h-full">
+        <div id="offene-aufgaben" className="rounded-card border border-ink-100 bg-surface p-5 shadow-card scroll-mt-6 h-full">
           <h2 className="font-display font-semibold text-ink-900 mb-3">Offene Aufgaben</h2>
           {openTasks.length === 0 ? (
             <p className="text-sm text-ink-500">Keine offenen Aufgaben. 🎉</p>
@@ -192,7 +192,7 @@ export default async function HeutePage() {
     {
       id: "widget-naechste-termine",
       node: (
-        <div className="rounded-card border border-ink-100 bg-white p-5 shadow-card h-full">
+        <div className="rounded-card border border-ink-100 bg-surface p-5 shadow-card h-full">
           <div className="flex items-center justify-between mb-3">
             <h2 className="font-display font-semibold text-ink-900">Nächste Termine</h2>
             <Link href="/termine" className="text-xs text-brand-700 hover:underline">
@@ -222,7 +222,7 @@ export default async function HeutePage() {
     {
       id: "widget-letzte-aktivitaeten",
       node: (
-        <div className="rounded-card border border-ink-100 bg-white p-5 shadow-card h-full">
+        <div className="rounded-card border border-ink-100 bg-surface p-5 shadow-card h-full">
           <h2 className="font-display font-semibold text-ink-900 mb-3">Letzte Aktivitäten</h2>
           {recentActivities.length === 0 ? (
             <p className="text-sm text-ink-500">Noch keine Aktivitäten.</p>

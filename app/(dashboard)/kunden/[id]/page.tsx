@@ -57,7 +57,7 @@ export default async function KundeDetailPage({
       {/* Kopfbereich */}
       <div className="flex items-start justify-between">
         <div className="flex items-start gap-4">
-          <div className="h-12 w-12 rounded-full bg-ink-700 text-white flex items-center justify-center shrink-0">
+          <div className="h-12 w-12 rounded-full bg-slate-700 text-white flex items-center justify-center shrink-0">
             {customer.type === "BUSINESS" ? (
               <Building2 size={20} />
             ) : (
@@ -96,7 +96,7 @@ export default async function KundeDetailPage({
       </div>
 
       {/* Tabs */}
-      <div className="rounded-card border border-ink-100 bg-white p-6 shadow-card">
+      <div className="rounded-card border border-ink-100 bg-surface p-6 shadow-card">
         <Tabs
           tabs={[
             {

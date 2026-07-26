@@ -63,7 +63,7 @@ export function CustomerForm() {
           id="type"
           name="type"
           defaultValue="PRIVATE"
-          className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 transition-colors bg-white"
+          className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 transition-colors bg-surface"
         >
           <option value="PRIVATE">Privatkunde</option>
           <option value="BUSINESS">Geschäftskunde</option>

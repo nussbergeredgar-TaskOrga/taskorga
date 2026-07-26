@@ -87,4 +87,3 @@ Echter Upload läuft über Vercel Blob (max. 4,5 MB pro Datei in dieser Version)
 Die App hat ein Manifest, App-Icons und einen Service Worker. Nach dem Deployment
 kann sie auf dem iPhone über Safari → Teilen → „Zum Home-Bildschirm" installiert
 werden und startet dann wie eine native App (ohne Browserleiste).
-"# taskorga" 
