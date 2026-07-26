@@ -10,11 +10,13 @@ export function AnfrageRow({
   stepId,
   title,
   customerName,
+  amount,
 }: {
   inquiryId: string;
   stepId: string | null;
   title: string;
   customerName: string;
+  amount?: number | null;
 }) {
   const [pending, startTransition] = useTransition();
 
@@ -23,6 +25,9 @@ export function AnfrageRow({
       <Link href={`/anfragen/${inquiryId}`} className="text-sm min-w-0 hover:underline">
         <span className="font-medium text-ink-900">{title}</span>
         <span className="text-ink-500 ml-2">{customerName}</span>
+        {amount != null && (
+          <span className="text-ink-500 ml-2 font-mono">· {amount.toLocaleString("de-DE")} €</span>
+        )}
       </Link>
       {stepId && (
         <button

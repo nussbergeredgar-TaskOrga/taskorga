@@ -81,34 +81,50 @@ export default async function AnfragenPage() {
         </div>
       ) : (
         <div className="space-y-4">
-          {groups.map(({ step, items }) => (
-            <div key={step.id} className="rounded-card border border-ink-100 bg-white p-5 shadow-card">
-              <div className="flex items-center justify-between mb-3">
-                <h2 className="font-display font-semibold text-ink-900">{step.label}</h2>
-                <span className="text-xs font-mono text-ink-300">{items.length}</span>
-              </div>
-              {items.length === 0 ? (
-                <p className="text-sm text-ink-300">Keine Anfragen in diesem Schritt.</p>
-              ) : (
-                <div className="space-y-2">
-                  {items.map((inquiry) => (
-                    <AnfrageRow
-                      key={inquiry.id}
-                      inquiryId={inquiry.id}
-                      stepId={step.id}
-                      title={inquiry.title}
-                      customerName={inquiry.customer.name}
-                    />
-                  ))}
+          {groups.map(({ step, items }) => {
+            const stepTotal = items.reduce((sum, i) => sum + Number(i.amount ?? 0), 0);
+            return (
+              <div key={step.id} className="rounded-card border border-ink-100 bg-white p-5 shadow-card">
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="font-display font-semibold text-ink-900">{step.label}</h2>
+                  <div className="flex items-center gap-3 text-xs">
+                    {stepTotal > 0 && (
+                      <span className="font-mono text-ink-500">{stepTotal.toLocaleString("de-DE")} €</span>
+                    )}
+                    <span className="font-mono text-ink-300">{items.length}</span>
+                  </div>
                 </div>
-              )}
-            </div>
-          ))}
+                {items.length === 0 ? (
+                  <p className="text-sm text-ink-300">Keine Anfragen in diesem Schritt.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {items.map((inquiry) => (
+                      <AnfrageRow
+                        key={inquiry.id}
+                        inquiryId={inquiry.id}
+                        stepId={step.id}
+                        title={inquiry.title}
+                        customerName={inquiry.customer.name}
+                        amount={inquiry.amount != null ? Number(inquiry.amount) : null}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
 
           <div className="rounded-card border border-ink-100 bg-white p-5 shadow-card">
             <div className="flex items-center justify-between mb-3">
               <h2 className="font-display font-semibold text-ink-900">Alle Schritte erledigt</h2>
-              <span className="text-xs font-mono text-ink-300">{doneGroup.length}</span>
+              <div className="flex items-center gap-3 text-xs">
+                {doneGroup.reduce((sum, i) => sum + Number(i.amount ?? 0), 0) > 0 && (
+                  <span className="font-mono text-ink-500">
+                    {doneGroup.reduce((sum, i) => sum + Number(i.amount ?? 0), 0).toLocaleString("de-DE")} €
+                  </span>
+                )}
+                <span className="font-mono text-ink-300">{doneGroup.length}</span>
+              </div>
             </div>
             {doneGroup.length === 0 ? (
               <p className="text-sm text-ink-300">Keine Anfragen.</p>
@@ -121,6 +137,7 @@ export default async function AnfragenPage() {
                     stepId={null}
                     title={inquiry.title}
                     customerName={inquiry.customer.name}
+                    amount={inquiry.amount != null ? Number(inquiry.amount) : null}
                   />
                 ))}
               </div>
