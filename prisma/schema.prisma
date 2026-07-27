@@ -142,6 +142,7 @@ model Customer {
   tasks        Task[]
   activities   Activity[]
   comments     Comment[]
+  insight      CustomerInsight?
 
   @@index([companyId])
 }
@@ -703,6 +704,15 @@ model ReminderLevel {
   updatedAt DateTime @updatedAt
 
   @@unique([companyId, order])
+}
+
+// Gespeicherte KI-Cross-Selling-Empfehlung pro Kunde (wird auf Knopfdruck neu erzeugt)
+model CustomerInsight {
+  id          String   @id @default(cuid())
+  customerId  String   @unique
+  customer    Customer @relation(fields: [customerId], references: [id])
+  content     String
+  generatedAt DateTime @default(now())
 }
 
 model Dashboard {

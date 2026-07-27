@@ -7,6 +7,7 @@ import {
   Wallet,
   BarChart3,
   Settings,
+  Radar,
   type LucideIcon,
 } from "lucide-react";
 
@@ -19,4 +20,5 @@ export const ICON_MAP: Record<string, LucideIcon> = {
   Wallet,
   BarChart3,
   Settings,
+  Radar,
 };

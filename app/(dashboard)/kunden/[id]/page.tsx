@@ -7,6 +7,7 @@ import { AddComment } from "@/components/add-comment";
 import { AppointmentTab } from "@/components/appointment-tab";
 import { DocumentTab } from "@/components/document-tab";
 import { InlineInquiryForm } from "@/components/inline-inquiry-form";
+import { CustomerInsightCard } from "@/components/customer-insight-card";
 import { KpiCard } from "@/components/kpi-card";
 import { getCustomerTabsConfig } from "@/lib/actions/customer-tabs";
 import { formatDistanceToNow } from "date-fns";
@@ -25,6 +26,7 @@ async function getCustomer(id: string) {
       tasks: { orderBy: { createdAt: "desc" } },
       activities: { orderBy: { createdAt: "desc" }, include: { user: true } },
       comments: { orderBy: { createdAt: "desc" }, include: { user: true } },
+      insight: true,
     },
   });
 }
@@ -72,6 +74,7 @@ export default async function KundeDetailPage({
               {[customer.address, customer.zip, customer.city].filter(Boolean).join(", ") || "—"}
             </span>
           </div>
+          <CustomerInsightCard customerId={customer.id} insight={customer.insight} />
         </div>
       ),
     },
