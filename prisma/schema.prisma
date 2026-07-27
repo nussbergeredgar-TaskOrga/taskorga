@@ -81,6 +81,7 @@ model User {
   activities      Activity[]
   dashboards      Dashboard[]
   passwordResetTokens PasswordResetToken[]
+  timeEntries         TimeEntry[]
 }
 
 // Token für den Selfservice-Passwort-vergessen-Link (per E-Mail verschickt)
@@ -606,6 +607,7 @@ model TimeEntry {
   projectId String
   project   Project  @relation(fields: [projectId], references: [id])
   userId    String
+  user      User     @relation(fields: [userId], references: [id])
 
   description String?
   minutes     Int

@@ -2,10 +2,13 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { prisma } from "@/lib/prisma";
+import { getCurrentUser } from "@/lib/session";
 import { ProjectActions } from "@/components/project-actions";
 import { TaskList } from "@/components/task-list";
+import { TimeTracking } from "@/components/time-tracking";
 
 export default async function AuftragDetailPage({ params }: { params: { id: string } }) {
+  const user = await getCurrentUser();
   const project = await prisma.project.findUnique({
     where: { id: params.id },
     include: {
@@ -13,6 +16,7 @@ export default async function AuftragDetailPage({ params }: { params: { id: stri
       tasks: { orderBy: { createdAt: "asc" } },
       invoices: { orderBy: { createdAt: "desc" } },
       quote: true,
+      timeEntries: { orderBy: { date: "desc" }, include: { user: { select: { name: true } } } },
     },
   });
   if (!project) notFound();
@@ -62,6 +66,10 @@ export default async function AuftragDetailPage({ params }: { params: { id: stri
             </ul>
           )}
         </div>
+      </div>
+
+      <div className="rounded-card border border-ink-100 bg-surface p-5 shadow-card">
+        <TimeTracking projectId={project.id} entries={project.timeEntries} currentUserId={user.id} />
       </div>
     </div>
   );
