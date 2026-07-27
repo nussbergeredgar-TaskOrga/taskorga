@@ -1,10 +1,12 @@
 import Link from "next/link";
+import { AlertTriangle } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/session";
 import { statusColor } from "@/lib/utils";
 import { KpiCard } from "@/components/kpi-card";
 import { ExpenseForm } from "@/components/expense-form";
 import { ExpensesList } from "@/components/expenses-list";
+import { markOverdueInvoices } from "@/lib/actions/invoices";
 
 const STATUS_LABELS: Record<string, string> = {
   DRAFT: "Entwurf",
@@ -19,6 +21,9 @@ const STATUS_LABELS: Record<string, string> = {
 export default async function FinanzenPage() {
   const admin = await requireAdmin();
   const company = { id: admin.companyId };
+
+  // Fällige, unbezahlte Rechnungen automatisch auf "Überfällig" setzen
+  await markOverdueInvoices();
 
   const [invoices, expenses] = await Promise.all([
     prisma.invoice.findMany({
@@ -39,6 +44,8 @@ export default async function FinanzenPage() {
   const openTotal = invoices
     .filter((i) => ["SENT", "OPEN", "PARTIALLY_PAID", "OVERDUE"].includes(i.status))
     .reduce((sum, i) => sum + Number(i.totalGross), 0);
+  const overdueInvoices = invoices.filter((i) => i.status === "OVERDUE");
+  const overdueTotal = overdueInvoices.reduce((sum, i) => sum + Number(i.totalGross), 0);
 
   const openExpenses = expenses.filter((e) => e.status === "OPEN");
   const paidExpenses = expenses.filter((e) => e.status === "PAID");
@@ -63,10 +70,42 @@ export default async function FinanzenPage() {
         <p className="text-sm text-ink-500 mt-1">{invoices.length} Rechnungen insgesamt</p>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-3 gap-4">
         <KpiCard label="Bezahlt" value={`${paidTotal.toLocaleString("de-DE")} €`} accent="border-l-success" />
         <KpiCard label="Offen" value={`${openTotal.toLocaleString("de-DE")} €`} accent="border-l-warning" />
+        <KpiCard label="Überfällig" value={`${overdueTotal.toLocaleString("de-DE")} €`} accent="border-l-danger" />
       </div>
+
+      {overdueInvoices.length > 0 && (
+        <div className="rounded-card border border-danger/30 bg-danger/5 p-5 shadow-card">
+          <div className="flex items-center gap-2 mb-3">
+            <AlertTriangle size={16} className="text-danger" />
+            <h2 className="font-display font-semibold text-ink-900">
+              Mahnwesen — {overdueInvoices.length} überfällige Rechnung{overdueInvoices.length !== 1 ? "en" : ""}
+            </h2>
+          </div>
+          <div className="space-y-2">
+            {overdueInvoices.map((inv) => (
+              <Link
+                key={inv.id}
+                href={`/finanzen/${inv.id}`}
+                className="flex items-center justify-between rounded-lg bg-surface px-3 py-2.5 text-sm hover:bg-ink-50 transition-colors"
+              >
+                <div>
+                  <span className="font-medium text-ink-900">{inv.number}</span>
+                  <span className="text-ink-500 ml-2">{inv.customer.name}</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="font-mono text-ink-900">{Number(inv.totalGross).toLocaleString("de-DE")} €</span>
+                  {inv.reminderLevel > 0 && (
+                    <span className="text-xs text-warning">Stufe {inv.reminderLevel}</span>
+                  )}
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
 
       {invoices.length === 0 ? (
         <div className="rounded-card border border-dashed border-ink-100 bg-surface p-12 text-center">

@@ -21,7 +21,14 @@ export default async function RechnungDetailPage({ params }: { params: { id: str
 
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-ink-900">Rechnung {invoice.number}</h1>
+          <h1 className="text-2xl font-semibold text-ink-900 flex items-center gap-2">
+            Rechnung {invoice.number}
+            {invoice.status === "OVERDUE" && (
+              <span className="text-xs font-medium bg-danger/10 text-danger px-2 py-1 rounded-full">
+                Überfällig
+              </span>
+            )}
+          </h1>
           <p className="text-sm text-ink-500 mt-1">
             <Link href={`/kunden/${invoice.customer.id}`} className="hover:underline">
               {invoice.customer.name}
@@ -46,7 +53,12 @@ export default async function RechnungDetailPage({ params }: { params: { id: str
             <FileDown size={15} />
             PDF
           </a>
-          <InvoiceActions invoiceId={invoice.id} status={invoice.status} />
+          <InvoiceActions
+            invoiceId={invoice.id}
+            status={invoice.status}
+            reminderLevel={invoice.reminderLevel}
+            lastReminderSentAt={invoice.lastReminderSentAt}
+          />
         </div>
       </div>
 

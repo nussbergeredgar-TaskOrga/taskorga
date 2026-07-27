@@ -394,6 +394,8 @@ model Invoice {
   taxRate    Decimal @db.Decimal(5, 2) @default(19)
   paidAt     DateTime?
   paidAmount Decimal @db.Decimal(12, 2) @default(0)
+  reminderLevel      Int       @default(0) // 0=keine, 1=Erinnerung, 2=1.Mahnung, 3=2.Mahnung
+  lastReminderSentAt DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
