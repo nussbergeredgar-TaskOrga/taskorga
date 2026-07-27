@@ -3,8 +3,13 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { renderToBuffer } from "@react-pdf/renderer";
 import { prisma } from "@/lib/prisma";
 import { getCurrentCompany } from "@/lib/session";
+import { DocumentPdf } from "@/lib/pdf/document-pdf";
+import { buildPlaceholderContext } from "@/lib/pdf/build-context";
+import { resolvePlaceholders } from "@/lib/document-placeholders";
+import { sendDocumentEmail } from "@/lib/email";
 import type { QuoteStatus } from "@prisma/client";
 
 const quoteSchema = z.object({
@@ -184,4 +189,96 @@ export async function acceptQuote(quoteId: string) {
   revalidatePath("/arbeit");
   revalidatePath("/anfragen");
   redirect(`/arbeit/${project.id}`);
+}
+
+// Angebot per E-Mail an den Kunden senden (mit PDF im Anhang), markiert es
+// gleichzeitig als "Versendet".
+export async function sendQuoteEmail(
+  quoteId: string,
+  customMessage?: string
+): Promise<{ error?: string; success?: boolean }> {
+  const quote = await prisma.quote.findUnique({
+    where: { id: quoteId },
+    include: { customer: true, company: true, items: { orderBy: { position: "asc" } } },
+  });
+
+  if (!quote) return { error: "Angebot nicht gefunden." };
+  if (!quote.customer.email) {
+    return { error: "Für diesen Kunden ist keine E-Mail-Adresse hinterlegt." };
+  }
+
+  const template = await prisma.documentTemplate.findFirst({
+    where: { companyId: quote.companyId, type: "QUOTE", isDefault: true },
+  });
+
+  const createdAtStr = quote.createdAt.toLocaleDateString("de-DE");
+  const validUntilStr = quote.validUntil ? quote.validUntil.toLocaleDateString("de-DE") : undefined;
+
+  const context = buildPlaceholderContext({
+    company: quote.company,
+    customer: quote.customer,
+    number: quote.number,
+    title: quote.title,
+    createdAt: createdAtStr,
+    validUntilOrDue: validUntilStr,
+    totalNet: Number(quote.totalNet),
+    totalGross: Number(quote.totalGross),
+  });
+
+  const pdfBuffer = await renderToBuffer(
+    <DocumentPdf
+      kind="Angebot"
+      number={quote.number}
+      title={quote.title}
+      createdAt={createdAtStr}
+      validUntilOrDue={validUntilStr}
+      company={quote.company}
+      customer={quote.customer}
+      items={quote.items.map((i) => ({
+        description: i.description,
+        quantity: Number(i.quantity),
+        unit: i.unit,
+        unitPrice: Number(i.unitPrice),
+      }))}
+      totalNet={Number(quote.totalNet)}
+      totalGross={Number(quote.totalGross)}
+      taxRate={Number(quote.taxRate)}
+      introTextOverride={template?.introText ? resolvePlaceholders(template.introText, context) : undefined}
+      footerTextOverride={template?.footerText ? resolvePlaceholders(template.footerText, context) : undefined}
+      showVatOverride={template?.showVat}
+      accentColorOverride={template?.accentColor}
+    />
+  );
+
+  try {
+    await sendDocumentEmail({
+      to: quote.customer.email,
+      customerName: quote.customer.name,
+      kind: "Angebot",
+      number: quote.number,
+      amount: `${Number(quote.totalGross).toLocaleString("de-DE")} €`,
+      message: customMessage,
+      pdfBuffer,
+    });
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "E-Mail-Versand fehlgeschlagen." };
+  }
+
+  if (quote.status === "DRAFT") {
+    await prisma.quote.update({ where: { id: quoteId }, data: { status: "SENT" } });
+  }
+
+  await prisma.activity.create({
+    data: {
+      companyId: quote.companyId,
+      customerId: quote.customerId,
+      quoteId: quote.id,
+      type: "quote.emailed",
+      message: `Angebot ${quote.number} wurde per E-Mail an ${quote.customer.email} versendet.`,
+    },
+  });
+
+  revalidatePath(`/angebote/${quoteId}`);
+  revalidatePath("/angebote");
+  return { success: true };
 }

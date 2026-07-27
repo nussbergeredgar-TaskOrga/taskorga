@@ -69,3 +69,53 @@ export async function sendPaymentReminderEmail({
     ],
   });
 }
+
+export async function sendDocumentEmail({
+  to,
+  customerName,
+  kind,
+  number,
+  amount,
+  message,
+  pdfBuffer,
+}: {
+  to: string;
+  customerName: string;
+  kind: "Angebot" | "Rechnung";
+  number: string;
+  amount: string;
+  message?: string;
+  pdfBuffer: Buffer;
+}) {
+  if (!resend) {
+    throw new Error(
+      "E-Mail-Versand ist noch nicht eingerichtet. Unter Einstellungen → Firmenprofil einrichten (RESEND_API_KEY)."
+    );
+  }
+
+  const defaultMessage =
+    kind === "Angebot"
+      ? "anbei erhalten Sie unser Angebot. Bei Fragen melden Sie sich gerne."
+      : "anbei erhalten Sie unsere Rechnung. Vielen Dank für Ihr Vertrauen.";
+
+  await resend.emails.send({
+    from: process.env.EMAIL_FROM || "TaskOrga <onboarding@resend.dev>",
+    to,
+    subject: `${kind} ${number}`,
+    html: `
+      <p>Hallo ${customerName},</p>
+      <p>${message?.trim() || defaultMessage}</p>
+      <p>
+        <strong>${kind}:</strong> ${number}<br/>
+        <strong>Betrag:</strong> ${amount}
+      </p>
+      <p>Die Details finden Sie im PDF im Anhang.</p>
+    `,
+    attachments: [
+      {
+        filename: `${number}.pdf`,
+        content: pdfBuffer,
+      },
+    ],
+  });
+}

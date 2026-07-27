@@ -34,7 +34,7 @@ export default async function AngebotDetailPage({ params }: { params: { id: stri
             <FileDown size={15} />
             PDF
           </a>
-          <QuoteActions quoteId={quote.id} status={quote.status} />
+          <QuoteActions quoteId={quote.id} status={quote.status} hasCustomerEmail={!!quote.customer.email} />
         </div>
       </div>
 

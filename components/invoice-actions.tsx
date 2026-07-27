@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { Mail } from "lucide-react";
-import { markInvoiceSent, markInvoicePaid, sendPaymentReminder } from "@/lib/actions/invoices";
+import { markInvoiceSent, markInvoicePaid, sendPaymentReminder, sendInvoiceEmail } from "@/lib/actions/invoices";
 import type { InvoiceStatus } from "@prisma/client";
 
 const REMINDER_LABELS = ["", "Zahlungserinnerung", "1. Mahnung", "2. Mahnung"];
@@ -12,11 +12,13 @@ export function InvoiceActions({
   status,
   reminderLevel = 0,
   lastReminderSentAt,
+  hasCustomerEmail,
 }: {
   invoiceId: string;
   status: InvoiceStatus;
   reminderLevel?: number;
   lastReminderSentAt?: Date | null;
+  hasCustomerEmail: boolean;
 }) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState("");
@@ -25,6 +27,14 @@ export function InvoiceActions({
     setError("");
     startTransition(async () => {
       const result = await sendPaymentReminder(invoiceId);
+      if (result?.error) setError(result.error);
+    });
+  }
+
+  function sendEmail() {
+    setError("");
+    startTransition(async () => {
+      const result = await sendInvoiceEmail(invoiceId);
       if (result?.error) setError(result.error);
     });
   }
@@ -39,13 +49,24 @@ export function InvoiceActions({
     <div className="space-y-2">
       <div className="flex flex-wrap gap-2 items-center">
         {status === "DRAFT" && (
-          <button
-            disabled={pending}
-            onClick={() => startTransition(() => markInvoiceSent(invoiceId))}
-            className="rounded-lg border border-ink-100 px-3 py-2 text-sm font-medium text-ink-700 hover:bg-ink-50 transition-colors"
-          >
-            Als versendet markieren
-          </button>
+          hasCustomerEmail ? (
+            <button
+              disabled={pending}
+              onClick={sendEmail}
+              className="flex items-center gap-1.5 rounded-lg border border-ink-100 px-3 py-2 text-sm font-medium text-ink-700 hover:bg-ink-50 transition-colors disabled:opacity-60"
+            >
+              <Mail size={15} />
+              {pending ? "Wird gesendet …" : "Per E-Mail senden"}
+            </button>
+          ) : (
+            <button
+              disabled={pending}
+              onClick={() => startTransition(() => markInvoiceSent(invoiceId))}
+              className="rounded-lg border border-ink-100 px-3 py-2 text-sm font-medium text-ink-700 hover:bg-ink-50 transition-colors"
+            >
+              Als versendet markieren
+            </button>
+          )
         )}
         {isOverdueOrSent && (
           <button

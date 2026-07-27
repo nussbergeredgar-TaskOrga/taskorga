@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { renderToBuffer } from "@react-pdf/renderer";
 import { prisma } from "@/lib/prisma";
 import { getCurrentCompany } from "@/lib/session";
-import { sendPaymentReminderEmail } from "@/lib/email";
+import { sendPaymentReminderEmail, sendDocumentEmail } from "@/lib/email";
 import { DocumentPdf } from "@/lib/pdf/document-pdf";
 import { buildPlaceholderContext } from "@/lib/pdf/build-context";
 import { resolvePlaceholders } from "@/lib/document-placeholders";
@@ -172,6 +172,104 @@ export async function sendPaymentReminder(invoiceId: string): Promise<{ error?: 
       invoiceId: invoice.id,
       type: "invoice.reminder_sent",
       message: `${levelLabel} für Rechnung ${invoice.number} wurde per E-Mail versendet.`,
+    },
+  });
+
+  revalidatePath(`/finanzen/${invoiceId}`);
+  revalidatePath("/finanzen");
+  return { success: true };
+}
+
+// Rechnung per E-Mail an den Kunden senden (mit PDF im Anhang), markiert sie
+// gleichzeitig als "Versendet" inkl. Fälligkeitsdatum (14 Tage).
+export async function sendInvoiceEmail(
+  invoiceId: string,
+  customMessage?: string
+): Promise<{ error?: string; success?: boolean }> {
+  const invoice = await prisma.invoice.findUnique({
+    where: { id: invoiceId },
+    include: { customer: true, company: true, items: { orderBy: { position: "asc" } } },
+  });
+
+  if (!invoice) return { error: "Rechnung nicht gefunden." };
+  if (!invoice.customer.email) {
+    return { error: "Für diesen Kunden ist keine E-Mail-Adresse hinterlegt." };
+  }
+
+  const template = await prisma.documentTemplate.findFirst({
+    where: { companyId: invoice.companyId, type: "INVOICE", isDefault: true },
+  });
+
+  const wasDraft = invoice.status === "DRAFT";
+  const issueDate = invoice.issueDate ?? new Date();
+  const dueDate = invoice.dueDate ?? new Date(Date.now() + 14 * 86400000);
+
+  const createdAtStr = issueDate.toLocaleDateString("de-DE");
+  const dueDateStr = dueDate.toLocaleDateString("de-DE");
+  const title = `Rechnung ${invoice.number}`;
+
+  const context = buildPlaceholderContext({
+    company: invoice.company,
+    customer: invoice.customer,
+    number: invoice.number,
+    title,
+    createdAt: createdAtStr,
+    validUntilOrDue: dueDateStr,
+    totalNet: Number(invoice.totalNet),
+    totalGross: Number(invoice.totalGross),
+  });
+
+  const pdfBuffer = await renderToBuffer(
+    <DocumentPdf
+      kind="Rechnung"
+      number={invoice.number}
+      title={title}
+      createdAt={createdAtStr}
+      validUntilOrDue={dueDateStr}
+      company={invoice.company}
+      customer={invoice.customer}
+      items={invoice.items.map((i) => ({
+        description: i.description,
+        quantity: Number(i.quantity),
+        unit: i.unit,
+        unitPrice: Number(i.unitPrice),
+      }))}
+      totalNet={Number(invoice.totalNet)}
+      totalGross={Number(invoice.totalGross)}
+      taxRate={Number(invoice.taxRate)}
+      introTextOverride={template?.introText ? resolvePlaceholders(template.introText, context) : undefined}
+      footerTextOverride={template?.footerText ? resolvePlaceholders(template.footerText, context) : undefined}
+      showVatOverride={template?.showVat}
+      accentColorOverride={template?.accentColor}
+    />
+  );
+
+  try {
+    await sendDocumentEmail({
+      to: invoice.customer.email,
+      customerName: invoice.customer.name,
+      kind: "Rechnung",
+      number: invoice.number,
+      amount: `${Number(invoice.totalGross).toLocaleString("de-DE")} €`,
+      message: customMessage,
+      pdfBuffer,
+    });
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "E-Mail-Versand fehlgeschlagen." };
+  }
+
+  await prisma.invoice.update({
+    where: { id: invoiceId },
+    data: wasDraft ? { status: "SENT", issueDate, dueDate } : {},
+  });
+
+  await prisma.activity.create({
+    data: {
+      companyId: invoice.companyId,
+      customerId: invoice.customerId,
+      invoiceId: invoice.id,
+      type: "invoice.emailed",
+      message: `Rechnung ${invoice.number} wurde per E-Mail an ${invoice.customer.email} versendet.`,
     },
   });
 

@@ -58,6 +58,7 @@ export default async function RechnungDetailPage({ params }: { params: { id: str
             status={invoice.status}
             reminderLevel={invoice.reminderLevel}
             lastReminderSentAt={invoice.lastReminderSentAt}
+            hasCustomerEmail={!!invoice.customer.email}
           />
         </div>
       </div>
