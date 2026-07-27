@@ -58,7 +58,7 @@ function LoginForm() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500"
-              placeholder="demo@taskorga.app"
+              placeholder="name@firma.de"
             />
           </div>
 
@@ -81,6 +81,12 @@ function LoginForm() {
             />
           </div>
 
+          {searchParams.get("registered") && (
+            <p className="text-sm text-success bg-success/10 rounded-lg px-3 py-2">
+              Konto erstellt! Du kannst dich jetzt anmelden.
+            </p>
+          )}
+
           {error && <p className="text-sm text-danger">{error}</p>}
 
           <button
@@ -92,8 +98,11 @@ function LoginForm() {
           </button>
         </form>
 
-        <p className="text-center text-xs text-ink-300 mt-4">
-          Demo-Zugang: demo@taskorga.app / demo1234
+        <p className="text-center text-xs text-ink-500 mt-4">
+          Neues Unternehmen?{" "}
+          <Link href="/registrieren" className="text-brand-700 hover:underline">
+            Jetzt kostenlos registrieren
+          </Link>
         </p>
       </div>
     </div>
