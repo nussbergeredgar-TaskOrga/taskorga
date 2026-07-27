@@ -4,7 +4,11 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentCompany } from "@/lib/session";
 import { ProjectQuickForm } from "@/components/project-quick-form";
 
-export default async function NeuerAuftragPage() {
+export default async function NeuerAuftragPage({
+  searchParams,
+}: {
+  searchParams: { customerId?: string };
+}) {
   const company = await getCurrentCompany();
   const customers = await prisma.customer.findMany({
     where: { companyId: company.id },
@@ -21,7 +25,7 @@ export default async function NeuerAuftragPage() {
       <h1 className="text-2xl font-semibold text-ink-900">Neuer Auftrag</h1>
 
       <div className="rounded-card border border-ink-100 bg-surface p-6 shadow-card">
-        <ProjectQuickForm customers={customers} />
+        <ProjectQuickForm customers={customers} defaultCustomerId={searchParams.customerId} />
       </div>
     </div>
   );

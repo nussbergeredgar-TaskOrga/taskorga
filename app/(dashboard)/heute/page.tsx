@@ -260,7 +260,9 @@ export default async function HeutePage() {
             </Link>
           </div>
           {upcomingAppointments.length === 0 ? (
-            <p className="text-sm text-ink-500">Keine anstehenden Termine.</p>
+            <Link href="/termine" className="text-sm text-brand-700 hover:underline">
+              Keine anstehenden Termine — jetzt einen anlegen
+            </Link>
           ) : (
             <ul className="space-y-2">
               {upcomingAppointments.map((a) => (

@@ -4,8 +4,14 @@ import { useRef, useState, useTransition } from "react";
 import { CustomerAutocomplete } from "@/components/customer-autocomplete";
 import { createProject } from "@/lib/actions/projects";
 
-export function ProjectQuickForm({ customers }: { customers: { id: string; name: string }[] }) {
-  const [customerId, setCustomerId] = useState("");
+export function ProjectQuickForm({
+  customers,
+  defaultCustomerId,
+}: {
+  customers: { id: string; name: string }[];
+  defaultCustomerId?: string;
+}) {
+  const [customerId, setCustomerId] = useState(defaultCustomerId ?? "");
   const titleRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState("");
   const [pending, startTransition] = useTransition();
@@ -33,7 +39,7 @@ export function ProjectQuickForm({ customers }: { customers: { id: string; name:
         <label className="block text-sm font-medium text-ink-700 mb-1.5">
           Kunde <span className="text-danger">*</span>
         </label>
-        <CustomerAutocomplete customers={customers} name="customerId" onSelect={setCustomerId} />
+        <CustomerAutocomplete customers={customers} name="customerId" defaultCustomerId={defaultCustomerId} onSelect={setCustomerId} />
       </div>
       <div>
         <label className="block text-sm font-medium text-ink-700 mb-1.5">

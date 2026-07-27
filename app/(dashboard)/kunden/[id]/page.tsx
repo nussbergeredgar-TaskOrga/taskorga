@@ -134,7 +134,12 @@ export default async function KundeDetailPage({
       label: "Angebote",
       content:
         customer.quotes.length === 0 ? (
-          <EmptyRow text="Noch keine Angebote." />
+          <Link
+            href={`/angebote/neu?customerId=${customer.id}`}
+            className="block rounded-lg border-l-4 border-l-brand-500 bg-ink-50 hover:bg-ink-100 p-4 text-sm transition-colors"
+          >
+            <span className="font-medium text-brand-700">Noch keine Angebote — jetzt eins erstellen →</span>
+          </Link>
         ) : (
           <ul className="space-y-2">
             {customer.quotes.map((q) => (
@@ -152,7 +157,12 @@ export default async function KundeDetailPage({
       label: "Aufträge",
       content:
         customer.projects.length === 0 ? (
-          <EmptyRow text="Noch keine Aufträge." />
+          <Link
+            href={`/arbeit/neu?customerId=${customer.id}`}
+            className="block rounded-lg border-l-4 border-l-brand-500 bg-ink-50 hover:bg-ink-100 p-4 text-sm transition-colors"
+          >
+            <span className="font-medium text-brand-700">Noch keine Aufträge — jetzt einen anlegen →</span>
+          </Link>
         ) : (
           <ul className="space-y-2">
             {customer.projects.map((p) => (
@@ -169,7 +179,14 @@ export default async function KundeDetailPage({
       label: "Rechnungen",
       content:
         customer.invoices.length === 0 ? (
-          <EmptyRow text="Noch keine Rechnungen." />
+          <Link
+            href={customer.projects.length > 0 ? `/arbeit/${customer.projects[0].id}` : "/arbeit"}
+            className="block rounded-lg border-l-4 border-l-warning bg-ink-50 hover:bg-ink-100 p-4 text-sm transition-colors"
+          >
+            <span className="font-medium text-warning">
+              Noch keine Rechnungen — entstehen aus einem Auftrag im „Arbeit"-Bereich →
+            </span>
+          </Link>
         ) : (
           <ul className="space-y-2">
             {customer.invoices.map((inv) => (
@@ -201,7 +218,14 @@ export default async function KundeDetailPage({
       label: "Aufgaben",
       content:
         customer.tasks.length === 0 ? (
-          <EmptyRow text="Keine offenen Aufgaben." />
+          <Link
+            href={customer.projects.length > 0 ? `/arbeit/${customer.projects[0].id}` : `/arbeit/neu?customerId=${customer.id}`}
+            className="block rounded-lg border-l-4 border-l-brand-500 bg-ink-50 hover:bg-ink-100 p-4 text-sm transition-colors"
+          >
+            <span className="font-medium text-brand-700">
+              Keine offenen Aufgaben — Aufgaben werden innerhalb eines Auftrags angelegt →
+            </span>
+          </Link>
         ) : (
           <ul className="space-y-2">
             {customer.tasks.map((t) => (

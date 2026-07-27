@@ -110,7 +110,11 @@ export default async function FinanzenPage() {
       {invoices.length === 0 ? (
         <div className="rounded-card border border-dashed border-ink-100 bg-surface p-12 text-center">
           <p className="text-ink-500 text-sm">
-            Noch keine Rechnungen. Erstelle eine Rechnung aus einem Auftrag im „Arbeit"-Workspace.
+            Noch keine Rechnungen. Erstelle eine Rechnung aus einem Auftrag im{" "}
+            <Link href="/arbeit" className="text-brand-700 hover:underline">
+              „Arbeit"-Workspace
+            </Link>
+            .
           </p>
         </div>
       ) : (

@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { Check } from "lucide-react";
+import Link from "next/link";
 import { toggleStepEntry, updateStepEntry } from "@/lib/actions/workflow";
 import { cn } from "@/lib/utils";
 
@@ -103,7 +104,11 @@ export function InquiryWorkflow({
   if (steps.length === 0) {
     return (
       <p className="text-sm text-ink-500">
-        Noch keine Workflow-Schritte konfiguriert. Unter Einstellungen → Anfragen-Workflow einrichten.
+        Noch keine Workflow-Schritte konfiguriert. Unter{" "}
+        <Link href="/einstellungen" className="text-brand-700 hover:underline">
+          Einstellungen → Anfragen-Workflow
+        </Link>{" "}
+        einrichten.
       </p>
     );
   }
