@@ -57,6 +57,7 @@ model Company {
   roles       Role[]
   workflowSteps WorkflowStep[]
   customKpis  CustomKpi[]
+  documentTemplates DocumentTemplate[]
 }
 
 model User {
@@ -639,6 +640,34 @@ model CustomKpi {
   createdAt DateTime @default(now())
 
   @@index([companyId])
+}
+
+// Vom Admin frei definierbare Vorlagen für Angebote/Rechnungen. Einleitungs-
+// und Fußzeilentext dürfen Platzhalter wie {{kunde.name}} enthalten, die beim
+// PDF-Erstellen automatisch durch echte Daten ersetzt werden ("Autofiller").
+model DocumentTemplate {
+  id        String   @id @default(cuid())
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id])
+
+  name        String
+  type        DocumentTemplateType
+  isDefault   Boolean @default(false)
+
+  introText   String?
+  footerText  String?
+  showVat     Boolean @default(true)
+  accentColor String  @default("#2F5FFF")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([companyId, type])
+}
+
+enum DocumentTemplateType {
+  QUOTE
+  INVOICE
 }
 
 model Dashboard {

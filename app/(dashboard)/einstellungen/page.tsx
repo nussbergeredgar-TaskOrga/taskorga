@@ -5,6 +5,8 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { NavConfigManager } from "@/components/nav-config-manager";
 import { NavLabelManager } from "@/components/nav-label-manager";
 import { CustomerTabsManager } from "@/components/customer-tabs-manager";
+import { DocumentTemplateManager } from "@/components/document-template-manager";
+import { getDocumentTemplates } from "@/lib/actions/document-templates";
 import { CompanyProfileForm } from "@/components/company-profile-form";
 import { ProfileForm } from "@/components/profile-form";
 import { TeamManager } from "@/components/team-manager";
@@ -16,7 +18,7 @@ export default async function EinstellungenPage() {
   const currentUser = await getCurrentUserWithRole();
   const isAdmin = currentUser.role?.name === "Admin";
 
-  const [steps, navConfig, navLabels, customerTabs, company, users] = await Promise.all([
+  const [steps, navConfig, navLabels, customerTabs, company, users, documentTemplates] = await Promise.all([
     prisma.workflowStep.findMany({
       where: { companyId: currentUser.companyId },
       orderBy: { order: "asc" },
@@ -32,6 +34,7 @@ export default async function EinstellungenPage() {
           orderBy: { createdAt: "asc" },
         })
       : Promise.resolve([]),
+    isAdmin ? getDocumentTemplates() : Promise.resolve([]),
   ]);
 
   return (
@@ -95,6 +98,29 @@ export default async function EinstellungenPage() {
             Pfeilen ändern, Text direkt bearbeiten (Klick raus zum Speichern).
           </p>
           <WorkflowStepsManager steps={steps} />
+        </div>
+      )}
+
+      {isAdmin && (
+        <div className="rounded-card border border-ink-100 bg-surface p-6 shadow-card max-w-2xl">
+          <h2 className="font-display font-semibold text-ink-900 mb-1">Angebots-/Rechnungsvorlagen</h2>
+          <p className="text-sm text-ink-500 mb-4">
+            Eigene Vorlagen mit Platzhaltern erstellen, die beim PDF-Erzeugen automatisch mit
+            echten Daten gefüllt werden (z. B. {"{{kunde.name}}"}). Die als „Standard" markierte
+            Vorlage je Typ wird verwendet.
+          </p>
+          <DocumentTemplateManager
+            templates={documentTemplates.map((t) => ({
+              id: t.id,
+              name: t.name,
+              type: t.type,
+              isDefault: t.isDefault,
+              introText: t.introText,
+              footerText: t.footerText,
+              showVat: t.showVat,
+              accentColor: t.accentColor,
+            }))}
+          />
         </div>
       )}
 

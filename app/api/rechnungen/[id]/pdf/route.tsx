@@ -4,6 +4,8 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { DocumentPdf } from "@/lib/pdf/document-pdf";
+import { buildPlaceholderContext } from "@/lib/pdf/build-context";
+import { resolvePlaceholders } from "@/lib/document-placeholders";
 
 export async function GET(request: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions);
@@ -24,13 +26,32 @@ export async function GET(request: Request, { params }: { params: { id: string }
     return NextResponse.json({ error: "Nicht gefunden." }, { status: 404 });
   }
 
+  const template = await prisma.documentTemplate.findFirst({
+    where: { companyId: invoice.companyId, type: "INVOICE", isDefault: true },
+  });
+
+  const createdAtStr = (invoice.issueDate ?? invoice.createdAt).toLocaleDateString("de-DE");
+  const dueDateStr = invoice.dueDate ? invoice.dueDate.toLocaleDateString("de-DE") : undefined;
+  const title = `Rechnung ${invoice.number}`;
+
+  const context = buildPlaceholderContext({
+    company: invoice.company,
+    customer: invoice.customer,
+    number: invoice.number,
+    title,
+    createdAt: createdAtStr,
+    validUntilOrDue: dueDateStr,
+    totalNet: Number(invoice.totalNet),
+    totalGross: Number(invoice.totalGross),
+  });
+
   const buffer = await renderToBuffer(
     <DocumentPdf
       kind="Rechnung"
       number={invoice.number}
-      title={`Rechnung ${invoice.number}`}
-      createdAt={(invoice.issueDate ?? invoice.createdAt).toLocaleDateString("de-DE")}
-      validUntilOrDue={invoice.dueDate ? invoice.dueDate.toLocaleDateString("de-DE") : undefined}
+      title={title}
+      createdAt={createdAtStr}
+      validUntilOrDue={dueDateStr}
       company={invoice.company}
       customer={invoice.customer}
       items={invoice.items.map((i) => ({
@@ -42,6 +63,10 @@ export async function GET(request: Request, { params }: { params: { id: string }
       totalNet={Number(invoice.totalNet)}
       totalGross={Number(invoice.totalGross)}
       taxRate={Number(invoice.taxRate)}
+      introTextOverride={template?.introText ? resolvePlaceholders(template.introText, context) : undefined}
+      footerTextOverride={template?.footerText ? resolvePlaceholders(template.footerText, context) : undefined}
+      showVatOverride={template?.showVat}
+      accentColorOverride={template?.accentColor}
     />
   );
 

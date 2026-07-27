@@ -38,6 +38,10 @@ export function DocumentPdf({
   totalNet,
   totalGross,
   taxRate,
+  introTextOverride,
+  footerTextOverride,
+  showVatOverride,
+  accentColorOverride,
 }: {
   kind: "Angebot" | "Rechnung";
   number: string;
@@ -50,9 +54,15 @@ export function DocumentPdf({
   totalNet: number;
   totalGross: number;
   taxRate: number;
+  introTextOverride?: string | null;
+  footerTextOverride?: string | null;
+  showVatOverride?: boolean;
+  accentColorOverride?: string | null;
 }) {
-  const accent = company.documentAccentColor || "#2F5FFF";
-  const showVat = company.showVatOnDocuments !== false;
+  const accent = accentColorOverride || company.documentAccentColor || "#2F5FFF";
+  const showVat = showVatOverride ?? company.showVatOnDocuments !== false;
+  const introText = introTextOverride ?? company.documentIntroText;
+  const footerText = footerTextOverride ?? company.invoiceFooterText;
 
   const styles = StyleSheet.create({
     page: { padding: 40, fontSize: 10, fontFamily: "Helvetica", color: "#1C2128" },
@@ -150,7 +160,7 @@ export function DocumentPdf({
           )}
         </View>
 
-        {company.documentIntroText && <Text style={styles.intro}>{company.documentIntroText}</Text>}
+        {introText && <Text style={styles.intro}>{introText}</Text>}
 
         <Text style={styles.subject}>{title}</Text>
 
@@ -207,7 +217,7 @@ export function DocumentPdf({
         </View>
 
         <View style={styles.footer}>
-          {company.invoiceFooterText && <Text style={{ marginBottom: 4 }}>{company.invoiceFooterText}</Text>}
+          {footerText && <Text style={{ marginBottom: 4 }}>{footerText}</Text>}
           <Text>
             {company.name}
             {company.bankName ? `   ·   ${company.bankName}` : ""}
