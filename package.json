@@ -30,7 +30,8 @@
     "bcryptjs": "^2.4.3",
     "@vercel/blob": "^0.24.1",
     "@react-pdf/renderer": "^4.1.6",
-    "resend": "^4.0.1"
+    "resend": "^4.0.1",
+    "recharts": "^2.13.3"
   },
   "devDependencies": {
     "typescript": "^5.4.0",

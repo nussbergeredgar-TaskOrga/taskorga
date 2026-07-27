@@ -1,21 +1,111 @@
+import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/session";
 import { getCustomKpiValues } from "@/lib/actions/custom-kpi";
 import { getDashboardLayout } from "@/lib/actions/dashboard";
 import { KpiManager } from "@/components/kpi-manager";
+import { RevenueChart } from "@/components/charts/revenue-chart";
+import { PipelineChart } from "@/components/charts/pipeline-chart";
+import { InvoiceStatusChart } from "@/components/charts/invoice-status-chart";
+
+const PIPELINE_LABELS: Record<string, string> = {
+  NEW: "Neu",
+  CALLBACK_SCHEDULED: "Rückruf geplant",
+  CALL_DONE: "Telefonat erfolgt",
+  QUOTE_CREATED: "Angebot erstellt",
+  WON: "Gewonnen",
+  LOST: "Verloren",
+};
+const PIPELINE_ORDER = ["NEW", "CALLBACK_SCHEDULED", "CALL_DONE", "QUOTE_CREATED", "WON", "LOST"];
+
+function monthLabel(date: Date) {
+  return date.toLocaleDateString("de-DE", { month: "short", year: "2-digit" });
+}
 
 export default async function EinblickePage() {
-  await requireAdmin();
+  const admin = await requireAdmin();
+  const companyId = admin.companyId;
 
-  const [kpis, layout] = await Promise.all([getCustomKpiValues(), getDashboardLayout()]);
+  const sixMonthsAgo = new Date();
+  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5);
+  sixMonthsAgo.setDate(1);
+  sixMonthsAgo.setHours(0, 0, 0, 0);
+
+  const [kpis, layout, paidInvoices, inquiryCounts, invoiceSums] = await Promise.all([
+    getCustomKpiValues(),
+    getDashboardLayout(),
+    prisma.invoice.findMany({
+      where: { companyId, status: "PAID", paidAt: { gte: sixMonthsAgo } },
+      select: { paidAt: true, totalGross: true },
+    }),
+    prisma.inquiry.groupBy({
+      by: ["status"],
+      where: { companyId },
+      _count: true,
+    }),
+    Promise.all([
+      prisma.invoice.aggregate({ where: { companyId, status: "PAID" }, _sum: { totalGross: true } }),
+      prisma.invoice.aggregate({
+        where: { companyId, status: { in: ["SENT", "OPEN", "PARTIALLY_PAID"] } },
+        _sum: { totalGross: true },
+      }),
+      prisma.invoice.aggregate({ where: { companyId, status: "OVERDUE" }, _sum: { totalGross: true } }),
+    ]),
+  ]);
+
   const onDashboardIds = new Set((layout ?? []).filter((w) => w.visible).map((w) => w.id));
+
+  // Umsatz pro Monat (letzte 6 Monate, auch Monate mit 0 € anzeigen)
+  const monthBuckets: { month: string; umsatz: number }[] = [];
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date();
+    d.setMonth(d.getMonth() - i);
+    monthBuckets.push({ month: monthLabel(d), umsatz: 0 });
+  }
+  for (const inv of paidInvoices) {
+    if (!inv.paidAt) continue;
+    const label = monthLabel(inv.paidAt);
+    const bucket = monthBuckets.find((b) => b.month === label);
+    if (bucket) bucket.umsatz += Number(inv.totalGross);
+  }
+
+  // Pipeline: feste Reihenfolge, auch Status mit 0 Anfragen anzeigen
+  const countByStatus = new Map(inquiryCounts.map((c) => [c.status, c._count]));
+  const pipelineData = PIPELINE_ORDER.map((status) => ({
+    label: PIPELINE_LABELS[status],
+    anzahl: countByStatus.get(status as any) ?? 0,
+  }));
+
+  const [paidAgg, openAgg, overdueAgg] = invoiceSums;
+  const invoiceStatusData = [
+    { name: "Bezahlt", value: Number(paidAgg._sum.totalGross ?? 0) },
+    { name: "Offen", value: Number(openAgg._sum.totalGross ?? 0) },
+    { name: "Überfällig", value: Number(overdueAgg._sum.totalGross ?? 0) },
+  ];
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold text-ink-900">Einblicke</h1>
         <p className="text-sm text-ink-500 mt-1">
-          Eigene Kennzahlen aus deinen Daten erstellen und aufs Dashboard holen.
+          Auswertungen aus deinen Daten, plus eigene Kennzahlen fürs Dashboard.
         </p>
+      </div>
+
+      <div className="grid lg:grid-cols-2 gap-4">
+        <div className="rounded-card border border-ink-100 bg-surface p-6 shadow-card">
+          <h2 className="font-display font-semibold text-ink-900 mb-4">Umsatz (letzte 6 Monate)</h2>
+          <RevenueChart data={monthBuckets} />
+        </div>
+
+        <div className="rounded-card border border-ink-100 bg-surface p-6 shadow-card">
+          <h2 className="font-display font-semibold text-ink-900 mb-4">Rechnungen nach Status</h2>
+          <InvoiceStatusChart data={invoiceStatusData} />
+        </div>
+
+        <div className="rounded-card border border-ink-100 bg-surface p-6 shadow-card lg:col-span-2">
+          <h2 className="font-display font-semibold text-ink-900 mb-4">Anfragen-Pipeline</h2>
+          <PipelineChart data={pipelineData} />
+        </div>
       </div>
 
       <div className="rounded-card border border-ink-100 bg-surface p-6 shadow-card max-w-2xl">
