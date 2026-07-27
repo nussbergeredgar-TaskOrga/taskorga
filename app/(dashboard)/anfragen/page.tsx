@@ -3,6 +3,7 @@ import { Plus, Trophy, XCircle, Calendar } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { getCurrentCompany } from "@/lib/session";
 import { AnfrageRow } from "@/components/anfrage-row";
+import { AnfrageDecisionRow } from "@/components/anfrage-decision-row";
 
 export default async function AnfragenPage() {
   const company = await getCurrentCompany();
@@ -145,6 +146,7 @@ export default async function AnfragenPage() {
                         title={inquiry.title}
                         customerName={inquiry.customer.name}
                         amount={inquiry.amount != null ? Number(inquiry.amount) : null}
+                        note={inquiry.stepEntries.find((e) => e.stepId === step.id)?.note}
                       />
                     ))}
                   </div>
@@ -155,7 +157,7 @@ export default async function AnfragenPage() {
 
           <div className="rounded-card border border-ink-100 bg-surface p-5 shadow-card">
             <div className="flex items-center justify-between mb-3">
-              <h2 className="font-display font-semibold text-ink-900">Alle Schritte erledigt</h2>
+              <h2 className="font-display font-semibold text-ink-900">Alle Schritte erledigt — Entscheidung nötig</h2>
               <div className="flex items-center gap-3 text-xs">
                 {doneGroup.reduce((sum, i) => sum + Number(i.amount ?? 0), 0) > 0 && (
                   <span className="font-mono text-ink-500">
@@ -170,10 +172,9 @@ export default async function AnfragenPage() {
             ) : (
               <div className="space-y-2">
                 {doneGroup.map((inquiry) => (
-                  <AnfrageRow
+                  <AnfrageDecisionRow
                     key={inquiry.id}
                     inquiryId={inquiry.id}
-                    stepId={null}
                     title={inquiry.title}
                     customerName={inquiry.customer.name}
                     amount={inquiry.amount != null ? Number(inquiry.amount) : null}

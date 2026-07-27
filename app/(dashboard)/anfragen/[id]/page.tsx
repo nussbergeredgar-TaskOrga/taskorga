@@ -23,6 +23,11 @@ export default async function AnfrageDetailPage({ params }: { params: { id: stri
 
   if (!inquiry) notFound();
 
+  const completedStepIds = new Set(
+    inquiry.stepEntries.filter((e) => e.completedAt).map((e) => e.stepId)
+  );
+  const allStepsCompleted = steps.length > 0 && steps.every((s) => completedStepIds.has(s.id));
+
   return (
     <div className="space-y-6">
       <Link href="/anfragen" className="inline-flex items-center gap-1.5 text-sm text-ink-500 hover:text-ink-900 transition-colors">
@@ -42,13 +47,21 @@ export default async function AnfrageDetailPage({ params }: { params: { id: stri
         </div>
       </div>
 
-      <div className="rounded-card border border-ink-100 bg-surface p-6 shadow-card">
+      <div className="rounded-card border border-ink-100 bg-surface p-6 shadow-card space-y-4">
         <InquiryStatusActions
           inquiryId={inquiry.id}
           status={inquiry.status}
-          customerId={inquiry.customer.id}
-          customerName={inquiry.customer.name}
+          allStepsCompleted={allStepsCompleted}
+          totalSteps={steps.length}
         />
+        {inquiry.status !== "WON" && inquiry.status !== "LOST" && (
+          <Link
+            href={`/angebote/neu?customerId=${inquiry.customer.id}&inquiryId=${inquiry.id}&title=${encodeURIComponent(inquiry.title)}`}
+            className="inline-block rounded-lg border border-brand-500 text-brand-700 px-3 py-2 text-sm font-medium hover:bg-brand-50 transition-colors"
+          >
+            Angebot erstellen
+          </Link>
+        )}
       </div>
 
       <div className="rounded-card border border-ink-100 bg-surface p-6 shadow-card">

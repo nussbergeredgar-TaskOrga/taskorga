@@ -32,7 +32,7 @@ export function InquiryForm({
         <label htmlFor="customerId" className="block text-sm font-medium text-ink-700 mb-1.5">
           Kunde <span className="text-danger">*</span>
         </label>
-        <CustomerAutocomplete customers={customers} name="customerId" />
+        <CustomerAutocomplete customers={customers} name="customerId" allowCreate />
         {state.errors?.customerId && (
           <p className="text-xs text-danger mt-1">{state.errors.customerId[0]}</p>
         )}

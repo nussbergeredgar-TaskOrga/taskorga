@@ -118,6 +118,38 @@ export async function updateCustomer(
   redirect(`/kunden/${customerId}`);
 }
 
+export async function createCustomerQuick(data: {
+  name: string;
+  type: "PRIVATE" | "BUSINESS";
+  email?: string;
+  phone?: string;
+}) {
+  if (!data.name.trim()) return null;
+  const company = await getCurrentCompany();
+
+  const customer = await prisma.customer.create({
+    data: {
+      companyId: company.id,
+      name: data.name.trim(),
+      type: data.type,
+      email: data.email?.trim() || null,
+      phone: data.phone?.trim() || null,
+    },
+  });
+
+  await prisma.activity.create({
+    data: {
+      companyId: company.id,
+      customerId: customer.id,
+      type: "customer.created",
+      message: `Kunde „${customer.name}“ wurde angelegt.`,
+    },
+  });
+
+  revalidatePath("/kunden");
+  return customer;
+}
+
 export async function addCustomerComment(customerId: string, content: string) {
   if (!content.trim()) return;
 
