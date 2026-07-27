@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { Mail } from "lucide-react";
 import { markInvoiceSent, markInvoicePaid, sendPaymentReminder, sendInvoiceEmail } from "@/lib/actions/invoices";
+import { ConfirmSendDialog } from "@/components/confirm-send-dialog";
 import type { InvoiceStatus } from "@prisma/client";
 
 const REMINDER_LABELS = ["", "Zahlungserinnerung", "1. Mahnung", "2. Mahnung"];
@@ -20,8 +22,10 @@ export function InvoiceActions({
   lastReminderSentAt?: Date | null;
   hasCustomerEmail: boolean;
 }) {
+  const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState("");
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   function sendReminder() {
     setError("");
@@ -35,7 +39,11 @@ export function InvoiceActions({
     setError("");
     startTransition(async () => {
       const result = await sendInvoiceEmail(invoiceId);
-      if (result?.error) setError(result.error);
+      if (result?.error) {
+        setError(result.error);
+        return;
+      }
+      setDialogOpen(false);
     });
   }
 
@@ -52,11 +60,11 @@ export function InvoiceActions({
           hasCustomerEmail ? (
             <button
               disabled={pending}
-              onClick={sendEmail}
+              onClick={() => setDialogOpen(true)}
               className="flex items-center gap-1.5 rounded-lg border border-ink-100 px-3 py-2 text-sm font-medium text-ink-700 hover:bg-ink-50 transition-colors disabled:opacity-60"
             >
               <Mail size={15} />
-              {pending ? "Wird gesendet …" : "Per E-Mail senden"}
+              Per E-Mail senden
             </button>
           ) : (
             <button
@@ -93,6 +101,15 @@ export function InvoiceActions({
         </p>
       )}
       {error && <p className="text-xs text-danger">{error}</p>}
+
+      <ConfirmSendDialog
+        open={dialogOpen}
+        onClose={() => setDialogOpen(false)}
+        onPreview={() => router.push(`/finanzen/${invoiceId}/vorschau`)}
+        onSendDirect={sendEmail}
+        documentLabel="Rechnung"
+        sending={pending}
+      />
     </div>
   );
 }
