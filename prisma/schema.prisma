@@ -61,6 +61,18 @@ model Company {
   reminderLevels    ReminderLevel[]
 }
 
+// Einladungscodes für die Registrierung neuer Firmenkonten. Nicht an eine
+// Firma gebunden, da sie VOR der Firmen-Anlage geprüft werden.
+model InviteCode {
+  id        String    @id @default(cuid())
+  code      String    @unique
+  note      String?
+  maxUses   Int       @default(1)
+  usedCount Int       @default(0)
+  expiresAt DateTime?
+  createdAt DateTime  @default(now())
+}
+
 model User {
   id        String   @id @default(cuid())
   companyId String

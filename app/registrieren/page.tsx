@@ -35,6 +35,19 @@ export default function RegistrierenPage() {
           className="bg-surface rounded-card border border-ink-100 shadow-card p-6 space-y-4"
         >
           <div>
+            <label className="block text-sm font-medium text-ink-700 mb-1.5">Einladungscode</label>
+            <input
+              name="inviteCode"
+              required
+              placeholder="z. B. A1B2C3D4"
+              className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 font-mono uppercase"
+            />
+            {state.errors?.inviteCode && (
+              <p className="text-xs text-danger mt-1">{state.errors.inviteCode[0]}</p>
+            )}
+          </div>
+
+          <div>
             <label className="block text-sm font-medium text-ink-700 mb-1.5">Firmenname</label>
             <input
               name="companyName"
@@ -91,8 +104,8 @@ export default function RegistrierenPage() {
         </form>
 
         <p className="text-center text-xs text-ink-300 mt-4">
-          Dein Firmenkonto ist komplett von allen anderen Firmen getrennt — niemand sonst sieht
-          deine Daten.
+          Die Registrierung ist aktuell nur mit Einladungscode möglich. Dein Firmenkonto ist danach
+          komplett von allen anderen Firmen getrennt.
         </p>
       </div>
     </div>

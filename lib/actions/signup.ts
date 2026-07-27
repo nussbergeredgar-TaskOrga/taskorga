@@ -10,6 +10,7 @@ const signupSchema = z.object({
   name: z.string().min(2, "Bitte deinen Namen eingeben"),
   email: z.string().email("Ungültige E-Mail-Adresse"),
   password: z.string().min(8, "Passwort muss mindestens 8 Zeichen haben"),
+  inviteCode: z.string().min(1, "Bitte einen Einladungscode eingeben"),
 });
 
 export type SignupState = {
@@ -23,10 +24,25 @@ export async function signUp(_prevState: SignupState, formData: FormData): Promi
     name: formData.get("name"),
     email: formData.get("email"),
     password: formData.get("password"),
+    inviteCode: formData.get("inviteCode"),
   });
 
   if (!parsed.success) {
     return { errors: parsed.error.flatten().fieldErrors };
+  }
+
+  const invite = await prisma.inviteCode.findUnique({
+    where: { code: parsed.data.inviteCode.trim().toUpperCase() },
+  });
+
+  if (!invite) {
+    return { message: "Ungültiger Einladungscode." };
+  }
+  if (invite.expiresAt && invite.expiresAt < new Date()) {
+    return { message: "Dieser Einladungscode ist abgelaufen." };
+  }
+  if (invite.usedCount >= invite.maxUses) {
+    return { message: "Dieser Einladungscode wurde bereits verwendet." };
   }
 
   const existing = await prisma.user.findUnique({ where: { email: parsed.data.email } });
@@ -94,6 +110,11 @@ export async function signUp(_prevState: SignupState, formData: FormData): Promi
           "trotz unserer bisherigen Erinnerung ist Rechnung {{dokument.nummer}} über {{dokument.brutto}} weiterhin offen. Bitte gleichen Sie den Betrag umgehend aus, um weitere Schritte zu vermeiden.",
       },
     ],
+  });
+
+  await prisma.inviteCode.update({
+    where: { id: invite.id },
+    data: { usedCount: { increment: 1 } },
   });
 
   redirect("/login?registered=1");
