@@ -79,3 +79,16 @@ export async function deleteUser(userId: string) {
   await prisma.user.delete({ where: { id: userId } });
   revalidatePath("/einstellungen");
 }
+
+export async function resetUserPassword(userId: string, newPassword: string) {
+  await requireAdmin();
+
+  if (newPassword.length < 8) {
+    return { error: "Passwort muss mindestens 8 Zeichen haben." };
+  }
+
+  const passwordHash = await bcrypt.hash(newPassword, 10);
+  await prisma.user.update({ where: { id: userId }, data: { passwordHash } });
+  revalidatePath("/einstellungen");
+  return { success: true };
+}

@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { useFormState, useFormStatus } from "react-dom";
-import { UserPlus, Trash2 } from "lucide-react";
-import { createUser, updateUserRole, deleteUser, type CreateUserState } from "@/lib/actions/team";
+import { UserPlus, Trash2, KeyRound } from "lucide-react";
+import { createUser, updateUserRole, deleteUser, resetUserPassword, type CreateUserState } from "@/lib/actions/team";
 
 type TeamUser = { id: string; name: string; email: string; roleName: string };
 
@@ -23,48 +23,105 @@ function SubmitButton() {
   );
 }
 
-function UserRow({ user, currentUserId }: { user: TeamUser; currentUserId: string }) {
+function ResetPasswordRow({ userId, onClose }: { userId: string; onClose: () => void }) {
+  const inputRef = useRef<HTMLInputElement>(null);
   const [pending, startTransition] = useTransition();
+  const [error, setError] = useState("");
+  const [done, setDone] = useState(false);
+
+  function submit() {
+    const value = inputRef.current?.value ?? "";
+    setError("");
+    startTransition(async () => {
+      const result = await resetUserPassword(userId, value);
+      if (result?.error) {
+        setError(result.error);
+        return;
+      }
+      setDone(true);
+      setTimeout(onClose, 1500);
+    });
+  }
 
   return (
-    <div className="flex items-center justify-between gap-3 py-2.5 border-b border-ink-100 last:border-0">
-      <div className="min-w-0">
-        <p className="text-sm font-medium text-ink-900 truncate">
-          {user.name} {user.id === currentUserId && <span className="text-ink-300 font-normal">(du)</span>}
-        </p>
-        <p className="text-xs text-ink-500 truncate">{user.email}</p>
-      </div>
-      <div className="flex items-center gap-2 shrink-0">
-        <select
-          value={user.roleName}
-          disabled={pending}
-          onChange={(e) =>
-            startTransition(async () => {
-              await updateUserRole(user.id, e.target.value as "Admin" | "Mitarbeiter");
-            })
-          }
-          className="text-xs rounded-lg border border-ink-100 px-2 py-1.5 bg-surface outline-none"
-        >
-          <option value="Admin">Admin</option>
-          <option value="Mitarbeiter">Mitarbeiter</option>
-        </select>
-        {user.id !== currentUserId && (
-          <button
+    <div className="flex items-center gap-2 pb-2.5 border-b border-ink-100 last:border-0 pl-2">
+      <input
+        ref={inputRef}
+        type="text"
+        placeholder="Neues Passwort (mind. 8 Zeichen)"
+        onKeyDown={(e) => e.key === "Enter" && submit()}
+        className="flex-1 rounded-lg border border-ink-100 px-3 py-1.5 text-sm outline-none focus:border-brand-500 bg-surface"
+      />
+      <button
+        disabled={pending}
+        onClick={submit}
+        className="text-xs font-medium text-brand-700 hover:underline disabled:opacity-50 whitespace-nowrap"
+      >
+        {pending ? "…" : "Setzen"}
+      </button>
+      <button onClick={onClose} className="text-xs text-ink-500 hover:text-danger transition-colors">
+        Abbrechen
+      </button>
+      {error && <span className="text-xs text-danger whitespace-nowrap">{error}</span>}
+      {done && <span className="text-xs text-success whitespace-nowrap">Gesetzt.</span>}
+    </div>
+  );
+}
+
+function UserRow({ user, currentUserId }: { user: TeamUser; currentUserId: string }) {
+  const [pending, startTransition] = useTransition();
+  const [resetting, setResetting] = useState(false);
+
+  return (
+    <div>
+      <div className="flex items-center justify-between gap-3 py-2.5 border-b border-ink-100 last:border-0">
+        <div className="min-w-0">
+          <p className="text-sm font-medium text-ink-900 truncate">
+            {user.name} {user.id === currentUserId && <span className="text-ink-300 font-normal">(du)</span>}
+          </p>
+          <p className="text-xs text-ink-500 truncate">{user.email}</p>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <select
+            value={user.roleName}
             disabled={pending}
-            onClick={() => {
-              if (confirm(`${user.name} wirklich aus dem Team entfernen?`)) {
-                startTransition(async () => {
-                  await deleteUser(user.id);
-                });
-              }
-            }}
-            className="p-1.5 text-ink-300 hover:text-danger transition-colors"
-            aria-label="Entfernen"
+            onChange={(e) =>
+              startTransition(async () => {
+                await updateUserRole(user.id, e.target.value as "Admin" | "Mitarbeiter");
+              })
+            }
+            className="text-xs rounded-lg border border-ink-100 px-2 py-1.5 bg-surface outline-none"
           >
-            <Trash2 size={15} />
+            <option value="Admin">Admin</option>
+            <option value="Mitarbeiter">Mitarbeiter</option>
+          </select>
+          <button
+            onClick={() => setResetting((r) => !r)}
+            className="p-1.5 text-ink-300 hover:text-brand-700 transition-colors"
+            aria-label="Passwort zurücksetzen"
+            title="Passwort zurücksetzen"
+          >
+            <KeyRound size={15} />
           </button>
-        )}
+          {user.id !== currentUserId && (
+            <button
+              disabled={pending}
+              onClick={() => {
+                if (confirm(`${user.name} wirklich aus dem Team entfernen?`)) {
+                  startTransition(async () => {
+                    await deleteUser(user.id);
+                  });
+                }
+              }}
+              className="p-1.5 text-ink-300 hover:text-danger transition-colors"
+              aria-label="Entfernen"
+            >
+              <Trash2 size={15} />
+            </button>
+          )}
+        </div>
       </div>
+      {resetting && <ResetPasswordRow userId={user.id} onClose={() => setResetting(false)} />}
     </div>
   );
 }
@@ -102,7 +159,8 @@ export function TeamManager({ users, currentUserId }: { users: TeamUser[]; curre
           </div>
           <p className="text-xs text-ink-300">
             Es wird noch keine Einladungs-E-Mail verschickt — bitte E-Mail und Startpasswort selbst
-            an die Person weitergeben. Passwort kann sich die Person später selbst ändern.
+            an die Person weitergeben. Passwort kann sich die Person später selbst ändern, oder du
+            setzt es über das Schlüssel-Symbol jederzeit neu.
           </p>
           {state.error && <p className="text-xs text-danger">{state.error}</p>}
           {state.success && <p className="text-xs text-success">Nutzer wurde angelegt.</p>}
