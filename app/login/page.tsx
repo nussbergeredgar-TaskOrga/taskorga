@@ -1,6 +1,7 @@
 "use client";
 
 import { Suspense, useState } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
 
@@ -62,9 +63,14 @@ function LoginForm() {
           </div>
 
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-ink-700 mb-1.5">
-              Passwort
-            </label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label htmlFor="password" className="block text-sm font-medium text-ink-700">
+                Passwort
+              </label>
+              <Link href="/passwort-vergessen" className="text-xs text-brand-700 hover:underline">
+                Passwort vergessen?
+              </Link>
+            </div>
             <input
               id="password"
               type="password"

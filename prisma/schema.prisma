@@ -79,6 +79,18 @@ model User {
   comments        Comment[]
   activities      Activity[]
   dashboards      Dashboard[]
+  passwordResetTokens PasswordResetToken[]
+}
+
+// Token für den Selfservice-Passwort-vergessen-Link (per E-Mail verschickt)
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id])
+  token     String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
 }
 
 // Rollen- & Rechtekonzept (einfaches RBAC für MVP)
