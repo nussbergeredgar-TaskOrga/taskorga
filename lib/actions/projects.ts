@@ -3,7 +3,40 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { getCurrentCompany } from "@/lib/session";
 import type { ProjectStatus } from "@prisma/client";
+
+export async function createProject(customerId: string, title: string) {
+  if (!customerId || !title.trim()) return { error: "Bitte Kunde und Titel angeben." };
+  const company = await getCurrentCompany();
+
+  const count = await prisma.project.count({ where: { companyId: company.id } });
+  const number = `AUF-${new Date().getFullYear()}-${String(count + 1).padStart(4, "0")}`;
+
+  const project = await prisma.project.create({
+    data: {
+      companyId: company.id,
+      customerId,
+      number,
+      title: title.trim(),
+      status: "PLANNED",
+    },
+  });
+
+  await prisma.activity.create({
+    data: {
+      companyId: company.id,
+      customerId,
+      projectId: project.id,
+      type: "project.created",
+      message: `Auftrag ${project.number} wurde direkt angelegt.`,
+    },
+  });
+
+  revalidatePath("/arbeit");
+  revalidatePath(`/kunden/${customerId}`);
+  redirect(`/arbeit/${project.id}`);
+}
 
 export async function updateProjectStatus(projectId: string, status: ProjectStatus) {
   const project = await prisma.project.update({ where: { id: projectId }, data: { status } });

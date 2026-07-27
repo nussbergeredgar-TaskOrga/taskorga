@@ -7,6 +7,8 @@ import { NavLabelManager } from "@/components/nav-label-manager";
 import { CustomerTabsManager } from "@/components/customer-tabs-manager";
 import { DocumentTemplateManager } from "@/components/document-template-manager";
 import { getDocumentTemplates } from "@/lib/actions/document-templates";
+import { ReminderLevelsManager } from "@/components/reminder-levels-manager";
+import { getReminderLevels } from "@/lib/actions/reminder-levels";
 import { CompanyProfileForm } from "@/components/company-profile-form";
 import { ProfileForm } from "@/components/profile-form";
 import { TeamManager } from "@/components/team-manager";
@@ -18,7 +20,7 @@ export default async function EinstellungenPage() {
   const currentUser = await getCurrentUserWithRole();
   const isAdmin = currentUser.role?.name === "Admin";
 
-  const [steps, navConfig, navLabels, customerTabs, company, users, documentTemplates] = await Promise.all([
+  const [steps, navConfig, navLabels, customerTabs, company, users, documentTemplates, reminderLevels] = await Promise.all([
     prisma.workflowStep.findMany({
       where: { companyId: currentUser.companyId },
       orderBy: { order: "asc" },
@@ -35,6 +37,7 @@ export default async function EinstellungenPage() {
         })
       : Promise.resolve([]),
     isAdmin ? getDocumentTemplates() : Promise.resolve([]),
+    isAdmin ? getReminderLevels() : Promise.resolve([]),
   ]);
 
   return (
@@ -98,6 +101,25 @@ export default async function EinstellungenPage() {
             Pfeilen ändern, Text direkt bearbeiten (Klick raus zum Speichern).
           </p>
           <WorkflowStepsManager steps={steps} />
+        </div>
+      )}
+
+      {isAdmin && (
+        <div className="rounded-card border border-ink-100 bg-surface p-6 shadow-card max-w-2xl">
+          <h2 className="font-display font-semibold text-ink-900 mb-1">Mahnwesen — Erinnerungsstufen</h2>
+          <p className="text-sm text-ink-500 mb-4">
+            Lege fest, welche Stufen es beim Erinnern an offene Rechnungen gibt, ab wann sie
+            sinnvoll sind und welcher Text verschickt wird. Die drei Beispielstufen kannst du
+            anpassen, umbenennen oder löschen.
+          </p>
+          <ReminderLevelsManager
+            levels={reminderLevels.map((l) => ({
+              id: l.id,
+              label: l.label,
+              daysAfterDue: l.daysAfterDue,
+              introText: l.introText,
+            }))}
+          />
         </div>
       )}
 

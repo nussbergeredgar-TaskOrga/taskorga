@@ -70,6 +70,54 @@ export async function createCustomer(
   redirect(`/kunden/${customer.id}`);
 }
 
+export async function updateCustomer(
+  customerId: string,
+  _prevState: CustomerFormState,
+  formData: FormData
+): Promise<CustomerFormState> {
+  const parsed = customerSchema.safeParse({
+    name: formData.get("name"),
+    type: formData.get("type"),
+    email: formData.get("email"),
+    phone: formData.get("phone"),
+    address: formData.get("address"),
+    zip: formData.get("zip"),
+    city: formData.get("city"),
+    notes: formData.get("notes"),
+  });
+
+  if (!parsed.success) {
+    return { errors: parsed.error.flatten().fieldErrors };
+  }
+
+  const customer = await prisma.customer.update({
+    where: { id: customerId },
+    data: {
+      name: parsed.data.name,
+      type: parsed.data.type,
+      email: parsed.data.email || null,
+      phone: parsed.data.phone || null,
+      address: parsed.data.address || null,
+      zip: parsed.data.zip || null,
+      city: parsed.data.city || null,
+      notes: parsed.data.notes || null,
+    },
+  });
+
+  await prisma.activity.create({
+    data: {
+      companyId: customer.companyId,
+      customerId: customer.id,
+      type: "customer.updated",
+      message: `Stammdaten von „${customer.name}“ wurden aktualisiert.`,
+    },
+  });
+
+  revalidatePath("/kunden");
+  revalidatePath(`/kunden/${customerId}`);
+  redirect(`/kunden/${customerId}`);
+}
+
 export async function addCustomerComment(customerId: string, content: string) {
   if (!content.trim()) return;
 

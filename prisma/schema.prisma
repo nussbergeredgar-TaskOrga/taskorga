@@ -58,6 +58,7 @@ model Company {
   workflowSteps WorkflowStep[]
   customKpis  CustomKpi[]
   documentTemplates DocumentTemplate[]
+  reminderLevels    ReminderLevel[]
 }
 
 model User {
@@ -682,6 +683,24 @@ model DocumentTemplate {
 enum DocumentTemplateType {
   QUOTE
   INVOICE
+}
+
+// Vom Admin frei definierbare Mahnstufen (Standard: 3 Beispielstufen, siehe Seed).
+// introText darf Platzhalter wie {{kunde.name}} enthalten.
+model ReminderLevel {
+  id        String   @id @default(cuid())
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id])
+
+  label        String
+  order        Int
+  daysAfterDue Int     @default(0) // Empfehlung: ab wann diese Stufe sinnvoll ist
+  introText    String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([companyId, order])
 }
 
 model Dashboard {

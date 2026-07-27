@@ -75,6 +75,38 @@ async function main() {
     });
   }
 
+  const reminderLevelCount = await prisma.reminderLevel.count({ where: { companyId: company.id } });
+  if (reminderLevelCount === 0) {
+    await prisma.reminderLevel.createMany({
+      data: [
+        {
+          companyId: company.id,
+          label: "Zahlungserinnerung",
+          order: 0,
+          daysAfterDue: 3,
+          introText:
+            "wir möchten Sie freundlich daran erinnern, dass Rechnung {{dokument.nummer}} über {{dokument.brutto}} noch offen ist.",
+        },
+        {
+          companyId: company.id,
+          label: "1. Mahnung",
+          order: 1,
+          daysAfterDue: 10,
+          introText:
+            "leider konnten wir bislang keinen Zahlungseingang zu Rechnung {{dokument.nummer}} feststellen. Wir bitten Sie, den Betrag von {{dokument.brutto}} zeitnah zu begleichen.",
+        },
+        {
+          companyId: company.id,
+          label: "2. Mahnung",
+          order: 2,
+          daysAfterDue: 20,
+          introText:
+            "trotz unserer bisherigen Erinnerung ist Rechnung {{dokument.nummer}} über {{dokument.brutto}} weiterhin offen. Bitte gleichen Sie den Betrag umgehend aus, um weitere Schritte zu vermeiden.",
+        },
+      ],
+    });
+  }
+
   console.log("Seed abgeschlossen:", company.name);
 }
 

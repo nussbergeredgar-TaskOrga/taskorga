@@ -10,7 +10,7 @@ export default async function NeuesAngebotPage({
   searchParams: { customerId?: string; inquiryId?: string; title?: string };
 }) {
   const company = await getCurrentCompany();
-  const [customers, inquiries] = await Promise.all([
+  const [customers, inquiries, projects] = await Promise.all([
     prisma.customer.findMany({
       where: { companyId: company.id },
       orderBy: { name: "asc" },
@@ -19,6 +19,10 @@ export default async function NeuesAngebotPage({
     prisma.inquiry.findMany({
       where: { companyId: company.id, status: { not: "LOST" } },
       select: { id: true, title: true, customerId: true },
+    }),
+    prisma.project.findMany({
+      where: { companyId: company.id, quoteId: null },
+      select: { id: true, title: true, number: true, customerId: true },
     }),
   ]);
 
@@ -38,6 +42,7 @@ export default async function NeuesAngebotPage({
         <QuoteForm
           customers={customers}
           inquiries={inquiries}
+          projects={projects}
           defaultCustomerId={searchParams.customerId}
           defaultInquiryId={searchParams.inquiryId}
           defaultTitle={searchParams.title}

@@ -10,6 +10,7 @@ import type { QuoteStatus } from "@prisma/client";
 const quoteSchema = z.object({
   customerId: z.string().min(1, "Bitte einen Kunden auswählen"),
   inquiryId: z.string().optional(),
+  projectId: z.string().optional(),
   title: z.string().min(2, "Titel muss mindestens 2 Zeichen haben"),
   validUntil: z.string().optional(),
 });
@@ -32,6 +33,7 @@ export async function createQuote(
   const parsed = quoteSchema.safeParse({
     customerId: formData.get("customerId"),
     inquiryId: formData.get("inquiryId") || undefined,
+    projectId: formData.get("projectId") || undefined,
     title: formData.get("title"),
     validUntil: formData.get("validUntil") || undefined,
   });
@@ -98,8 +100,25 @@ export async function createQuote(
     });
   }
 
+  if (parsed.data.projectId) {
+    await prisma.project.update({
+      where: { id: parsed.data.projectId },
+      data: { quoteId: quote.id },
+    });
+    await prisma.activity.create({
+      data: {
+        companyId: company.id,
+        customerId: parsed.data.customerId,
+        projectId: parsed.data.projectId,
+        type: "quote.linked",
+        message: `Angebot ${quote.number} wurde mit diesem Auftrag verknüpft.`,
+      },
+    });
+  }
+
   revalidatePath("/angebote");
   revalidatePath("/anfragen");
+  revalidatePath("/arbeit");
   redirect(`/angebote/${quote.id}`);
 }
 
@@ -121,41 +140,45 @@ export async function updateQuoteStatus(quoteId: string, status: QuoteStatus) {
 }
 
 // Angebot annehmen: setzt Status auf ACCEPTED und erzeugt automatisch einen Auftrag
+// (außer es ist bereits einer verknüpft, z.B. direkt bei Angebot-Erstellung gewählt)
 export async function acceptQuote(quoteId: string) {
   const quote = await prisma.quote.findUnique({
     where: { id: quoteId },
     include: { project: true },
   });
-  if (!quote || quote.project) return; // bereits ein Auftrag vorhanden
+  if (!quote) return;
 
-  const number = await nextNumber(quote.companyId, "AUF", "project");
+  let project = quote.project;
 
-  const project = await prisma.project.create({
-    data: {
-      companyId: quote.companyId,
-      customerId: quote.customerId,
-      quoteId: quote.id,
-      number,
-      title: quote.title,
-      status: "PLANNED",
-    },
-  });
+  if (!project) {
+    const number = await nextNumber(quote.companyId, "AUF", "project");
+    project = await prisma.project.create({
+      data: {
+        companyId: quote.companyId,
+        customerId: quote.customerId,
+        quoteId: quote.id,
+        number,
+        title: quote.title,
+        status: "PLANNED",
+      },
+    });
+
+    await prisma.activity.create({
+      data: {
+        companyId: quote.companyId,
+        customerId: quote.customerId,
+        projectId: project.id,
+        type: "project.created",
+        message: `Auftrag ${project.number} aus Angebot ${quote.number} erstellt.`,
+      },
+    });
+  }
 
   await prisma.quote.update({ where: { id: quoteId }, data: { status: "ACCEPTED" } });
 
   if (quote.inquiryId) {
     await prisma.inquiry.update({ where: { id: quote.inquiryId }, data: { status: "WON" } });
   }
-
-  await prisma.activity.create({
-    data: {
-      companyId: quote.companyId,
-      customerId: quote.customerId,
-      projectId: project.id,
-      type: "project.created",
-      message: `Auftrag ${project.number} aus Angebot ${quote.number} erstellt.`,
-    },
-  });
 
   revalidatePath("/angebote");
   revalidatePath("/arbeit");

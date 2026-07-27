@@ -68,7 +68,13 @@ export async function markOverdueInvoices() {
   });
 }
 
-const REMINDER_LABELS = ["", "Zahlungserinnerung", "1. Mahnung", "2. Mahnung"];
+const FALLBACK_LABELS = ["", "Zahlungserinnerung", "1. Mahnung", "2. Mahnung"];
+const FALLBACK_INTROS = [
+  "",
+  "wir möchten Sie freundlich daran erinnern, dass folgende Rechnung noch offen ist:",
+  "leider konnten wir bislang keinen Zahlungseingang zu folgender Rechnung feststellen. Wir bitten Sie, den Betrag zeitnah zu begleichen:",
+  "trotz unserer bisherigen Erinnerung ist folgende Rechnung weiterhin offen. Bitte gleichen Sie den Betrag umgehend aus, um weitere Schritte zu vermeiden:",
+];
 
 export async function sendPaymentReminder(invoiceId: string): Promise<{ error?: string; success?: boolean }> {
   const invoice = await prisma.invoice.findUnique({
@@ -81,7 +87,14 @@ export async function sendPaymentReminder(invoiceId: string): Promise<{ error?: 
     return { error: "Für diesen Kunden ist keine E-Mail-Adresse hinterlegt." };
   }
 
-  const nextLevel = Math.min(invoice.reminderLevel + 1, 3);
+  // Konfigurierte Mahnstufen der Firma laden (falls vorhanden), sonst die eingebauten Standardstufen
+  const configuredLevels = await prisma.reminderLevel.findMany({
+    where: { companyId: invoice.companyId },
+    orderBy: { order: "asc" },
+  });
+
+  const levelIndex = invoice.reminderLevel; // 0 = noch keine gesendet -> erste Stufe
+  const nextLevelNumber = Math.min(invoice.reminderLevel + 1, Math.max(configuredLevels.length, 3));
 
   const template = await prisma.documentTemplate.findFirst({
     where: { companyId: invoice.companyId, type: "INVOICE", isDefault: true },
@@ -101,6 +114,11 @@ export async function sendPaymentReminder(invoiceId: string): Promise<{ error?: 
     totalNet: Number(invoice.totalNet),
     totalGross: Number(invoice.totalGross),
   });
+
+  const configuredLevel = configuredLevels[levelIndex];
+  const levelLabel = configuredLevel?.label || FALLBACK_LABELS[Math.min(nextLevelNumber, 3)] || "Zahlungserinnerung";
+  const rawIntro = configuredLevel?.introText || FALLBACK_INTROS[Math.min(nextLevelNumber, 3)];
+  const resolvedIntro = resolvePlaceholders(rawIntro, context);
 
   const pdfBuffer = await renderToBuffer(
     <DocumentPdf
@@ -134,7 +152,8 @@ export async function sendPaymentReminder(invoiceId: string): Promise<{ error?: 
       invoiceNumber: invoice.number,
       amount: `${Number(invoice.totalGross).toLocaleString("de-DE")} €`,
       dueDate: dueDateStr,
-      reminderLevel: nextLevel,
+      levelLabel,
+      introText: resolvedIntro,
       pdfBuffer,
     });
   } catch (err) {
@@ -143,7 +162,7 @@ export async function sendPaymentReminder(invoiceId: string): Promise<{ error?: 
 
   await prisma.invoice.update({
     where: { id: invoiceId },
-    data: { reminderLevel: nextLevel, lastReminderSentAt: new Date() },
+    data: { reminderLevel: nextLevelNumber, lastReminderSentAt: new Date() },
   });
 
   await prisma.activity.create({
@@ -152,7 +171,7 @@ export async function sendPaymentReminder(invoiceId: string): Promise<{ error?: 
       customerId: invoice.customerId,
       invoiceId: invoice.id,
       type: "invoice.reminder_sent",
-      message: `${REMINDER_LABELS[nextLevel]} für Rechnung ${invoice.number} wurde per E-Mail versendet.`,
+      message: `${levelLabel} für Rechnung ${invoice.number} wurde per E-Mail versendet.`,
     },
   });
 

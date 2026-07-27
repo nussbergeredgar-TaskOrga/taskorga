@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { Building2, User as UserIcon, Mail, Phone, MapPin } from "lucide-react";
+import { Building2, User as UserIcon, Mail, Phone, MapPin, Pencil } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { Tabs } from "@/components/tabs";
 import { AddComment } from "@/components/add-comment";
@@ -262,6 +262,13 @@ export default async function KundeDetailPage({
             </div>
           </div>
         </div>
+        <Link
+          href={`/kunden/${customer.id}/bearbeiten`}
+          className="flex items-center gap-1.5 rounded-lg border border-ink-100 text-ink-700 text-sm font-medium px-3 py-2 hover:bg-ink-50 transition-colors shrink-0"
+        >
+          <Pencil size={15} />
+          Bearbeiten
+        </Link>
       </div>
 
       {/* KPIs */}

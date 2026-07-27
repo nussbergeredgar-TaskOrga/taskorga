@@ -34,7 +34,6 @@ export function InvoiceActions({
   }
 
   const isOverdueOrSent = status === "OVERDUE" || status === "SENT" || status === "OPEN" || status === "PARTIALLY_PAID";
-  const nextLabel = REMINDER_LABELS[Math.min(reminderLevel + 1, 3)];
 
   return (
     <div className="space-y-2">
@@ -55,7 +54,7 @@ export function InvoiceActions({
             className="flex items-center gap-1.5 rounded-lg border border-warning text-warning px-3 py-2 text-sm font-medium hover:bg-warning/5 transition-colors disabled:opacity-60"
           >
             <Mail size={15} />
-            {pending ? "Wird gesendet …" : `${nextLabel} senden`}
+            {pending ? "Wird gesendet …" : "Erinnerung/Mahnung senden"}
           </button>
         )}
         <button

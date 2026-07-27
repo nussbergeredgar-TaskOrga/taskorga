@@ -25,12 +25,14 @@ function SubmitButton() {
 export function QuoteForm({
   customers,
   inquiries,
+  projects,
   defaultCustomerId,
   defaultInquiryId,
   defaultTitle,
 }: {
   customers: { id: string; name: string }[];
   inquiries: { id: string; title: string; customerId: string }[];
+  projects: { id: string; title: string; number: string; customerId: string }[];
   defaultCustomerId?: string;
   defaultInquiryId?: string;
   defaultTitle?: string;
@@ -48,6 +50,7 @@ export function QuoteForm({
   const totalGross = totalNet * 1.19;
 
   const relevantInquiries = inquiries.filter((i) => i.customerId === customerId);
+  const relevantProjects = projects.filter((p) => p.customerId === customerId);
 
   return (
     <form action={formAction} className="space-y-6 max-w-2xl">
@@ -94,6 +97,26 @@ export function QuoteForm({
           </select>
         </div>
       </div>
+
+      {customerId && relevantProjects.length > 0 && (
+        <div>
+          <label htmlFor="projectId" className="block text-sm font-medium text-ink-700 mb-1.5">
+            Mit bestehendem Auftrag verknüpfen (optional)
+          </label>
+          <select
+            id="projectId"
+            name="projectId"
+            className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface"
+          >
+            <option value="">Kein — bei Annahme wird ein neuer Auftrag erstellt</option>
+            {relevantProjects.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.number} — {p.title}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
       <div>
         <label htmlFor="title" className="block text-sm font-medium text-ink-700 mb-1.5">
