@@ -91,20 +91,21 @@ export default async function HeutePage() {
 
   // Neue Standard-Kacheln und neu erstellte eigene Kacheln ergänzen, falls sie
   // in der gespeicherten Konfiguration noch fehlen. Gelöschte eigene Kacheln
-  // werden ausgefiltert.
-  const savedIds = new Set((savedLayout ?? []).map((w) => w.id));
-  const missingDefaults = DEFAULT_WIDGETS.filter((w) => !savedIds.has(w.id));
+  // werden ausgefiltert. Bei einem ganz neuen Konto (noch keine gespeicherte
+  // Anordnung) ist DEFAULT_WIDGETS bereits die vollständige Basis — hier
+  // dürfen keine "fehlenden" Standard-Kacheln nochmal ergänzt werden.
+  const baseLayout = savedLayout ?? DEFAULT_WIDGETS;
+  const savedIds = new Set(baseLayout.map((w) => w.id));
+  const missingDefaults = savedLayout ? DEFAULT_WIDGETS.filter((w) => !savedIds.has(w.id)) : [];
   const missingCustom = customWidgetIds
     .filter((id) => !savedIds.has(id))
     .map((id) => ({ id, visible: true, size: "sm" as const, order: 0 }));
   const missing = [...missingDefaults, ...missingCustom].map((w, i) => ({
     ...w,
-    order: (savedLayout?.length ?? 0) + i,
+    order: baseLayout.length + i,
   }));
 
-  const layout = (savedLayout ? [...savedLayout, ...missing] : [...DEFAULT_WIDGETS, ...missing]).filter((w) =>
-    allDefaultIds.includes(w.id)
-  );
+  const layout = [...baseLayout, ...missing].filter((w) => allDefaultIds.includes(w.id));
 
   const firstName = user.name?.split(" ")[0] ?? "";
 
