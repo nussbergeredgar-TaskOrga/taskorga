@@ -25,7 +25,6 @@ export default async function FirmaSettingsPage() {
       <SettingsSection
         title="Firmenprofil"
         description="Erscheint z.B. auf Rechnungen und Angeboten."
-        defaultOpen
       >
         <CompanyProfileForm company={company} />
       </SettingsSection>

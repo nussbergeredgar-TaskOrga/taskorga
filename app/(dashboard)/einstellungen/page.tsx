@@ -12,7 +12,7 @@ export default async function MeinKontoPage() {
 
   return (
     <div className="space-y-4">
-      <SettingsSection title="Mein Profil" description="Name und Passwort ändern." defaultOpen>
+      <SettingsSection title="Mein Profil" description="Name und Passwort ändern.">
         <ProfileForm name={user.name} email={user.email} />
       </SettingsSection>
 

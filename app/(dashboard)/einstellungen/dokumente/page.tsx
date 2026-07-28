@@ -24,7 +24,6 @@ export default async function DokumenteSettingsPage() {
       <SettingsSection
         title="Angebots-Grundeinstellungen"
         description="Standard-Gültigkeit, Rabattart und Nummernformate für Angebote und Rechnungen."
-        defaultOpen
       >
         <DocumentDefaultsForm
           defaultQuoteValidityDays={company.defaultQuoteValidityDays}
