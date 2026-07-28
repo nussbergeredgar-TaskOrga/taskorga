@@ -49,14 +49,17 @@ export function HelpBook() {
     <>
       <button
         onClick={() => setOpen(true)}
-        className="fixed bottom-5 right-5 z-40 flex items-center justify-center h-12 w-12 rounded-full bg-brand-500 text-white shadow-cardHover hover:bg-brand-600 transition-colors"
+        className="fixed bottom-20 right-4 md:bottom-5 md:right-5 z-40 flex items-center justify-center h-12 w-12 rounded-full bg-brand-500 text-white shadow-cardHover hover:bg-brand-600 transition-colors"
         aria-label="Hilfe öffnen"
       >
         <BookOpenText size={20} />
       </button>
 
       {open && (
-        <div className="fixed inset-0 z-50 flex items-end justify-end p-4 sm:p-6" onClick={close}>
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-end p-4 pb-20 md:pb-6 sm:p-6"
+          onClick={close}
+        >
           <div className="absolute inset-0 bg-black/20" />
           <div
             className="relative w-full sm:w-[420px] h-[75vh] sm:h-[600px] max-h-[85vh] bg-surface rounded-card border border-ink-100 shadow-cardHover flex flex-col overflow-hidden"
