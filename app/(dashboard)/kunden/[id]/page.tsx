@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { Building2, User as UserIcon, Mail, Phone, MapPin, Pencil } from "lucide-react";
+import { Building2, User as UserIcon, Mail, Phone, MapPin, Pencil, ArrowLeft } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { Tabs } from "@/components/tabs";
 import { AddComment } from "@/components/add-comment";
@@ -249,6 +249,10 @@ export default async function KundeDetailPage({
 
   return (
     <div className="space-y-6">
+      <Link href="/kunden" className="inline-flex items-center gap-1.5 text-sm text-ink-500 hover:text-ink-900 transition-colors">
+        <ArrowLeft size={16} /> Zurück zu Kunden
+      </Link>
+
       {/* Kopfbereich */}
       <div className="flex items-start justify-between">
         <div className="flex items-start gap-4">
