@@ -114,7 +114,7 @@ export function CustomerForm({ customer }: { customer?: ExistingCustomer }) {
               label="Nachname"
               name="lastName"
               required
-              defaultValue={customer?.lastName}
+              defaultValue={customer?.lastName || customer?.name}
               errors={state.errors?.lastName}
             />
           </div>

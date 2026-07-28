@@ -128,7 +128,8 @@ export async function updateCustomer(
   }
 
   const name = resolveDisplayName(parsed.data);
-  if (!name) {
+  const finalName = name || (await prisma.customer.findUnique({ where: { id: customerId }, select: { name: true } }))?.name;
+  if (!finalName) {
     return {
       errors:
         parsed.data.type === "PRIVATE"
@@ -140,7 +141,7 @@ export async function updateCustomer(
   const customer = await prisma.customer.update({
     where: { id: customerId },
     data: {
-      name,
+      name: finalName,
       type: parsed.data.type,
       salutation: parsed.data.type === "PRIVATE" && parsed.data.salutation ? parsed.data.salutation : null,
       firstName: parsed.data.type === "PRIVATE" ? parsed.data.firstName || null : null,
