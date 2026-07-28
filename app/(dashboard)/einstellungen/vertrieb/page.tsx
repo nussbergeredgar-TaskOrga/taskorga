@@ -3,20 +3,24 @@ import { prisma } from "@/lib/prisma";
 import { WorkflowStepsManager } from "@/components/workflow-steps-manager";
 import { CustomerTabsManager } from "@/components/customer-tabs-manager";
 import { AppointmentTypesManager } from "@/components/appointment-types-manager";
+import { FieldConfigManager } from "@/components/field-config-manager";
 import { SettingsSection } from "@/components/settings-section";
 import { getCustomerTabsConfig } from "@/lib/actions/customer-tabs";
 import { getAppointmentTypes } from "@/lib/actions/appointment-types";
+import { getFieldConfig } from "@/lib/actions/field-config";
+import { FIELD_CATALOGS } from "@/lib/field-config-catalog";
 
 export default async function VertriebSettingsPage() {
   const admin = await requireAdmin();
 
-  const [steps, customerTabs, appointmentTypes] = await Promise.all([
+  const [steps, customerTabs, appointmentTypes, customerFieldConfig] = await Promise.all([
     prisma.workflowStep.findMany({
       where: { companyId: admin.companyId },
       orderBy: { order: "asc" },
     }),
     getCustomerTabsConfig(),
     getAppointmentTypes(),
+    getFieldConfig("customer"),
   ]);
 
   return (
@@ -40,6 +44,13 @@ export default async function VertriebSettingsPage() {
         description="Diese Arten stehen bei der Terminanlage zur Auswahl — gilt firmenweit für alle Nutzer."
       >
         <AppointmentTypesManager types={appointmentTypes} />
+      </SettingsSection>
+
+      <SettingsSection
+        title="Kundenformular — Felder"
+        description="Lege fest, welche Felder beim Anlegen/Bearbeiten eines Kunden sichtbar oder Pflicht sind. Name/Typ sind immer vorhanden."
+      >
+        <FieldConfigManager formKey="customer" catalog={FIELD_CATALOGS.customer} initialConfig={customerFieldConfig} />
       </SettingsSection>
     </div>
   );

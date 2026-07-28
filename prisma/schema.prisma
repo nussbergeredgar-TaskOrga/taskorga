@@ -76,6 +76,26 @@ model Company {
   reminderLevels    ReminderLevel[]
   itemTemplates     ItemTemplate[]
   appointmentTypes  AppointmentTypeOption[]
+  fieldConfigs      FieldConfig[]
+}
+
+// Admin kann pro Formular (z.B. "customer") einzelne Felder ausblenden oder
+// als Pflichtfeld markieren. Strukturell notwendige Felder (Typ, Name) sind
+// bewusst nicht Teil davon und immer sichtbar/erforderlich.
+model FieldConfig {
+  id        String   @id @default(cuid())
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id])
+
+  formKey  String // z.B. "customer"
+  fieldKey String // z.B. "email"
+  visible  Boolean @default(true)
+  required Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([companyId, formKey, fieldKey])
 }
 
 // Vom Admin frei definierbare Terminarten (Standard: 3 Beispiele, siehe Seed)

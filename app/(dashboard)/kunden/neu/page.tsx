@@ -1,8 +1,11 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { CustomerForm } from "@/components/customer-form";
+import { getFieldConfig } from "@/lib/actions/field-config";
 
-export default function NeuerKundePage() {
+export default async function NeuerKundePage() {
+  const fieldConfig = await getFieldConfig("customer");
+
   return (
     <div className="space-y-6">
       <Link
@@ -18,7 +21,7 @@ export default function NeuerKundePage() {
       </div>
 
       <div className="rounded-card border border-ink-100 bg-surface p-6 shadow-card">
-        <CustomerForm />
+        <CustomerForm fieldConfig={fieldConfig} />
       </div>
     </div>
   );

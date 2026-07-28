@@ -5,6 +5,8 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentCompany, getCurrentUser } from "@/lib/session";
+import { getFieldConfig } from "@/lib/actions/field-config";
+import { FIELD_CATALOGS } from "@/lib/field-config-catalog";
 
 const customerSchema = z.object({
   name: z.string().nullish(), // Firmenname bei Geschäftskunden, sonst Fallback
@@ -40,6 +42,24 @@ export type CustomerFormState = {
   message?: string;
 };
 
+// Prüft die admin-konfigurierten Pflichtfelder serverseitig (Formular-Attribut
+// "required" allein reicht nicht, da Server Actions auch direkt aufrufbar sind).
+async function checkConfiguredRequiredFields(
+  data: Record<string, string | null | undefined>
+): Promise<Record<string, string[]> | null> {
+  const config = await getFieldConfig("customer");
+  const errors: Record<string, string[]> = {};
+
+  for (const field of FIELD_CATALOGS.customer) {
+    const rule = config[field.key];
+    if (rule?.required && !data[field.key]?.trim()) {
+      errors[field.key] = [`${field.label} ist ein Pflichtfeld.`];
+    }
+  }
+
+  return Object.keys(errors).length > 0 ? errors : null;
+}
+
 export async function createCustomer(
   _prevState: CustomerFormState,
   formData: FormData
@@ -60,6 +80,11 @@ export async function createCustomer(
 
   if (!parsed.success) {
     return { errors: parsed.error.flatten().fieldErrors };
+  }
+
+  const configErrors = await checkConfiguredRequiredFields(parsed.data);
+  if (configErrors) {
+    return { errors: configErrors };
   }
 
   const name = resolveDisplayName(parsed.data);
@@ -125,6 +150,11 @@ export async function updateCustomer(
 
   if (!parsed.success) {
     return { errors: parsed.error.flatten().fieldErrors };
+  }
+
+  const configErrors = await checkConfiguredRequiredFields(parsed.data);
+  if (configErrors) {
+    return { errors: configErrors };
   }
 
   const name = resolveDisplayName(parsed.data);
