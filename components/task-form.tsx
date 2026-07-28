@@ -87,17 +87,22 @@ export function TaskForm({
     };
 
     startTransition(async () => {
-      const result = taskId ? await updateFreeTask(taskId, payload) : await createFreeTask(payload);
-      if (result?.error) {
-        setError(result.error);
-        return;
-      }
-      if (onDone) {
-        onDone();
-      } else if (!taskId && result.id) {
-        router.push(`/aufgaben/${result.id}`);
+      if (taskId) {
+        const result = await updateFreeTask(taskId, payload);
+        if (result?.error) {
+          setError(result.error);
+          return;
+        }
+        if (onDone) onDone();
+        else router.refresh();
       } else {
-        router.refresh();
+        const result = await createFreeTask(payload);
+        if (result?.error) {
+          setError(result.error);
+          return;
+        }
+        if (onDone) onDone();
+        else if (result.id) router.push(`/aufgaben/${result.id}`);
       }
     });
   }

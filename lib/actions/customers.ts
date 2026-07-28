@@ -166,6 +166,7 @@ export async function updateCustomer(
   revalidatePath("/kunden");
   revalidatePath(`/kunden/${customerId}`);
   redirect(`/kunden/${customerId}`);
+  redirect(`/kunden/${customerId}`);
 }
 
 export async function createCustomerQuick(data: {
