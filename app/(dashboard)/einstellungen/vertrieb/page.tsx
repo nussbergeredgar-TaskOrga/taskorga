@@ -13,7 +13,7 @@ import { FIELD_CATALOGS } from "@/lib/field-config-catalog";
 export default async function VertriebSettingsPage() {
   const admin = await requireAdmin();
 
-  const [steps, customerTabs, appointmentTypes, customerFieldConfig] = await Promise.all([
+  const [steps, customerTabs, appointmentTypes, customerFieldConfig, inquiryFieldConfig] = await Promise.all([
     prisma.workflowStep.findMany({
       where: { companyId: admin.companyId },
       orderBy: { order: "asc" },
@@ -21,6 +21,7 @@ export default async function VertriebSettingsPage() {
     getCustomerTabsConfig(),
     getAppointmentTypes(),
     getFieldConfig("customer"),
+    getFieldConfig("inquiry"),
   ]);
 
   return (
@@ -51,6 +52,13 @@ export default async function VertriebSettingsPage() {
         description="Lege fest, welche Felder beim Anlegen/Bearbeiten eines Kunden sichtbar oder Pflicht sind. Name/Typ sind immer vorhanden."
       >
         <FieldConfigManager formKey="customer" catalog={FIELD_CATALOGS.customer} initialConfig={customerFieldConfig} />
+      </SettingsSection>
+
+      <SettingsSection
+        title="Anfragen-Formular — Felder"
+        description="Lege fest, welche Felder beim Anlegen einer Anfrage sichtbar oder Pflicht sind. Kunde/Titel sind immer vorhanden."
+      >
+        <FieldConfigManager formKey="inquiry" catalog={FIELD_CATALOGS.inquiry} initialConfig={inquiryFieldConfig} />
       </SettingsSection>
     </div>
   );

@@ -5,14 +5,16 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentCompany } from "@/lib/session";
+import { getFieldConfig } from "@/lib/actions/field-config";
+import { FIELD_CATALOGS } from "@/lib/field-config-catalog";
 import type { InquiryStatus } from "@prisma/client";
 
 const inquirySchema = z.object({
   customerId: z.string().min(1, "Bitte einen Kunden auswählen"),
   title: z.string().min(2, "Titel muss mindestens 2 Zeichen haben"),
-  description: z.string().optional(),
-  source: z.string().optional(),
-  amount: z.string().optional(),
+  description: z.string().nullish(),
+  source: z.string().nullish(),
+  amount: z.string().nullish(),
 });
 
 export type InquiryFormState = {
@@ -23,6 +25,23 @@ function parseAmount(raw?: string | null) {
   if (!raw || !raw.trim()) return null;
   const n = Number(raw.replace(",", "."));
   return Number.isFinite(n) ? n : null;
+}
+
+async function checkConfiguredRequiredFields(
+  formKey: string,
+  data: Record<string, string | null | undefined>
+): Promise<Record<string, string[]> | null> {
+  const config = await getFieldConfig(formKey);
+  const errors: Record<string, string[]> = {};
+
+  for (const field of FIELD_CATALOGS[formKey] ?? []) {
+    const rule = config[field.key];
+    if (rule?.required && !data[field.key]?.trim()) {
+      errors[field.key] = [`${field.label} ist ein Pflichtfeld.`];
+    }
+  }
+
+  return Object.keys(errors).length > 0 ? errors : null;
 }
 
 export async function createInquiry(
@@ -39,6 +58,11 @@ export async function createInquiry(
 
   if (!parsed.success) {
     return { errors: parsed.error.flatten().fieldErrors };
+  }
+
+  const configErrors = await checkConfiguredRequiredFields("inquiry", parsed.data);
+  if (configErrors) {
+    return { errors: configErrors };
   }
 
   const company = await getCurrentCompany();

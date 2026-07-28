@@ -3,6 +3,7 @@
 import { useFormState, useFormStatus } from "react-dom";
 import { createInquiry, type InquiryFormState } from "@/lib/actions/inquiries";
 import { CustomerAutocomplete } from "@/components/customer-autocomplete";
+import type { FieldConfigMap } from "@/lib/actions/field-config";
 
 const initialState: InquiryFormState = {};
 
@@ -19,12 +20,17 @@ function SubmitButton() {
   );
 }
 
+const DEFAULT_FIELD_STATE = { visible: true, required: false };
+
 export function InquiryForm({
   customers,
+  fieldConfig,
 }: {
   customers: { id: string; name: string }[];
+  fieldConfig?: FieldConfigMap;
 }) {
   const [state, formAction] = useFormState(createInquiry, initialState);
+  const fc = (key: string) => fieldConfig?.[key] ?? DEFAULT_FIELD_STATE;
 
   return (
     <form action={formAction} className="space-y-5 max-w-xl">
@@ -59,44 +65,59 @@ export function InquiryForm({
         )}
       </div>
 
-      <div>
-        <label htmlFor="amount" className="block text-sm font-medium text-ink-700 mb-1.5">
-          Geschätzter Betrag (€)
-        </label>
-        <input
-          id="amount"
-          name="amount"
-          type="number"
-          step="0.01"
-          placeholder="z. B. 2500"
-          className="w-full max-w-xs rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 transition-colors font-mono"
-        />
-      </div>
+      {fc("amount").visible && (
+        <div>
+          <label htmlFor="amount" className="block text-sm font-medium text-ink-700 mb-1.5">
+            Geschätzter Betrag (€)
+            {fc("amount").required && <span className="text-danger ml-0.5">*</span>}
+          </label>
+          <input
+            id="amount"
+            name="amount"
+            type="number"
+            step="0.01"
+            required={fc("amount").required}
+            placeholder="z. B. 2500"
+            className="w-full max-w-xs rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 transition-colors font-mono"
+          />
+          {state.errors?.amount && <p className="text-xs text-danger mt-1">{state.errors.amount[0]}</p>}
+        </div>
+      )}
 
-      <div>
-        <label htmlFor="source" className="block text-sm font-medium text-ink-700 mb-1.5">
-          Quelle
-        </label>
-        <input
-          id="source"
-          name="source"
-          type="text"
-          placeholder="z. B. Telefon, Website, Empfehlung"
-          className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 transition-colors"
-        />
-      </div>
+      {fc("source").visible && (
+        <div>
+          <label htmlFor="source" className="block text-sm font-medium text-ink-700 mb-1.5">
+            Quelle
+            {fc("source").required && <span className="text-danger ml-0.5">*</span>}
+          </label>
+          <input
+            id="source"
+            name="source"
+            type="text"
+            required={fc("source").required}
+            placeholder="z. B. Telefon, Website, Empfehlung"
+            className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 transition-colors"
+          />
+          {state.errors?.source && <p className="text-xs text-danger mt-1">{state.errors.source[0]}</p>}
+        </div>
+      )}
 
-      <div>
-        <label htmlFor="description" className="block text-sm font-medium text-ink-700 mb-1.5">
-          Beschreibung
-        </label>
-        <textarea
-          id="description"
-          name="description"
-          rows={3}
-          className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 transition-colors"
-        />
-      </div>
+      {fc("description").visible && (
+        <div>
+          <label htmlFor="description" className="block text-sm font-medium text-ink-700 mb-1.5">
+            Beschreibung
+            {fc("description").required && <span className="text-danger ml-0.5">*</span>}
+          </label>
+          <textarea
+            id="description"
+            name="description"
+            required={fc("description").required}
+            rows={3}
+            className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 transition-colors"
+          />
+          {state.errors?.description && <p className="text-xs text-danger mt-1">{state.errors.description[0]}</p>}
+        </div>
+      )}
 
       <SubmitButton />
     </form>
