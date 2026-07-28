@@ -7,6 +7,7 @@ import { getReminderLevels } from "@/lib/actions/reminder-levels";
 import { DocumentDefaultsForm } from "@/components/document-defaults-form";
 import { ItemTemplatesManager } from "@/components/item-templates-manager";
 import { getItemTemplates } from "@/lib/actions/item-templates";
+import { SettingsSection } from "@/components/settings-section";
 
 export default async function DokumenteSettingsPage() {
   const admin = await requireAdmin();
@@ -19,26 +20,24 @@ export default async function DokumenteSettingsPage() {
   ]);
 
   return (
-    <div className="space-y-6">
-      <div className="rounded-card border border-ink-100 bg-surface p-6 shadow-card max-w-2xl">
-        <h2 className="font-display font-semibold text-ink-900 mb-1">Angebots-Grundeinstellungen</h2>
-        <p className="text-sm text-ink-500 mb-4">
-          Standard-Gültigkeit, Rabattart und Nummernformate für Angebote und Rechnungen.
-        </p>
+    <div className="space-y-4">
+      <SettingsSection
+        title="Angebots-Grundeinstellungen"
+        description="Standard-Gültigkeit, Rabattart und Nummernformate für Angebote und Rechnungen."
+        defaultOpen
+      >
         <DocumentDefaultsForm
           defaultQuoteValidityDays={company.defaultQuoteValidityDays}
           defaultDiscountType={company.defaultDiscountType}
           quoteNumberFormat={company.quoteNumberFormat}
           invoiceNumberFormat={company.invoiceNumberFormat}
         />
-      </div>
+      </SettingsSection>
 
-      <div className="rounded-card border border-ink-100 bg-surface p-6 shadow-card max-w-2xl">
-        <h2 className="font-display font-semibold text-ink-900 mb-1">Positions-Bibliothek</h2>
-        <p className="text-sm text-ink-500 mb-4">
-          Häufig genutzte Positionen vordefinieren — beim Angebot-Erstellen direkt einfügbar,
-          statt jedes Mal neu einzutippen.
-        </p>
+      <SettingsSection
+        title="Positions-Bibliothek"
+        description="Häufig genutzte Positionen vordefinieren — beim Angebot-Erstellen direkt einfügbar, statt jedes Mal neu einzutippen."
+      >
         <ItemTemplatesManager
           templates={itemTemplates.map((t) => ({
             id: t.id,
@@ -48,15 +47,12 @@ export default async function DokumenteSettingsPage() {
             taxRate: Number(t.taxRate),
           }))}
         />
-      </div>
+      </SettingsSection>
 
-      <div className="rounded-card border border-ink-100 bg-surface p-6 shadow-card max-w-2xl">
-        <h2 className="font-display font-semibold text-ink-900 mb-1">Angebots-/Rechnungsvorlagen</h2>
-        <p className="text-sm text-ink-500 mb-4">
-          Eigene Vorlagen mit Platzhaltern erstellen, die beim PDF-Erzeugen automatisch mit
-          echten Daten gefüllt werden (z. B. {"{{kunde.name}}"}). Die als „Standard" markierte
-          Vorlage je Typ wird verwendet.
-        </p>
+      <SettingsSection
+        title="Angebots-/Rechnungsvorlagen"
+        description={`Eigene Vorlagen mit Platzhaltern erstellen, die beim PDF-Erzeugen automatisch mit echten Daten gefüllt werden (z. B. {{kunde.name}}). Die als „Standard" markierte Vorlage je Typ wird verwendet.`}
+      >
         <DocumentTemplateManager
           templates={documentTemplates.map((t) => ({
             id: t.id,
@@ -69,14 +65,12 @@ export default async function DokumenteSettingsPage() {
             accentColor: t.accentColor,
           }))}
         />
-      </div>
+      </SettingsSection>
 
-      <div className="rounded-card border border-ink-100 bg-surface p-6 shadow-card max-w-2xl">
-        <h2 className="font-display font-semibold text-ink-900 mb-1">Mahnwesen — Erinnerungsstufen</h2>
-        <p className="text-sm text-ink-500 mb-4">
-          Lege fest, welche Stufen es beim Erinnern an offene Rechnungen gibt, ab wann sie
-          sinnvoll sind und welcher Text verschickt wird.
-        </p>
+      <SettingsSection
+        title="Mahnwesen — Erinnerungsstufen"
+        description="Lege fest, welche Stufen es beim Erinnern an offene Rechnungen gibt, ab wann sie sinnvoll sind und welcher Text verschickt wird."
+      >
         <ReminderLevelsManager
           levels={reminderLevels.map((l) => ({
             id: l.id,
@@ -85,7 +79,7 @@ export default async function DokumenteSettingsPage() {
             introText: l.introText,
           }))}
         />
-      </div>
+      </SettingsSection>
     </div>
   );
 }

@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, Star } from "lucide-react";
+import { Plus, Trash2, Star, ChevronDown } from "lucide-react";
 import {
   createDocumentTemplate,
   updateDocumentTemplate,
@@ -25,6 +25,7 @@ type Template = {
 
 function TemplateEditor({ template }: { template: Template }) {
   const router = useRouter();
+  const [open, setOpen] = useState(false);
   const [name, setName] = useState(template.name);
   const [introText, setIntroText] = useState(template.introText ?? "");
   const [footerText, setFooterText] = useState(template.footerText ?? "");
@@ -43,26 +44,45 @@ function TemplateEditor({ template }: { template: Template }) {
   }
 
   return (
-    <div className="rounded-lg border border-ink-100 p-4 space-y-3 bg-ink-50">
-      <div className="flex items-center justify-between gap-2">
-        <input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          className="flex-1 rounded-lg border border-ink-100 px-3 py-2 text-sm font-medium outline-none focus:border-brand-500 bg-surface"
-        />
-        {template.isDefault ? (
-          <span className="flex items-center gap-1 text-xs font-medium text-brand-700 whitespace-nowrap">
-            <Star size={13} fill="currentColor" /> Standard
-          </span>
-        ) : (
-          <button
-            onClick={() => startTransition(async () => { await setDefaultTemplate(template.id, template.type); router.refresh(); })}
-            className="text-xs text-ink-500 hover:text-brand-700 transition-colors whitespace-nowrap"
-          >
-            Als Standard festlegen
-          </button>
-        )}
-      </div>
+    <div className="rounded-lg border border-ink-100 bg-ink-50 overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="w-full flex items-center justify-between gap-2 px-4 py-3 text-left hover:bg-ink-100 transition-colors"
+      >
+        <span className="font-medium text-sm text-ink-900 truncate">{name}</span>
+        <div className="flex items-center gap-2 shrink-0">
+          {template.isDefault && (
+            <span className="flex items-center gap-1 text-xs font-medium text-brand-700 whitespace-nowrap">
+              <Star size={13} fill="currentColor" /> Standard
+            </span>
+          )}
+          <ChevronDown size={16} className={`text-ink-300 transition-transform ${open ? "rotate-180" : ""}`} />
+        </div>
+      </button>
+
+      {open && (
+        <div className="px-4 pb-4 space-y-3">
+          <div className="flex items-center justify-between gap-2">
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="flex-1 rounded-lg border border-ink-100 px-3 py-2 text-sm font-medium outline-none focus:border-brand-500 bg-surface"
+            />
+            {!template.isDefault && (
+              <button
+                onClick={() =>
+                  startTransition(async () => {
+                    await setDefaultTemplate(template.id, template.type);
+                    router.refresh();
+                  })
+                }
+                className="text-xs text-ink-500 hover:text-brand-700 transition-colors whitespace-nowrap"
+              >
+                Als Standard festlegen
+              </button>
+            )}
+          </div>
 
       <div>
         <label className="block text-xs text-ink-500 mb-1">
@@ -121,6 +141,8 @@ function TemplateEditor({ template }: { template: Template }) {
           <Trash2 size={13} /> Löschen
         </button>
       </div>
+        </div>
+      )}
     </div>
   );
 }

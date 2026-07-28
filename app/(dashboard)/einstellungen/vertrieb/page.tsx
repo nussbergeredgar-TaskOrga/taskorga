@@ -2,6 +2,7 @@ import { requireAdmin } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { WorkflowStepsManager } from "@/components/workflow-steps-manager";
 import { CustomerTabsManager } from "@/components/customer-tabs-manager";
+import { SettingsSection } from "@/components/settings-section";
 import { getCustomerTabsConfig } from "@/lib/actions/customer-tabs";
 
 export default async function VertriebSettingsPage() {
@@ -16,24 +17,21 @@ export default async function VertriebSettingsPage() {
   ]);
 
   return (
-    <div className="space-y-6">
-      <div className="rounded-card border border-ink-100 bg-surface p-6 shadow-card max-w-2xl">
-        <h2 className="font-display font-semibold text-ink-900 mb-1">Anfragen-Workflow</h2>
-        <p className="text-sm text-ink-500 mb-4">
-          Diese Schritte erscheinen bei jeder Anfrage als Checkliste. Reihenfolge mit den
-          Pfeilen ändern, Text direkt bearbeiten (Klick raus zum Speichern).
-        </p>
+    <div className="space-y-4">
+      <SettingsSection
+        title="Anfragen-Workflow"
+        description="Diese Schritte erscheinen bei jeder Anfrage als Checkliste. Reihenfolge mit den Pfeilen ändern, Text direkt bearbeiten (Klick raus zum Speichern)."
+        defaultOpen
+      >
         <WorkflowStepsManager steps={steps} />
-      </div>
+      </SettingsSection>
 
-      <div className="rounded-card border border-ink-100 bg-surface p-6 shadow-card max-w-2xl">
-        <h2 className="font-display font-semibold text-ink-900 mb-1">Kundenstamm-Tabs</h2>
-        <p className="text-sm text-ink-500 mb-4">
-          Lege fest, welche Tabs im Kundenprofil angezeigt werden und in welcher Reihenfolge —
-          gilt firmenweit für alle Nutzer.
-        </p>
+      <SettingsSection
+        title="Kundenstamm-Tabs"
+        description="Lege fest, welche Tabs im Kundenprofil angezeigt werden und in welcher Reihenfolge — gilt firmenweit für alle Nutzer."
+      >
         <CustomerTabsManager initialConfig={customerTabs} />
-      </div>
+      </SettingsSection>
     </div>
   );
 }
