@@ -77,6 +77,7 @@ model Company {
   itemTemplates     ItemTemplate[]
   appointmentTypes  AppointmentTypeOption[]
   fieldConfigs      FieldConfig[]
+  absences          Absence[]
 }
 
 // Admin kann pro Formular (z.B. "customer") einzelne Felder ausblenden oder
@@ -140,6 +141,8 @@ model User {
   updatedAt DateTime @updatedAt
 
   assignedTasks   Task[]        @relation("TaskAssignee")
+  workingHours    UserWorkingHours[]
+  absences        Absence[]
   comments        Comment[]
   activities      Activity[]
   dashboards      Dashboard[]
@@ -818,6 +821,38 @@ model QuoteVersion {
   createdAt     DateTime @default(now())
 
   @@unique([quoteId, versionNumber])
+}
+
+// Wöchentlicher Arbeitsplan je Nutzer (vom Admin gepflegt)
+model UserWorkingHours {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  weekday      Int // 0=Montag … 6=Sonntag
+  startTime    String @default("08:00")
+  endTime      String @default("17:00")
+  isWorkingDay Boolean @default(true)
+
+  @@unique([userId, weekday])
+}
+
+// Urlaub/Frei (pro Nutzer) oder Feiertag (firmenweit, userId = null)
+model Absence {
+  id        String   @id @default(cuid())
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id])
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+
+  type      String // URLAUB | FREI | FEIERTAG
+  startDate DateTime
+  endDate   DateTime
+  note      String?
+
+  createdAt DateTime @default(now())
+
+  @@index([companyId])
 }
 
 model Dashboard {

@@ -24,6 +24,7 @@ import { TermineListView } from "@/components/termine-list-view";
 import { CollapsiblePanel } from "@/components/collapsible-panel";
 import { getAppointmentTypes } from "@/lib/actions/appointment-types";
 import { getFieldConfig } from "@/lib/actions/field-config";
+import { getCalendarScheduleContext } from "@/lib/actions/schedule";
 import { KpiCard } from "@/components/kpi-card";
 import { CalendarCheck, CalendarClock, Wallet } from "lucide-react";
 
@@ -41,7 +42,7 @@ export default async function TerminePage({
   const gridEnd = endOfWeek(monthEnd, { weekStartsOn: 1 });
   const days = eachDayOfInterval({ start: gridStart, end: gridEnd });
 
-  const [appointments, allAppointments, customers, openInquiries, appointmentTypes, appointmentFieldConfig] = await Promise.all([
+  const [appointments, allAppointments, customers, openInquiries, appointmentTypes, appointmentFieldConfig, scheduleContext] = await Promise.all([
     prisma.appointment.findMany({
       where: {
         companyId: company.id,
@@ -66,6 +67,7 @@ export default async function TerminePage({
     }),
     getAppointmentTypes(),
     getFieldConfig("appointment"),
+    getCalendarScheduleContext(),
   ]);
 
   const prevMonth = format(subMonths(anchorDate, 1), "yyyy-MM");
@@ -88,15 +90,28 @@ export default async function TerminePage({
   const calendarDays = days.map((day) => {
     const key = format(day, "yyyy-MM-dd");
     const dayAppointments = appointmentsByDay.get(key) ?? [];
+    const absence = scheduleContext.absences.find((a) => {
+      const startKey = new Date(a.startDate).toISOString().slice(0, 10);
+      const endKey = new Date(a.endDate).toISOString().slice(0, 10);
+      return key >= startKey && key <= endKey;
+    });
     return {
       key,
       dayNumber: format(day, "d"),
       inMonth: isSameMonth(day, anchorDate),
       isToday: isSameDay(day, new Date()),
+      absenceType: absence?.type ?? null,
+      absenceNote: absence?.note ?? null,
       appointments: dayAppointments.map((a) => ({
         id: a.id,
         title: a.title,
         time: a.scheduledAt ? format(a.scheduledAt, "HH:mm") : "",
+        startMinutes: a.scheduledAt ? a.scheduledAt.getHours() * 60 + a.scheduledAt.getMinutes() : 0,
+        endMinutes: a.endAt
+          ? a.endAt.getHours() * 60 + a.endAt.getMinutes()
+          : a.scheduledAt
+            ? a.scheduledAt.getHours() * 60 + a.scheduledAt.getMinutes() + 30
+            : 30,
         customerId: a.customer?.id ?? null,
         customerName: a.customer?.name ?? null,
       })),
@@ -148,6 +163,12 @@ export default async function TerminePage({
           inquiries={openInquiries}
           appointmentTypes={appointmentTypes.map((t) => ({ id: t.id, label: t.label }))}
           fieldConfig={appointmentFieldConfig}
+          workingHours={scheduleContext.workingHours.map((h) => ({
+            weekday: h.weekday,
+            startTime: h.startTime,
+            endTime: h.endTime,
+            isWorkingDay: h.isWorkingDay,
+          }))}
         />
       </CollapsiblePanel>
 

@@ -5,10 +5,16 @@ import { TeamManager } from "@/components/team-manager";
 import { NavLabelManager } from "@/components/nav-label-manager";
 import { EmailSignatureForm } from "@/components/email-signature-form";
 import { AppColorForm } from "@/components/app-color-form";
+import { ScheduleManager } from "@/components/schedule-manager";
 import { SettingsSection } from "@/components/settings-section";
 import { getNavLabels } from "@/lib/actions/nav";
+import { getWorkingHours, getAbsences } from "@/lib/actions/schedule";
 
-export default async function FirmaSettingsPage() {
+export default async function FirmaSettingsPage({
+  searchParams,
+}: {
+  searchParams: { scheduleUser?: string };
+}) {
   const admin = await requireAdmin();
 
   const [company, users, navLabels] = await Promise.all([
@@ -19,6 +25,12 @@ export default async function FirmaSettingsPage() {
       orderBy: { createdAt: "asc" },
     }),
     getNavLabels(),
+  ]);
+
+  const scheduleUserId = searchParams.scheduleUser || users[0]?.id || admin.id;
+  const [workingHours, absences] = await Promise.all([
+    getWorkingHours(scheduleUserId),
+    getAbsences(),
   ]);
 
   return (
@@ -68,6 +80,23 @@ export default async function FirmaSettingsPage() {
         description="Eigene Bezeichnungen für die Menüpunkte — gilt firmenweit für alle Nutzer. Leer lassen für den Standardtext."
       >
         <NavLabelManager initialLabels={navLabels} />
+      </SettingsSection>
+
+      <SettingsSection
+        title="Arbeitszeiten & Abwesenheiten"
+        description="Wochenarbeitsplan je Nutzer sowie Urlaub, freie Tage und Feiertage — wird im Kalender berücksichtigt."
+      >
+        <ScheduleManager
+          users={users.map((u) => ({ id: u.id, name: u.name }))}
+          initialUserId={scheduleUserId}
+          initialWorkingHours={workingHours.map((h) => ({
+            weekday: h.weekday,
+            startTime: h.startTime,
+            endTime: h.endTime,
+            isWorkingDay: h.isWorkingDay,
+          }))}
+          absences={absences}
+        />
       </SettingsSection>
     </div>
   );

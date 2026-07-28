@@ -10,6 +10,8 @@ type DayAppointment = {
   id: string;
   title: string;
   time: string;
+  startMinutes: number;
+  endMinutes: number;
   customerId: string | null;
   customerName: string | null;
 };
@@ -19,11 +21,30 @@ type Day = {
   dayNumber: string;
   inMonth: boolean;
   isToday: boolean;
+  absenceType?: string | null;
+  absenceNote?: string | null;
   appointments: DayAppointment[];
 };
 
+type WorkingHourRow = { weekday: number; startTime: string; endTime: string; isWorkingDay: boolean };
+
 const WEEKDAY_LABELS = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
 const WEEKDAY_FULL = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"];
+const ABSENCE_LABELS: Record<string, string> = { URLAUB: "Urlaub", FREI: "Frei", FEIERTAG: "Feiertag" };
+
+const HOUR_START = 6;
+const HOUR_END = 21;
+const HOUR_HEIGHT = 52; // px pro Stunde
+
+function weekdayIndex(dateKey: string) {
+  const d = new Date(dateKey).getDay();
+  return d === 0 ? 6 : d - 1; // Montag=0 … Sonntag=6
+}
+
+function timeToMinutes(time: string) {
+  const [h, m] = time.split(":").map(Number);
+  return h * 60 + m;
+}
 
 type ViewMode = "monat" | "woche" | "tag";
 
@@ -33,12 +54,14 @@ export function TermineCalendarSection({
   inquiries,
   appointmentTypes,
   fieldConfig,
+  workingHours,
 }: {
   days: Day[];
   customers: { id: string; name: string }[];
   inquiries: { id: string; title: string; customerId: string }[];
   appointmentTypes: { id: string; label: string }[];
   fieldConfig?: FieldConfigMap;
+  workingHours?: WorkingHourRow[];
 }) {
   const [formOpen, setFormOpen] = useState(false);
   const [defaultDate, setDefaultDate] = useState<string | undefined>(undefined);
@@ -68,6 +91,85 @@ export function TermineCalendarSection({
     setSelectedIndex((i) => Math.max(0, Math.min(days.length - 1, i + delta * 7)));
   }
 
+  const hourMarks = Array.from({ length: HOUR_END - HOUR_START + 1 }, (_, i) => HOUR_START + i);
+  const gridHeight = (HOUR_END - HOUR_START) * HOUR_HEIGHT;
+
+  function workingHoursFor(dateKey: string) {
+    const wh = workingHours?.find((h) => h.weekday === weekdayIndex(dateKey));
+    return wh ?? { startTime: "08:00", endTime: "17:00", isWorkingDay: true };
+  }
+
+  function blockStyle(a: DayAppointment) {
+    const clampedStart = Math.max(a.startMinutes, HOUR_START * 60);
+    const clampedEnd = Math.max(Math.min(a.endMinutes, HOUR_END * 60), clampedStart + 15);
+    const top = ((clampedStart - HOUR_START * 60) / 60) * HOUR_HEIGHT;
+    const height = ((clampedEnd - clampedStart) / 60) * HOUR_HEIGHT;
+    return { top, height: Math.max(height, 20) };
+  }
+
+  function DayColumn({ day, narrow }: { day: Day; narrow?: boolean }) {
+    const wh = workingHoursFor(day.key);
+    const nonWorkingTop = wh.isWorkingDay
+      ? Math.max(0, ((timeToMinutes(wh.startTime) - HOUR_START * 60) / 60) * HOUR_HEIGHT)
+      : 0;
+    const nonWorkingBottomStart = wh.isWorkingDay
+      ? ((timeToMinutes(wh.endTime) - HOUR_START * 60) / 60) * HOUR_HEIGHT
+      : 0;
+
+    return (
+      <div
+        className="relative border-l border-ink-100 first:border-l-0"
+        style={{ height: gridHeight }}
+        onDoubleClick={() => openForDay(day.key)}
+        title="Doppelklick: neuer Termin"
+      >
+        {hourMarks.slice(0, -1).map((h, i) => (
+          <div
+            key={h}
+            className="absolute left-0 right-0 border-t border-ink-100"
+            style={{ top: i * HOUR_HEIGHT }}
+          />
+        ))}
+
+        {!wh.isWorkingDay && (
+          <div className="absolute inset-0 bg-ink-50/60" />
+        )}
+        {wh.isWorkingDay && (
+          <>
+            <div className="absolute left-0 right-0 bg-ink-50/40" style={{ top: 0, height: nonWorkingTop }} />
+            <div
+              className="absolute left-0 right-0 bg-ink-50/40"
+              style={{ top: nonWorkingBottomStart, height: gridHeight - nonWorkingBottomStart }}
+            />
+          </>
+        )}
+
+        {day.absenceType && (
+          <div className="absolute inset-x-0 top-0 z-10 bg-warning/15 text-warning text-[10px] font-medium text-center py-0.5">
+            {ABSENCE_LABELS[day.absenceType] ?? day.absenceType}
+          </div>
+        )}
+
+        {day.appointments.map((a) => {
+          const { top, height } = blockStyle(a);
+          return (
+            <Link
+              key={a.id}
+              href={`/termine/${a.id}`}
+              onClick={(e) => e.stopPropagation()}
+              className="absolute left-1 right-1 z-20 rounded bg-turquoise-500 text-white px-1.5 py-0.5 text-[11px] overflow-hidden hover:bg-turquoise-700 transition-colors shadow-sm"
+              style={{ top, height }}
+              title={`${a.time} ${a.title}${a.customerName ? " — " + a.customerName : ""}`}
+            >
+              <span className="font-medium">{a.time}</span> {a.title}
+              {!narrow && a.customerName && <span className="block truncate opacity-90">{a.customerName}</span>}
+            </Link>
+          );
+        })}
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-2">
@@ -80,21 +182,19 @@ export function TermineCalendarSection({
           onOpenChange={setFormOpen}
           defaultDate={defaultDate}
         />
-        <div className="flex items-center gap-2">
-          <div className="inline-flex rounded-lg border border-ink-100 p-1">
-            {(["monat", "woche", "tag"] as ViewMode[]).map((v) => (
-              <button
-                key={v}
-                onClick={() => setView(v)}
-                className={cn(
-                  "rounded-md px-3 py-1.5 text-xs font-medium capitalize transition-colors",
-                  view === v ? "bg-brand-500 text-white" : "text-ink-700 hover:bg-ink-50"
-                )}
-              >
-                {v}
-              </button>
-            ))}
-          </div>
+        <div className="inline-flex rounded-lg border border-ink-100 p-1">
+          {(["monat", "woche", "tag"] as ViewMode[]).map((v) => (
+            <button
+              key={v}
+              onClick={() => setView(v)}
+              className={cn(
+                "rounded-md px-3 py-1.5 text-xs font-medium capitalize transition-colors",
+                view === v ? "bg-brand-500 text-white" : "text-ink-700 hover:bg-ink-50"
+              )}
+            >
+              {v}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -119,14 +219,19 @@ export function TermineCalendarSection({
                     !day.inMonth && "bg-ink-50"
                   )}
                 >
-                  <span
-                    className={cn(
-                      "inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-mono",
-                      day.isToday ? "bg-brand-500 text-white" : day.inMonth ? "text-ink-700" : "text-ink-300"
+                  <div className="flex items-center justify-between">
+                    <span
+                      className={cn(
+                        "inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-mono",
+                        day.isToday ? "bg-brand-500 text-white" : day.inMonth ? "text-ink-700" : "text-ink-300"
+                      )}
+                    >
+                      {day.dayNumber}
+                    </span>
+                    {day.absenceType && (
+                      <span className="text-[9px] font-medium text-warning">{ABSENCE_LABELS[day.absenceType]}</span>
                     )}
-                  >
-                    {day.dayNumber}
-                  </span>
+                  </div>
                   <div className="mt-1 space-y-1">
                     {day.appointments.slice(0, 3).map((a) => (
                       <Link
@@ -161,43 +266,33 @@ export function TermineCalendarSection({
             </button>
           </div>
           <div className="rounded-card border border-ink-100 bg-surface p-4 shadow-card overflow-x-auto">
-            <div className="grid grid-cols-7 min-w-[840px] gap-px bg-ink-100 rounded-lg overflow-hidden">
-              {weekDays.map((day) => (
-                <div key={day.key} className="bg-surface min-h-[220px] p-2">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-medium text-ink-500">
-                      {WEEKDAY_LABELS[new Date(day.key).getDay() === 0 ? 6 : new Date(day.key).getDay() - 1]}
-                    </span>
-                    <span
-                      className={cn(
-                        "inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-mono",
-                        day.isToday ? "bg-brand-500 text-white" : "text-ink-700"
-                      )}
-                    >
-                      {day.dayNumber}
-                    </span>
+            <div className="flex min-w-[880px]">
+              <div className="w-14 shrink-0">
+                <div className="h-8" />
+                {hourMarks.slice(0, -1).map((h) => (
+                  <div key={h} style={{ height: HOUR_HEIGHT }} className="text-[10px] text-ink-300 font-mono -mt-2">
+                    {String(h).padStart(2, "0")}:00
                   </div>
-                  <div
-                    className="space-y-1 cursor-pointer"
-                    onDoubleClick={() => openForDay(day.key)}
-                    title="Doppelklick: neuer Termin an diesem Tag"
-                  >
-                    {day.appointments.map((a) => (
-                      <Link
-                        key={a.id}
-                        href={`/termine/${a.id}`}
-                        className="block truncate rounded bg-turquoise-100 px-1.5 py-1 text-[11px] text-turquoise-700 hover:bg-turquoise-500 hover:text-white transition-colors"
-                        title={`${a.title} — ${a.customerName ?? ""}`}
+                ))}
+              </div>
+              <div className="flex-1 grid grid-cols-7">
+                {weekDays.map((day) => (
+                  <div key={day.key}>
+                    <div className="h-8 flex flex-col items-center justify-center border-b border-ink-100">
+                      <span className="text-[10px] text-ink-500">{WEEKDAY_LABELS[weekdayIndex(day.key)]}</span>
+                      <span
+                        className={cn(
+                          "text-xs font-mono",
+                          day.isToday ? "text-brand-500 font-semibold" : "text-ink-700"
+                        )}
                       >
-                        {a.time} {a.title}
-                      </Link>
-                    ))}
-                    {day.appointments.length === 0 && (
-                      <p className="text-[11px] text-ink-300">Keine Termine</p>
-                    )}
+                        {day.dayNumber}
+                      </span>
+                    </div>
+                    <DayColumn day={day} narrow />
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           </div>
         </div>
@@ -210,41 +305,24 @@ export function TermineCalendarSection({
               ← Vorheriger Tag
             </button>
             <span className="text-sm font-medium text-ink-900">
-              {WEEKDAY_FULL[new Date(selectedDay.key).getDay() === 0 ? 6 : new Date(selectedDay.key).getDay() - 1]},{" "}
-              {selectedDay.key.split("-").reverse().join(".")}
+              {WEEKDAY_FULL[weekdayIndex(selectedDay.key)]}, {selectedDay.key.split("-").reverse().join(".")}
             </span>
             <button onClick={() => shiftDay(1)} className="text-sm text-ink-500 hover:text-ink-900 transition-colors">
               Nächster Tag →
             </button>
           </div>
-          <div className="rounded-card border border-ink-100 bg-surface p-5 shadow-card">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="font-display font-semibold text-ink-900">
-                {selectedDay.appointments.length} Termin{selectedDay.appointments.length !== 1 ? "e" : ""}
-              </h3>
-              <button
-                onClick={() => openForDay(selectedDay.key)}
-                className="text-xs text-brand-700 hover:underline"
-              >
-                + Termin an diesem Tag anlegen
-              </button>
-            </div>
-            <div className="space-y-2">
-              {selectedDay.appointments.map((a) => (
-                <Link
-                  key={a.id}
-                  href={`/termine/${a.id}`}
-                  className="flex items-center justify-between rounded-lg border-l-4 border-l-turquoise-500 bg-ink-50 px-3 py-2.5 text-sm hover:bg-ink-100 transition-colors"
-                >
-                  <span className="font-medium text-ink-900">{a.title}</span>
-                  <span className="font-mono text-xs text-ink-500">
-                    {a.time} {a.customerName && `· ${a.customerName}`}
-                  </span>
-                </Link>
-              ))}
-              {selectedDay.appointments.length === 0 && (
-                <p className="text-sm text-ink-300">Keine Termine an diesem Tag.</p>
-              )}
+          <div className="rounded-card border border-ink-100 bg-surface p-4 shadow-card overflow-x-auto">
+            <div className="flex min-w-[500px]">
+              <div className="w-14 shrink-0">
+                {hourMarks.slice(0, -1).map((h) => (
+                  <div key={h} style={{ height: HOUR_HEIGHT }} className="text-[10px] text-ink-300 font-mono -mt-2">
+                    {String(h).padStart(2, "0")}:00
+                  </div>
+                ))}
+              </div>
+              <div className="flex-1">
+                <DayColumn day={selectedDay} />
+              </div>
             </div>
           </div>
         </div>
