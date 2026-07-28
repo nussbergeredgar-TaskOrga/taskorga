@@ -11,9 +11,11 @@ export const DEFAULT_WIDGETS: WidgetConfig[] = [
   { id: "kpi-termine-heute", visible: true, size: "sm", order: 6 },
   { id: "kpi-termine-ausgemacht", visible: true, size: "sm", order: 7 },
   { id: "kpi-termine-betrag", visible: true, size: "sm", order: 8 },
-  { id: "widget-offene-aufgaben-liste", visible: true, size: "md", order: 9 },
-  { id: "widget-naechste-termine", visible: true, size: "md", order: 10 },
-  { id: "widget-letzte-aktivitaeten", visible: true, size: "md", order: 11 },
+  { id: "kpi-angebote-offen", visible: true, size: "sm", order: 9 },
+  { id: "kpi-angebote-versendet-betrag", visible: true, size: "sm", order: 10 },
+  { id: "widget-offene-aufgaben-liste", visible: true, size: "md", order: 11 },
+  { id: "widget-naechste-termine", visible: true, size: "md", order: 12 },
+  { id: "widget-letzte-aktivitaeten", visible: true, size: "md", order: 13 },
 ];
 
 export const WIDGET_LABELS: Record<string, string> = {
@@ -26,6 +28,8 @@ export const WIDGET_LABELS: Record<string, string> = {
   "kpi-termine-heute": "Heutige Termine",
   "kpi-termine-ausgemacht": "Ausgemachte Termine",
   "kpi-termine-betrag": "Termine Betrag",
+  "kpi-angebote-offen": "Offene Angebote",
+  "kpi-angebote-versendet-betrag": "Versendete Angebote (Betrag)",
   "widget-offene-aufgaben-liste": "Aufgabenliste",
   "widget-naechste-termine": "Nächste Termine",
   "widget-letzte-aktivitaeten": "Letzte Aktivitäten",

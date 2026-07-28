@@ -30,6 +30,8 @@ export default async function HeutePage() {
     lostAgg,
     todayAppointmentsCount,
     scheduledAppointmentsAgg,
+    openQuotesCount,
+    sentQuotesAgg,
     savedLayout,
     customKpis,
   ] = await Promise.all([
@@ -82,6 +84,14 @@ export default async function HeutePage() {
       _sum: { amount: true },
       _count: true,
     }),
+    prisma.quote.count({
+      where: { companyId: company.id, status: { in: ["DRAFT", "SENT"] } },
+    }),
+    prisma.quote.aggregate({
+      where: { companyId: company.id, status: "SENT" },
+      _sum: { totalGross: true },
+      _count: true,
+    }),
     getDashboardLayout(),
     getCustomKpiValues(),
   ]);
@@ -105,7 +115,11 @@ export default async function HeutePage() {
     order: baseLayout.length + i,
   }));
 
-  const layout = [...baseLayout, ...missing].filter((w) => allDefaultIds.includes(w.id));
+  const layoutWithMissing = [...baseLayout, ...missing].filter((w) => allDefaultIds.includes(w.id));
+
+  // Sicherheitsnetz: falls durch den früheren Fehler bereits doppelte Einträge
+  // gespeichert wurden, hier beim Anzeigen bereinigen (erster Treffer gewinnt).
+  const layout = Array.from(new Map(layoutWithMissing.map((w) => [w.id, w])).values());
 
   const firstName = user.name?.split(" ")[0] ?? "";
 
@@ -215,6 +229,30 @@ export default async function HeutePage() {
           icon={Wallet}
           accent="border-l-success"
           href="/termine"
+        />
+      ),
+    },
+    {
+      id: "kpi-angebote-offen",
+      node: (
+        <KpiCard
+          label="Offene Angebote"
+          value={String(openQuotesCount)}
+          icon={FileText}
+          accent="border-l-warning"
+          href="/angebote"
+        />
+      ),
+    },
+    {
+      id: "kpi-angebote-versendet-betrag",
+      node: (
+        <KpiCard
+          label="Versendete Angebote (Betrag)"
+          value={`${Number(sentQuotesAgg._sum.totalGross ?? 0).toLocaleString("de-DE")} €`}
+          icon={Wallet}
+          accent="border-l-turquoise-500"
+          href="/angebote"
         />
       ),
     },
