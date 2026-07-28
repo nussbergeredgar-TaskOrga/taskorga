@@ -121,6 +121,9 @@ export default async function EinblickePage() {
             entity: k.entity,
             aggregation: k.aggregation,
             statusValue: k.statusValue,
+            dateRangeType: k.dateRangeType,
+            dateFrom: k.dateFrom,
+            dateTo: k.dateTo,
             value: k.value,
             onDashboard: onDashboardIds.has(`custom:${k.id}`),
           }))}

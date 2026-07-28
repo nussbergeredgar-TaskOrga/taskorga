@@ -707,6 +707,9 @@ model CustomKpi {
   sumField    String?
   statusValue String?
   accent      String  @default("border-l-brand-500")
+  dateRangeType String  @default("ALL") // ALL | TODAY | THIS_WEEK | THIS_MONTH | THIS_YEAR | CUSTOM
+  dateFrom      DateTime?
+  dateTo        DateTime?
 
   createdAt DateTime @default(now())
 

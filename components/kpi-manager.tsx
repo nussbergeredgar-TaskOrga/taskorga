@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Trash2, Plus, LayoutGrid } from "lucide-react";
 import { createCustomKpi, deleteCustomKpi, toggleKpiOnDashboard } from "@/lib/actions/custom-kpi";
-import { ENTITY_META, ENTITY_KEYS, type EntityKey } from "@/lib/custom-kpi";
+import { ENTITY_META, ENTITY_KEYS, DATE_RANGE_OPTIONS, type EntityKey } from "@/lib/custom-kpi";
 
 type Kpi = {
   id: string;
@@ -14,6 +14,9 @@ type Kpi = {
   statusValue: string | null;
   value: number;
   onDashboard: boolean;
+  dateRangeType: string;
+  dateFrom?: Date | null;
+  dateTo?: Date | null;
 };
 
 function describeKpi(kpi: Kpi) {
@@ -22,7 +25,9 @@ function describeKpi(kpi: Kpi) {
   const status = kpi.statusValue
     ? meta?.statusOptions.find((s) => s.value === kpi.statusValue)?.label
     : null;
-  return `${meta?.label ?? kpi.entity} · ${base}${status ? ` · Status: ${status}` : ""}`;
+  const rangeLabel = DATE_RANGE_OPTIONS.find((r) => r.value === kpi.dateRangeType)?.label;
+  const range = kpi.dateRangeType && kpi.dateRangeType !== "ALL" ? rangeLabel : null;
+  return `${meta?.label ?? kpi.entity} · ${base}${status ? ` · Status: ${status}` : ""}${range ? ` · ${range}` : ""}`;
 }
 
 function KpiRow({ kpi }: { kpi: Kpi }) {
@@ -81,6 +86,9 @@ export function KpiManager({ kpis }: { kpis: Kpi[] }) {
   const [entity, setEntity] = useState<EntityKey>("inquiries");
   const [aggregation, setAggregation] = useState<"count" | "sum">("count");
   const [statusValue, setStatusValue] = useState("");
+  const [dateRangeType, setDateRangeType] = useState("ALL");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
   const [pending, startTransition] = useTransition();
 
   const meta = ENTITY_META[entity];
@@ -94,10 +102,16 @@ export function KpiManager({ kpis }: { kpis: Kpi[] }) {
         aggregation: aggregation === "sum" && meta.sumFields.length > 0 ? "sum" : "count",
         sumField: meta.sumFields[0]?.key,
         statusValue: statusValue || undefined,
+        dateRangeType,
+        dateFrom: dateRangeType === "CUSTOM" ? dateFrom : undefined,
+        dateTo: dateRangeType === "CUSTOM" ? dateTo : undefined,
       });
       setLabel("");
       setStatusValue("");
       setAggregation("count");
+      setDateRangeType("ALL");
+      setDateFrom("");
+      setDateTo("");
       setShowForm(false);
       router.refresh();
     });
@@ -170,6 +184,44 @@ export function KpiManager({ kpis }: { kpis: Kpi[] }) {
               </select>
             )}
           </div>
+
+          <div>
+            <label className="block text-xs text-ink-500 mb-1">Zeitfenster</label>
+            <select
+              value={dateRangeType}
+              onChange={(e) => setDateRangeType(e.target.value)}
+              className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface"
+            >
+              {DATE_RANGE_OPTIONS.map((r) => (
+                <option key={r.value} value={r.value}>
+                  {r.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {dateRangeType === "CUSTOM" && (
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="block text-xs text-ink-500 mb-1">Von</label>
+                <input
+                  type="date"
+                  value={dateFrom}
+                  onChange={(e) => setDateFrom(e.target.value)}
+                  className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-ink-500 mb-1">Bis</label>
+                <input
+                  type="date"
+                  value={dateTo}
+                  onChange={(e) => setDateTo(e.target.value)}
+                  className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface"
+                />
+              </div>
+            </div>
+          )}
 
           <div className="flex gap-2">
             <button

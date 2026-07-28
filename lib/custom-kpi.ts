@@ -83,3 +83,23 @@ export const ENTITY_META: Record<
 };
 
 export const ENTITY_KEYS = Object.keys(ENTITY_META) as EntityKey[];
+
+// Auf welches Datumsfeld sich das Zeitfenster je Datentyp bezieht
+export const DATE_FIELD_BY_ENTITY: Record<EntityKey, string> = {
+  customers: "customerSince",
+  inquiries: "createdAt",
+  quotes: "createdAt",
+  projects: "createdAt",
+  invoices: "createdAt",
+  appointments: "scheduledAt",
+  expenses: "date",
+};
+
+export const DATE_RANGE_OPTIONS: { value: string; label: string }[] = [
+  { value: "ALL", label: "Gesamter Zeitraum" },
+  { value: "TODAY", label: "Heute" },
+  { value: "THIS_WEEK", label: "Diese Woche" },
+  { value: "THIS_MONTH", label: "Dieser Monat" },
+  { value: "THIS_YEAR", label: "Dieses Jahr" },
+  { value: "CUSTOM", label: "Fester Zeitraum" },
+];

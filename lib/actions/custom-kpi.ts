@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentCompany } from "@/lib/session";
 import { getDashboardLayout, saveDashboardLayout } from "@/lib/actions/dashboard";
 import { DEFAULT_WIDGETS } from "@/lib/dashboard-widgets";
-import type { EntityKey } from "@/lib/custom-kpi";
+import { DATE_FIELD_BY_ENTITY, type EntityKey } from "@/lib/custom-kpi";
 
 export type CustomKpiInput = {
   label: string;
@@ -13,6 +13,9 @@ export type CustomKpiInput = {
   aggregation: "count" | "sum";
   sumField?: string;
   statusValue?: string;
+  dateRangeType?: string;
+  dateFrom?: string;
+  dateTo?: string;
 };
 
 export async function createCustomKpi(data: CustomKpiInput) {
@@ -27,6 +30,9 @@ export async function createCustomKpi(data: CustomKpiInput) {
       aggregation: data.aggregation,
       sumField: data.aggregation === "sum" ? data.sumField || null : null,
       statusValue: data.statusValue || null,
+      dateRangeType: data.dateRangeType || "ALL",
+      dateFrom: data.dateRangeType === "CUSTOM" && data.dateFrom ? new Date(data.dateFrom) : null,
+      dateTo: data.dateRangeType === "CUSTOM" && data.dateTo ? new Date(data.dateTo) : null,
     },
   });
 
@@ -72,14 +78,62 @@ export async function toggleKpiOnDashboard(kpiId: string, addIt: boolean) {
   revalidatePath("/einblicke");
 }
 
+function resolveDateRange(
+  type: string,
+  from: Date | null,
+  to: Date | null
+): { gte?: Date; lte?: Date } | null {
+  const now = new Date();
+
+  if (type === "TODAY") {
+    const start = new Date(now);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(now);
+    end.setHours(23, 59, 59, 999);
+    return { gte: start, lte: end };
+  }
+  if (type === "THIS_WEEK") {
+    const dayOfWeek = now.getDay() || 7; // Montag=1 … Sonntag=7
+    const start = new Date(now);
+    start.setDate(now.getDate() - dayOfWeek + 1);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(start);
+    end.setDate(start.getDate() + 6);
+    end.setHours(23, 59, 59, 999);
+    return { gte: start, lte: end };
+  }
+  if (type === "THIS_MONTH") {
+    const start = new Date(now.getFullYear(), now.getMonth(), 1);
+    const end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+    return { gte: start, lte: end };
+  }
+  if (type === "THIS_YEAR") {
+    const start = new Date(now.getFullYear(), 0, 1);
+    const end = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999);
+    return { gte: start, lte: end };
+  }
+  if (type === "CUSTOM" && from) {
+    return { gte: from, lte: to ?? undefined };
+  }
+  return null; // ALL: kein Zeitfilter
+}
+
 async function computeValue(
   companyId: string,
   entity: EntityKey,
   aggregation: "count" | "sum",
-  statusValue: string | null
+  statusValue: string | null,
+  dateRangeType: string,
+  dateFrom: Date | null,
+  dateTo: Date | null
 ): Promise<number> {
   const where: Record<string, unknown> = { companyId };
   if (statusValue) where.status = statusValue;
+
+  const dateFilter = resolveDateRange(dateRangeType, dateFrom, dateTo);
+  if (dateFilter) {
+    where[DATE_FIELD_BY_ENTITY[entity]] = dateFilter;
+  }
 
   switch (entity) {
     case "customers":
@@ -135,7 +189,10 @@ export async function getCustomKpiValues() {
         company.id,
         kpi.entity as EntityKey,
         kpi.aggregation as "count" | "sum",
-        kpi.statusValue
+        kpi.statusValue,
+        kpi.dateRangeType,
+        kpi.dateFrom,
+        kpi.dateTo
       ),
     }))
   );
