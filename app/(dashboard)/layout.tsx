@@ -1,6 +1,7 @@
 import { NavSidebar } from "@/components/nav-sidebar";
 import { TopBar } from "@/components/top-bar";
 import { MobileNav } from "@/components/mobile-nav";
+import { HelpBook } from "@/components/help-book";
 import { getNavConfig, getNavLabels } from "@/lib/actions/nav";
 import { DEFAULT_NAV, NAV_CATALOG } from "@/lib/nav-items";
 import { getCurrentUserWithRole } from "@/lib/session";
@@ -35,6 +36,7 @@ export default async function DashboardLayout({
         <main className="flex-1 overflow-y-auto p-4 md:p-6 pb-20 md:pb-6">{children}</main>
       </div>
       <MobileNav config={config} labels={labels} />
+      <HelpBook />
     </div>
   );
 }
