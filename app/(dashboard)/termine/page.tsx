@@ -16,6 +16,8 @@ import { de } from "date-fns/locale";
 import { prisma } from "@/lib/prisma";
 import { getCurrentCompany } from "@/lib/session";
 import { TermineCalendarSection } from "@/components/termine-calendar-section";
+import { TermineListView } from "@/components/termine-list-view";
+import { CollapsiblePanel } from "@/components/collapsible-panel";
 import { getAppointmentTypes } from "@/lib/actions/appointment-types";
 import { KpiCard } from "@/components/kpi-card";
 import { CalendarCheck, CalendarClock, Wallet } from "lucide-react";
@@ -34,27 +36,31 @@ export default async function TerminePage({
   const gridEnd = endOfWeek(monthEnd, { weekStartsOn: 1 });
   const days = eachDayOfInterval({ start: gridStart, end: gridEnd });
 
-  const appointments = await prisma.appointment.findMany({
-    where: {
-      companyId: company.id,
-      scheduledAt: { gte: gridStart, lte: gridEnd },
-    },
-    orderBy: { scheduledAt: "asc" },
-    include: { customer: { select: { id: true, name: true } } },
-  });
-
-  const customers = await prisma.customer.findMany({
-    where: { companyId: company.id },
-    orderBy: { name: "asc" },
-    select: { id: true, name: true },
-  });
-
-  const openInquiries = await prisma.inquiry.findMany({
-    where: { companyId: company.id, status: { notIn: ["WON", "LOST"] } },
-    select: { id: true, title: true, customerId: true },
-  });
-
-  const appointmentTypes = await getAppointmentTypes();
+  const [appointments, allAppointments, customers, openInquiries, appointmentTypes] = await Promise.all([
+    prisma.appointment.findMany({
+      where: {
+        companyId: company.id,
+        scheduledAt: { gte: gridStart, lte: gridEnd },
+      },
+      orderBy: { scheduledAt: "asc" },
+      include: { customer: { select: { id: true, name: true } } },
+    }),
+    prisma.appointment.findMany({
+      where: { companyId: company.id },
+      orderBy: { scheduledAt: "asc" },
+      include: { customer: { select: { name: true } } },
+    }),
+    prisma.customer.findMany({
+      where: { companyId: company.id },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true },
+    }),
+    prisma.inquiry.findMany({
+      where: { companyId: company.id, status: { notIn: ["WON", "LOST"] } },
+      select: { id: true, title: true, customerId: true },
+    }),
+    getAppointmentTypes(),
+  ]);
 
   const prevMonth = format(subMonths(anchorDate, 1), "yyyy-MM");
   const nextMonth = format(addMonths(anchorDate, 1), "yyyy-MM");
@@ -90,6 +96,8 @@ export default async function TerminePage({
       })),
     };
   });
+
+  const distinctTypes = Array.from(new Set(allAppointments.map((a) => a.type)));
 
   return (
     <div className="space-y-6">
@@ -127,17 +135,31 @@ export default async function TerminePage({
         <KpiCard label="Betrag Termine (Monat)" value={`${monthAmount.toLocaleString("de-DE")} €`} icon={Wallet} accent="border-l-success" />
       </div>
 
-      <TermineCalendarSection
-        days={calendarDays}
-        customers={customers}
-        inquiries={openInquiries}
-        appointmentTypes={appointmentTypes.map((t) => ({ id: t.id, label: t.label }))}
-      />
+      <CollapsiblePanel title="Kalender" defaultOpen>
+        <TermineCalendarSection
+          days={calendarDays}
+          customers={customers}
+          inquiries={openInquiries}
+          appointmentTypes={appointmentTypes.map((t) => ({ id: t.id, label: t.label }))}
+        />
+      </CollapsiblePanel>
 
-      <div className="rounded-card border border-ink-100 bg-surface p-5 shadow-card">
-        <h2 className="font-display font-semibold text-ink-900 mb-3">
-          Termine im {format(anchorDate, "MMMM", { locale: de })}
-        </h2>
+      <CollapsiblePanel title="Listenansicht — alle Termine" badge={`${allAppointments.length}`}>
+        <TermineListView
+          appointments={allAppointments.map((a) => ({
+            id: a.id,
+            title: a.title,
+            type: a.type,
+            status: a.status,
+            scheduledAt: a.scheduledAt ? a.scheduledAt.toISOString() : null,
+            customerName: a.customer?.name ?? null,
+            amount: a.amount != null ? Number(a.amount) : null,
+          }))}
+          appointmentTypes={distinctTypes}
+        />
+      </CollapsiblePanel>
+
+      <CollapsiblePanel title={`Termine im ${format(anchorDate, "MMMM", { locale: de })}`} badge={`${monthAppointments.length}`}>
         {monthAppointments.length === 0 ? (
           <p className="text-sm text-ink-500">Keine Termine in diesem Monat.</p>
         ) : (
@@ -161,7 +183,7 @@ export default async function TerminePage({
             ))}
           </div>
         )}
-      </div>
+      </CollapsiblePanel>
     </div>
   );
 }

@@ -4,6 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentCompany } from "@/lib/session";
 import { AnfrageRow } from "@/components/anfrage-row";
 import { AnfrageDecisionRow } from "@/components/anfrage-decision-row";
+import { AnfragenListView } from "@/components/anfragen-list-view";
+import { CollapsiblePanel } from "@/components/collapsible-panel";
 
 export default async function AnfragenPage() {
   const company = await getCurrentCompany();
@@ -61,6 +63,13 @@ export default async function AnfragenPage() {
       doneGroup.push(inquiry);
     }
   }
+
+  // Für die Listenansicht: aktuellen Schritt-Namen je Anfrage ermitteln
+  const stepLabelByInquiryId = new Map<string, string>();
+  for (const { step, items } of groups) {
+    for (const i of items) stepLabelByInquiryId.set(i.id, step.label);
+  }
+  for (const i of doneGroup) stepLabelByInquiryId.set(i.id, "Alle Schritte erledigt");
 
   return (
     <div className="space-y-6">
@@ -120,70 +129,88 @@ export default async function AnfragenPage() {
           einrichten.
         </div>
       ) : (
-        <div className="space-y-4">
-          {groups.map(({ step, items }) => {
-            const stepTotal = items.reduce((sum, i) => sum + Number(i.amount ?? 0), 0);
-            return (
-              <div key={step.id} className="rounded-card border border-ink-100 bg-surface p-5 shadow-card">
-                <div className="flex items-center justify-between mb-3">
-                  <h2 className="font-display font-semibold text-ink-900">{step.label}</h2>
-                  <div className="flex items-center gap-3 text-xs">
-                    {stepTotal > 0 && (
-                      <span className="font-mono text-ink-500">{stepTotal.toLocaleString("de-DE")} €</span>
+        <>
+          <CollapsiblePanel title="Nach Workflow-Schritt" defaultOpen>
+            <div className="space-y-4">
+              {groups.map(({ step, items }) => {
+                const stepTotal = items.reduce((sum, i) => sum + Number(i.amount ?? 0), 0);
+                return (
+                  <div key={step.id} className="rounded-card border border-ink-100 bg-surface p-5 shadow-card">
+                    <div className="flex items-center justify-between mb-3">
+                      <h2 className="font-display font-semibold text-ink-900">{step.label}</h2>
+                      <div className="flex items-center gap-3 text-xs">
+                        {stepTotal > 0 && (
+                          <span className="font-mono text-ink-500">{stepTotal.toLocaleString("de-DE")} €</span>
+                        )}
+                        <span className="font-mono text-ink-300">{items.length}</span>
+                      </div>
+                    </div>
+                    {items.length === 0 ? (
+                      <p className="text-sm text-ink-300">Keine Anfragen in diesem Schritt.</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {items.map((inquiry) => (
+                          <AnfrageRow
+                            key={inquiry.id}
+                            inquiryId={inquiry.id}
+                            stepId={step.id}
+                            title={inquiry.title}
+                            customerName={inquiry.customer.name}
+                            amount={inquiry.amount != null ? Number(inquiry.amount) : null}
+                            note={inquiry.stepEntries.find((e) => e.stepId === step.id)?.note}
+                          />
+                        ))}
+                      </div>
                     )}
-                    <span className="font-mono text-ink-300">{items.length}</span>
+                  </div>
+                );
+              })}
+
+              <div className="rounded-card border border-ink-100 bg-surface p-5 shadow-card">
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="font-display font-semibold text-ink-900">Alle Schritte erledigt — Entscheidung nötig</h2>
+                  <div className="flex items-center gap-3 text-xs">
+                    {doneGroup.reduce((sum, i) => sum + Number(i.amount ?? 0), 0) > 0 && (
+                      <span className="font-mono text-ink-500">
+                        {doneGroup.reduce((sum, i) => sum + Number(i.amount ?? 0), 0).toLocaleString("de-DE")} €
+                      </span>
+                    )}
+                    <span className="font-mono text-ink-300">{doneGroup.length}</span>
                   </div>
                 </div>
-                {items.length === 0 ? (
-                  <p className="text-sm text-ink-300">Keine Anfragen in diesem Schritt.</p>
+                {doneGroup.length === 0 ? (
+                  <p className="text-sm text-ink-300">Keine Anfragen.</p>
                 ) : (
                   <div className="space-y-2">
-                    {items.map((inquiry) => (
-                      <AnfrageRow
+                    {doneGroup.map((inquiry) => (
+                      <AnfrageDecisionRow
                         key={inquiry.id}
                         inquiryId={inquiry.id}
-                        stepId={step.id}
                         title={inquiry.title}
                         customerName={inquiry.customer.name}
                         amount={inquiry.amount != null ? Number(inquiry.amount) : null}
-                        note={inquiry.stepEntries.find((e) => e.stepId === step.id)?.note}
                       />
                     ))}
                   </div>
                 )}
               </div>
-            );
-          })}
-
-          <div className="rounded-card border border-ink-100 bg-surface p-5 shadow-card">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="font-display font-semibold text-ink-900">Alle Schritte erledigt — Entscheidung nötig</h2>
-              <div className="flex items-center gap-3 text-xs">
-                {doneGroup.reduce((sum, i) => sum + Number(i.amount ?? 0), 0) > 0 && (
-                  <span className="font-mono text-ink-500">
-                    {doneGroup.reduce((sum, i) => sum + Number(i.amount ?? 0), 0).toLocaleString("de-DE")} €
-                  </span>
-                )}
-                <span className="font-mono text-ink-300">{doneGroup.length}</span>
-              </div>
             </div>
-            {doneGroup.length === 0 ? (
-              <p className="text-sm text-ink-300">Keine Anfragen.</p>
-            ) : (
-              <div className="space-y-2">
-                {doneGroup.map((inquiry) => (
-                  <AnfrageDecisionRow
-                    key={inquiry.id}
-                    inquiryId={inquiry.id}
-                    title={inquiry.title}
-                    customerName={inquiry.customer.name}
-                    amount={inquiry.amount != null ? Number(inquiry.amount) : null}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
+          </CollapsiblePanel>
+
+          <CollapsiblePanel title="Listenansicht — alle offenen Anfragen" badge={`${inquiries.length}`}>
+            <AnfragenListView
+              inquiries={inquiries.map((i) => ({
+                id: i.id,
+                title: i.title,
+                customerName: i.customer.name,
+                amount: i.amount != null ? Number(i.amount) : null,
+                createdAt: i.createdAt.toISOString(),
+                stepLabel: stepLabelByInquiryId.get(i.id) ?? "—",
+              }))}
+              stepLabels={[...steps.map((s) => s.label), "Alle Schritte erledigt"]}
+            />
+          </CollapsiblePanel>
+        </>
       )}
 
       <div className="grid sm:grid-cols-2 gap-4">
