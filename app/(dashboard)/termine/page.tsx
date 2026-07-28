@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import {
+  addDays,
   addMonths,
+  addWeeks,
   eachDayOfInterval,
   endOfMonth,
   endOfWeek,
@@ -10,7 +12,9 @@ import {
   isSameMonth,
   startOfMonth,
   startOfWeek,
+  subDays,
   subMonths,
+  subWeeks,
 } from "date-fns";
 import { de } from "date-fns/locale";
 import { prisma } from "@/lib/prisma";
@@ -19,6 +23,7 @@ import { TermineCalendarSection } from "@/components/termine-calendar-section";
 import { TermineListView } from "@/components/termine-list-view";
 import { CollapsiblePanel } from "@/components/collapsible-panel";
 import { getAppointmentTypes } from "@/lib/actions/appointment-types";
+import { getFieldConfig } from "@/lib/actions/field-config";
 import { KpiCard } from "@/components/kpi-card";
 import { CalendarCheck, CalendarClock, Wallet } from "lucide-react";
 
@@ -36,7 +41,7 @@ export default async function TerminePage({
   const gridEnd = endOfWeek(monthEnd, { weekStartsOn: 1 });
   const days = eachDayOfInterval({ start: gridStart, end: gridEnd });
 
-  const [appointments, allAppointments, customers, openInquiries, appointmentTypes] = await Promise.all([
+  const [appointments, allAppointments, customers, openInquiries, appointmentTypes, appointmentFieldConfig] = await Promise.all([
     prisma.appointment.findMany({
       where: {
         companyId: company.id,
@@ -60,6 +65,7 @@ export default async function TerminePage({
       select: { id: true, title: true, customerId: true },
     }),
     getAppointmentTypes(),
+    getFieldConfig("appointment"),
   ]);
 
   const prevMonth = format(subMonths(anchorDate, 1), "yyyy-MM");
@@ -141,6 +147,7 @@ export default async function TerminePage({
           customers={customers}
           inquiries={openInquiries}
           appointmentTypes={appointmentTypes.map((t) => ({ id: t.id, label: t.label }))}
+          fieldConfig={appointmentFieldConfig}
         />
       </CollapsiblePanel>
 

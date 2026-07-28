@@ -5,6 +5,7 @@ import { useRef, useState, useTransition } from "react";
 import { createAppointment, updateAppointmentStatus } from "@/lib/actions/appointments";
 import { createInquiryQuick } from "@/lib/actions/inquiries";
 import type { AppointmentStatus } from "@prisma/client";
+import type { FieldConfigMap } from "@/lib/actions/field-config";
 
 type Appointment = {
   id: string;
@@ -36,12 +37,15 @@ export function AppointmentTab({
   appointments,
   inquiries,
   appointmentTypes,
+  fieldConfig,
 }: {
   customerId: string;
   appointments: Appointment[];
   inquiries: { id: string; title: string }[];
   appointmentTypes: { id: string; label: string }[];
+  fieldConfig?: FieldConfigMap;
 }) {
+  const fc = (key: string) => fieldConfig?.[key] ?? { visible: true, required: false };
   const titleRef = useRef<HTMLInputElement>(null);
   const startDateRef = useRef<HTMLInputElement>(null);
   const startTimeRef = useRef<HTMLInputElement>(null);
@@ -77,6 +81,10 @@ export function AppointmentTab({
 
     if (new Date(endAt) <= new Date(startAt)) {
       setError("Die Bis-Zeit muss nach der Von-Zeit liegen.");
+      return;
+    }
+    if (fc("amount").required && !amountRef.current?.value?.trim()) {
+      setError("Betrag ist ein Pflichtfeld.");
       return;
     }
 
@@ -208,16 +216,21 @@ export function AppointmentTab({
           </div>
         </div>
 
-        <div>
-          <label className="block text-xs text-ink-500 mb-1">Betrag (€)</label>
-          <input
-            ref={amountRef}
-            type="number"
-            step="0.01"
-            placeholder="optional"
-            className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 font-mono"
-          />
-        </div>
+        {fc("amount").visible && (
+          <div>
+            <label className="block text-xs text-ink-500 mb-1">
+              Betrag (€)
+              {fc("amount").required && <span className="text-danger ml-0.5">*</span>}
+            </label>
+            <input
+              ref={amountRef}
+              type="number"
+              step="0.01"
+              placeholder={fc("amount").required ? "" : "optional"}
+              className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 font-mono"
+            />
+          </div>
+        )}
         {error && <p className="text-xs text-danger">{error}</p>}
       </div>
 

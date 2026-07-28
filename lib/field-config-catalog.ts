@@ -22,10 +22,12 @@ export const FIELD_CATALOGS: Record<string, FieldCatalogEntry[]> = {
     { key: "assigneeId", label: "Zugewiesen an" },
     { key: "customerId", label: "Kunde" },
   ],
+  appointment: [{ key: "amount", label: "Betrag" }],
 };
 
 export const FORM_LABELS: Record<string, string> = {
   customer: "Kundenformular",
   inquiry: "Anfragen-Formular",
   task: "Aufgaben-Formular",
+  appointment: "Termin-Formular",
 };

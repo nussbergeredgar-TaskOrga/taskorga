@@ -5,14 +5,18 @@ import { Plus } from "lucide-react";
 import { createAppointment } from "@/lib/actions/appointments";
 import { createInquiryQuick } from "@/lib/actions/inquiries";
 import { CustomerAutocomplete } from "@/components/customer-autocomplete";
+import type { FieldConfigMap } from "@/lib/actions/field-config";
 
 type Inquiry = { id: string; title: string; customerId: string };
 type AppointmentTypeItem = { id: string; label: string };
+
+const DEFAULT_FIELD_STATE = { visible: true, required: false };
 
 export function AppointmentQuickForm({
   customers,
   inquiries,
   appointmentTypes,
+  fieldConfig,
   open: controlledOpen,
   onOpenChange,
   defaultDate,
@@ -20,10 +24,12 @@ export function AppointmentQuickForm({
   customers: { id: string; name: string }[];
   inquiries: Inquiry[];
   appointmentTypes: AppointmentTypeItem[];
+  fieldConfig?: FieldConfigMap;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   defaultDate?: string;
 }) {
+  const fc = (key: string) => fieldConfig?.[key] ?? DEFAULT_FIELD_STATE;
   const [internalOpen, setInternalOpen] = useState(false);
   const open = controlledOpen ?? internalOpen;
   const setOpen = (v: boolean) => {
@@ -99,6 +105,10 @@ export function AppointmentQuickForm({
     }
     if (inquiryMode === "new" && !newInquiryTitle.trim()) {
       setError("Bitte einen Titel für die neue Anfrage eingeben.");
+      return;
+    }
+    if (fc("amount").required && !amountRef.current?.value?.trim()) {
+      setError("Betrag ist ein Pflichtfeld.");
       return;
     }
 
@@ -291,16 +301,21 @@ export function AppointmentQuickForm({
           </div>
         </div>
 
-        <div>
-          <label className="block text-xs text-ink-500 mb-1">Betrag (€)</label>
-          <input
-            ref={amountRef}
-            type="number"
-            step="0.01"
-            placeholder="optional"
-            className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 font-mono"
-          />
-        </div>
+        {fc("amount").visible && (
+          <div>
+            <label className="block text-xs text-ink-500 mb-1">
+              Betrag (€)
+              {fc("amount").required && <span className="text-danger ml-0.5">*</span>}
+            </label>
+            <input
+              ref={amountRef}
+              type="number"
+              step="0.01"
+              placeholder={fc("amount").required ? "" : "optional"}
+              className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 font-mono"
+            />
+          </div>
+        )}
 
         {error && <p className="text-xs text-danger">{error}</p>}
 

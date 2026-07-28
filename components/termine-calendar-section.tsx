@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { AppointmentQuickForm } from "@/components/appointment-quick-form";
+import type { FieldConfigMap } from "@/lib/actions/field-config";
 
 type DayAppointment = {
   id: string;
@@ -31,11 +32,13 @@ export function TermineCalendarSection({
   customers,
   inquiries,
   appointmentTypes,
+  fieldConfig,
 }: {
   days: Day[];
   customers: { id: string; name: string }[];
   inquiries: { id: string; title: string; customerId: string }[];
   appointmentTypes: { id: string; label: string }[];
+  fieldConfig?: FieldConfigMap;
 }) {
   const [formOpen, setFormOpen] = useState(false);
   const [defaultDate, setDefaultDate] = useState<string | undefined>(undefined);
@@ -72,6 +75,7 @@ export function TermineCalendarSection({
           customers={customers}
           inquiries={inquiries}
           appointmentTypes={appointmentTypes}
+          fieldConfig={fieldConfig}
           open={formOpen}
           onOpenChange={setFormOpen}
           defaultDate={defaultDate}

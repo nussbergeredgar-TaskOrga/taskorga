@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getCurrentCompany } from "@/lib/session";
+import { getFieldConfig } from "@/lib/actions/field-config";
 import type { AppointmentStatus } from "@prisma/client";
 
 function parseAmount(raw?: string | null) {
@@ -23,6 +24,10 @@ export async function createAppointment(
   }
 ) {
   if (!data.title.trim() || !data.startAt || !data.endAt) return;
+
+  const config = await getFieldConfig("appointment");
+  if (config.amount?.required && !data.amount?.trim()) return;
+
   const company = await getCurrentCompany();
 
   const appointment = await prisma.appointment.create({

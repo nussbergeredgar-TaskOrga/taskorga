@@ -6,6 +6,7 @@ import { Tabs } from "@/components/tabs";
 import { AddComment } from "@/components/add-comment";
 import { AppointmentTab } from "@/components/appointment-tab";
 import { getAppointmentTypes } from "@/lib/actions/appointment-types";
+import { getFieldConfig } from "@/lib/actions/field-config";
 import { DocumentTab } from "@/components/document-tab";
 import { InlineInquiryForm } from "@/components/inline-inquiry-form";
 import { CustomerInsightCard } from "@/components/customer-insight-card";
@@ -46,10 +47,11 @@ export default async function KundeDetailPage({
 }: {
   params: { id: string };
 }) {
-  const [customer, tabsConfig, appointmentTypes] = await Promise.all([
+  const [customer, tabsConfig, appointmentTypes, appointmentFieldConfig] = await Promise.all([
     getCustomer(params.id),
     getCustomerTabsConfig(),
     getAppointmentTypes(),
+    getFieldConfig("appointment"),
   ]);
   if (!customer) notFound();
 
@@ -214,6 +216,7 @@ export default async function KundeDetailPage({
           appointments={customer.appointments.map((a) => ({ ...a, amount: a.amount != null ? Number(a.amount) : null }))}
           inquiries={customer.inquiries.map((i) => ({ id: i.id, title: i.title }))}
           appointmentTypes={appointmentTypes.map((t) => ({ id: t.id, label: t.label }))}
+          fieldConfig={appointmentFieldConfig}
         />
       ),
     },
