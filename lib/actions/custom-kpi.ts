@@ -39,6 +39,28 @@ export async function createCustomKpi(data: CustomKpiInput) {
   revalidatePath("/heute");
 }
 
+export async function updateCustomKpi(id: string, data: CustomKpiInput) {
+  if (!data.label.trim()) return;
+  const company = await getCurrentCompany();
+
+  await prisma.customKpi.updateMany({
+    where: { id, companyId: company.id },
+    data: {
+      label: data.label.trim(),
+      entity: data.entity,
+      aggregation: data.aggregation,
+      sumField: data.aggregation === "sum" ? data.sumField || null : null,
+      statusValue: data.statusValue || null,
+      dateRangeType: data.dateRangeType || "ALL",
+      dateFrom: data.dateRangeType === "CUSTOM" && data.dateFrom ? new Date(data.dateFrom) : null,
+      dateTo: data.dateRangeType === "CUSTOM" && data.dateTo ? new Date(data.dateTo) : null,
+    },
+  });
+
+  revalidatePath("/heute");
+  revalidatePath("/einblicke");
+}
+
 export async function deleteCustomKpi(id: string) {
   await prisma.customKpi.delete({ where: { id } });
 
