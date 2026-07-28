@@ -7,17 +7,17 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentCompany, getCurrentUser } from "@/lib/session";
 
 const customerSchema = z.object({
-  name: z.string().optional(), // Firmenname bei Geschäftskunden, sonst Fallback
+  name: z.string().nullish(), // Firmenname bei Geschäftskunden, sonst Fallback
   type: z.enum(["PRIVATE", "BUSINESS"]),
-  salutation: z.enum(["HERR", "FRAU", "DIVERS"]).optional().or(z.literal("")),
-  firstName: z.string().optional(),
-  lastName: z.string().optional(),
-  email: z.string().email("Ungültige E-Mail-Adresse").optional().or(z.literal("")),
-  phone: z.string().optional(),
-  address: z.string().optional(),
-  zip: z.string().optional(),
-  city: z.string().optional(),
-  notes: z.string().optional(),
+  salutation: z.enum(["HERR", "FRAU", "DIVERS"]).nullish().or(z.literal("")),
+  firstName: z.string().nullish(),
+  lastName: z.string().nullish(),
+  email: z.string().email("Ungültige E-Mail-Adresse").nullish().or(z.literal("")),
+  phone: z.string().nullish(),
+  address: z.string().nullish(),
+  zip: z.string().nullish(),
+  city: z.string().nullish(),
+  notes: z.string().nullish(),
 });
 
 // Bei Privatkunden wird der Anzeigename automatisch aus Vor-/Nachname
@@ -166,7 +166,6 @@ export async function updateCustomer(
 
   revalidatePath("/kunden");
   revalidatePath(`/kunden/${customerId}`);
-  redirect(`/kunden/${customerId}`);
   redirect(`/kunden/${customerId}`);
 }
 
