@@ -4,14 +4,24 @@ import { ArrowLeft, FileDown, Eye } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/session";
 import { InvoiceActions } from "@/components/invoice-actions";
+import { RecordNotes } from "@/components/record-notes";
+import { RecordTasks } from "@/components/record-tasks";
 
 export default async function RechnungDetailPage({ params }: { params: { id: string } }) {
   await requireAdmin();
   const invoice = await prisma.invoice.findUnique({
     where: { id: params.id },
-    include: { customer: true, items: { orderBy: { position: "asc" } }, project: true },
+    include: {
+      customer: true,
+      items: { orderBy: { position: "asc" } },
+      project: true,
+      comments: { orderBy: { createdAt: "desc" }, include: { user: true } },
+      tasks: { orderBy: { createdAt: "desc" } },
+    },
   });
   if (!invoice) notFound();
+
+  const link = { invoiceId: invoice.id };
 
   return (
     <div className="space-y-6">
@@ -110,6 +120,22 @@ export default async function RechnungDetailPage({ params }: { params: { id: str
             Brutto: {Number(invoice.totalGross).toLocaleString("de-DE")} €
           </span>
         </div>
+      </div>
+
+      <div className="rounded-card border border-ink-100 bg-surface p-6 shadow-card">
+        <h2 className="font-display font-semibold text-ink-900 mb-3">Notizen</h2>
+        <RecordNotes
+          link={link}
+          notes={invoice.comments.map((c) => ({ id: c.id, content: c.content, createdAt: c.createdAt, user: c.user }))}
+        />
+      </div>
+
+      <div className="rounded-card border border-ink-100 bg-surface p-6 shadow-card">
+        <h2 className="font-display font-semibold text-ink-900 mb-3">Verknüpfte Aufgaben</h2>
+        <RecordTasks
+          link={link}
+          tasks={invoice.tasks.map((t) => ({ id: t.id, title: t.title, status: t.status, dueDate: t.dueDate }))}
+        />
       </div>
     </div>
   );

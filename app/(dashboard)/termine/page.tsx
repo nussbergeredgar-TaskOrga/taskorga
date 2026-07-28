@@ -145,7 +145,7 @@ export default async function TerminePage({
             {monthAppointments.map((a) => (
               <Link
                 key={a.id}
-                href={a.customer ? `/kunden/${a.customer.id}` : "#"}
+                href={`/termine/${a.id}`}
                 className="flex items-center justify-between rounded-lg border-l-4 border-l-turquoise-500 bg-ink-50 px-3 py-2.5 text-sm hover:bg-ink-100 transition-colors"
               >
                 <div>

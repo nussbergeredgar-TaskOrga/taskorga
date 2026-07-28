@@ -9,6 +9,7 @@ import { getAppointmentTypes } from "@/lib/actions/appointment-types";
 import { DocumentTab } from "@/components/document-tab";
 import { InlineInquiryForm } from "@/components/inline-inquiry-form";
 import { CustomerInsightCard } from "@/components/customer-insight-card";
+import { RecordTasks } from "@/components/record-tasks";
 import { KpiCard } from "@/components/kpi-card";
 import { getCustomerTabsConfig } from "@/lib/actions/customer-tabs";
 import { formatDistanceToNow } from "date-fns";
@@ -222,25 +223,12 @@ export default async function KundeDetailPage({
     },
     aufgaben: {
       label: "Aufgaben",
-      content:
-        customer.tasks.length === 0 ? (
-          <Link
-            href={customer.projects.length > 0 ? `/arbeit/${customer.projects[0].id}` : `/arbeit/neu?customerId=${customer.id}`}
-            className="block rounded-lg border-l-4 border-l-brand-500 bg-ink-50 hover:bg-ink-100 p-4 text-sm transition-colors"
-          >
-            <span className="font-medium text-brand-700">
-              Keine offenen Aufgaben — Aufgaben werden innerhalb eines Auftrags angelegt →
-            </span>
-          </Link>
-        ) : (
-          <ul className="space-y-2">
-            {customer.tasks.map((t) => (
-              <li key={t.id} className="rounded-lg bg-ink-50 p-3 text-sm">
-                {t.title}
-              </li>
-            ))}
-          </ul>
-        ),
+      content: (
+        <RecordTasks
+          link={{ customerId: customer.id }}
+          tasks={customer.tasks.map((t) => ({ id: t.id, title: t.title, status: t.status, dueDate: t.dueDate }))}
+        />
+      ),
     },
     finanzen: {
       label: "Finanzen",

@@ -86,7 +86,7 @@ export function TermineCalendarSection({
                 {day.appointments.slice(0, 3).map((a) => (
                   <Link
                     key={a.id}
-                    href={a.customerId ? `/kunden/${a.customerId}` : "#"}
+                    href={`/termine/${a.id}`}
                     onClick={(e) => e.stopPropagation()}
                     className="block truncate rounded bg-turquoise-100 px-1.5 py-0.5 text-[11px] text-turquoise-700 hover:bg-turquoise-500 hover:text-white transition-colors"
                     title={`${a.title} — ${a.customerName ?? ""}`}

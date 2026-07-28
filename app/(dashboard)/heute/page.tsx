@@ -306,7 +306,7 @@ export default async function HeutePage() {
             <ul className="space-y-2">
               {upcomingAppointments.map((a) => (
                 <li key={a.id} className="text-sm border-l-2 border-turquoise-500 pl-3">
-                  <Link href={a.customer ? `/kunden/${a.customer.id}` : "/termine"} className="block hover:underline">
+                  <Link href={`/termine/${a.id}`} className="block hover:underline">
                     <p className="text-ink-900">{a.title}</p>
                     <p className="text-xs text-ink-500">
                       {a.scheduledAt && format(a.scheduledAt, "dd.MM. HH:mm")} Uhr

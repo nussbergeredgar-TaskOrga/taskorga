@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRef, useState, useTransition } from "react";
 import { createAppointment, updateAppointmentStatus } from "@/lib/actions/appointments";
 import { createInquiryQuick } from "@/lib/actions/inquiries";
@@ -232,7 +233,9 @@ export function AppointmentTab({
         {appointments.map((a) => (
           <div key={a.id} className="flex items-center justify-between rounded-lg border-l-4 border-l-turquoise-500 bg-ink-50 p-3 text-sm">
             <div>
-              <p className="font-medium text-ink-900">{a.title}</p>
+              <Link href={`/termine/${a.id}`} className="font-medium text-ink-900 hover:underline">
+                {a.title}
+              </Link>
               <p className="text-xs text-ink-500">
                 {a.type} · {formatRange(a.scheduledAt, a.endAt)}
                 {a.amount != null && ` · ${a.amount.toLocaleString("de-DE")} €`}

@@ -4,12 +4,20 @@ import { ArrowLeft, FileDown, Eye } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { QuoteActions } from "@/components/quote-actions";
 import { QuoteVersionHistory } from "@/components/quote-version-history";
+import { RecordNotes } from "@/components/record-notes";
+import { RecordTasks } from "@/components/record-tasks";
 
 export default async function AngebotDetailPage({ params }: { params: { id: string } }) {
   const [quote, versions] = await Promise.all([
     prisma.quote.findUnique({
       where: { id: params.id },
-      include: { customer: true, items: { orderBy: { position: "asc" } }, project: true },
+      include: {
+        customer: true,
+        items: { orderBy: { position: "asc" } },
+        project: true,
+        comments: { orderBy: { createdAt: "desc" }, include: { user: true } },
+        tasks: { orderBy: { createdAt: "desc" } },
+      },
     }),
     prisma.quoteVersion.findMany({
       where: { quoteId: params.id },
@@ -17,6 +25,8 @@ export default async function AngebotDetailPage({ params }: { params: { id: stri
     }),
   ]);
   if (!quote) notFound();
+
+  const link = { quoteId: quote.id };
 
   const netBeforeDiscount = quote.items.reduce((s, i) => s + Number(i.quantity) * Number(i.unitPrice), 0);
   const discountAmount = netBeforeDiscount - Number(quote.totalNet) * (netBeforeDiscount / Math.max(Number(quote.totalNet), 1));
@@ -111,6 +121,22 @@ export default async function AngebotDetailPage({ params }: { params: { id: stri
           → Zugehörigen Auftrag {quote.project.number} ansehen
         </Link>
       )}
+
+      <div className="rounded-card border border-ink-100 bg-surface p-6 shadow-card">
+        <h2 className="font-display font-semibold text-ink-900 mb-3">Notizen</h2>
+        <RecordNotes
+          link={link}
+          notes={quote.comments.map((c) => ({ id: c.id, content: c.content, createdAt: c.createdAt, user: c.user }))}
+        />
+      </div>
+
+      <div className="rounded-card border border-ink-100 bg-surface p-6 shadow-card">
+        <h2 className="font-display font-semibold text-ink-900 mb-3">Verknüpfte Aufgaben</h2>
+        <RecordTasks
+          link={link}
+          tasks={quote.tasks.map((t) => ({ id: t.id, title: t.title, status: t.status, dueDate: t.dueDate }))}
+        />
+      </div>
 
       <QuoteVersionHistory
         quoteId={quote.id}

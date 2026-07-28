@@ -58,11 +58,12 @@ export async function createAppointment(
 
 export async function updateAppointmentStatus(
   appointmentId: string,
-  customerId: string,
+  customerId: string | null,
   status: AppointmentStatus
 ) {
   await prisma.appointment.update({ where: { id: appointmentId }, data: { status } });
-  revalidatePath(`/kunden/${customerId}`);
+  if (customerId) revalidatePath(`/kunden/${customerId}`);
+  revalidatePath(`/termine/${appointmentId}`);
   revalidatePath("/heute");
   revalidatePath("/termine");
   revalidatePath("/anfragen");
