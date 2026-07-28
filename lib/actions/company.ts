@@ -27,11 +27,26 @@ export async function updateCompanyProfile(formData: FormData) {
       ...(logoUrl ? { logoUrl } : {}),
       showVatOnDocuments: formData.get("showVatOnDocuments") === "on",
       documentAccentColor: get("documentAccentColor") || "#2F5FFF",
-      documentIntroText: get("documentIntroText"),
     },
   });
 
   revalidatePath("/einstellungen");
+}
+
+export async function updateDocumentDefaults(formData: FormData) {
+  const admin = await requireAdmin();
+
+  await prisma.company.update({
+    where: { id: admin.companyId },
+    data: {
+      defaultQuoteValidityDays: Number(formData.get("defaultQuoteValidityDays")) || 30,
+      defaultDiscountType: (formData.get("defaultDiscountType") as string) || "AMOUNT",
+      quoteNumberFormat: (formData.get("quoteNumberFormat") as string)?.trim() || "ANG-{YYYY}-{NNNN}",
+      invoiceNumberFormat: (formData.get("invoiceNumberFormat") as string)?.trim() || "RE-{YYYY}-{NNNN}",
+    },
+  });
+
+  revalidatePath("/einstellungen/dokumente");
 }
 
 export async function removeCompanyLogo() {
