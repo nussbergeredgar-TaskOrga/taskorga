@@ -24,9 +24,9 @@ const customerSchema = z.object({
 // zusammengesetzt. Bei Geschäftskunden bleibt der eingegebene Firmenname.
 function resolveDisplayName(data: {
   type: string;
-  name?: string;
-  firstName?: string;
-  lastName?: string;
+  name?: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
 }): string {
   if (data.type === "PRIVATE") {
     const composed = [data.firstName, data.lastName].filter(Boolean).join(" ").trim();
