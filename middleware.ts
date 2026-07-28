@@ -7,6 +7,7 @@ export const config = {
     "/kunden/:path*",
     "/anfragen/:path*",
     "/angebote/:path*",
+    "/aufgaben/:path*",
     "/termine/:path*",
     "/arbeit/:path*",
     "/finanzen/:path*",

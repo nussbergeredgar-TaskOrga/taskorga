@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useTransition } from "react";
+import Link from "next/link";
 import { createLinkedTask, toggleLinkedTask, type RecordLink } from "@/lib/actions/notes-and-tasks";
 
 type TaskEntry = { id: string; title: string; status: string; dueDate: Date | null };
@@ -52,7 +53,11 @@ export function RecordTasks({ link, tasks }: { link: RecordLink; tasks: TaskEntr
               onChange={(e) => startTransition(() => toggleLinkedTask(t.id, e.target.checked, link))}
               className="accent-brand-500"
             />
-            <span className={t.status === "DONE" ? "line-through text-ink-300" : "text-ink-900"}>{t.title}</span>
+            <span className={t.status === "DONE" ? "line-through text-ink-300" : "text-ink-900"}>
+              <Link href={`/aufgaben/${t.id}`} className="hover:underline" onClick={(e) => e.stopPropagation()}>
+                {t.title}
+              </Link>
+            </span>
             {t.dueDate && (
               <span className="text-xs text-ink-300 ml-auto">{t.dueDate.toLocaleDateString("de-DE")}</span>
             )}

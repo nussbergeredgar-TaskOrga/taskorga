@@ -9,6 +9,7 @@ import {
   Settings,
   Radar,
   FileText,
+  ListTodo,
   type LucideIcon,
 } from "lucide-react";
 
@@ -23,4 +24,5 @@ export const ICON_MAP: Record<string, LucideIcon> = {
   Settings,
   Radar,
   FileText,
+  ListTodo,
 };

@@ -132,7 +132,7 @@ export default async function HeutePage() {
           value={String(openTasksCount)}
           icon={ListTodo}
           accent="border-l-brand-500"
-          href="#offene-aufgaben"
+          href="/aufgaben?status=open"
         />
       ),
     },
@@ -259,15 +259,22 @@ export default async function HeutePage() {
     {
       id: "widget-offene-aufgaben-liste",
       node: (
-        <div id="offene-aufgaben" className="rounded-card border border-ink-100 bg-surface p-5 shadow-card scroll-mt-6 h-full">
-          <h2 className="font-display font-semibold text-ink-900 mb-3">Offene Aufgaben</h2>
+        <div className="rounded-card border border-ink-100 bg-surface p-5 shadow-card h-full">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="font-display font-semibold text-ink-900">Offene Aufgaben</h2>
+            <Link href="/aufgaben?status=open" className="text-xs text-brand-700 hover:underline">
+              Alle ansehen
+            </Link>
+          </div>
           {openTasks.length === 0 ? (
             <p className="text-sm text-ink-500">Keine offenen Aufgaben. 🎉</p>
           ) : (
             <ul className="space-y-2">
               {openTasks.map((task) => (
                 <li key={task.id} className="text-sm border-l-2 border-ink-100 pl-3">
-                  <p className="text-ink-900">{task.title}</p>
+                  <Link href={`/aufgaben/${task.id}`} className="text-ink-900 hover:underline">
+                    {task.title}
+                  </Link>
                   {(task.project || task.customer) && (
                     <p className="text-xs text-ink-500">
                       {task.project ? (
