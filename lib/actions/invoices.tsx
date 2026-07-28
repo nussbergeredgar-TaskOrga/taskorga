@@ -159,6 +159,7 @@ export async function sendPaymentReminder(invoiceId: string): Promise<{ error?: 
       levelLabel,
       introText: resolvedIntro,
       pdfBuffer,
+      company: invoice.company,
     });
   } catch (err) {
     return { error: err instanceof Error ? err.message : "E-Mail-Versand fehlgeschlagen." };
@@ -260,6 +261,7 @@ export async function sendInvoiceEmail(
       amount: `${Number(invoice.totalGross).toLocaleString("de-DE")} €`,
       message: customMessage,
       pdfBuffer,
+      company: invoice.company,
     });
   } catch (err) {
     return { error: err instanceof Error ? err.message : "E-Mail-Versand fehlgeschlagen." };

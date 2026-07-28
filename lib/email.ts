@@ -1,4 +1,5 @@
 import { Resend } from "resend";
+import { buildSignatureHtml, type SignatureCompany } from "@/lib/email-signature";
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
@@ -31,6 +32,7 @@ export async function sendPaymentReminderEmail({
   levelLabel,
   introText,
   pdfBuffer,
+  company,
 }: {
   to: string;
   greeting: string;
@@ -40,6 +42,7 @@ export async function sendPaymentReminderEmail({
   levelLabel: string;
   introText: string;
   pdfBuffer: Buffer;
+  company: SignatureCompany;
 }) {
   if (!resend) {
     throw new Error(
@@ -60,6 +63,7 @@ export async function sendPaymentReminderEmail({
         <strong>Fällig seit:</strong> ${dueDate}
       </p>
       <p>Die Rechnung als PDF finden Sie im Anhang. Vielen Dank für Ihre schnelle Zahlung.</p>
+      ${buildSignatureHtml(company)}
     `,
     attachments: [
       {
@@ -78,6 +82,7 @@ export async function sendDocumentEmail({
   amount,
   message,
   pdfBuffer,
+  company,
 }: {
   to: string;
   greeting: string;
@@ -86,6 +91,7 @@ export async function sendDocumentEmail({
   amount: string;
   message?: string;
   pdfBuffer: Buffer;
+  company: SignatureCompany;
 }) {
   if (!resend) {
     throw new Error(
@@ -110,6 +116,7 @@ export async function sendDocumentEmail({
         <strong>Betrag:</strong> ${amount}
       </p>
       <p>Die Details finden Sie im PDF im Anhang.</p>
+      ${buildSignatureHtml(company)}
     `,
     attachments: [
       {

@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { CompanyProfileForm } from "@/components/company-profile-form";
 import { TeamManager } from "@/components/team-manager";
 import { NavLabelManager } from "@/components/nav-label-manager";
+import { EmailSignatureForm } from "@/components/email-signature-form";
+import { SettingsSection } from "@/components/settings-section";
 import { getNavLabels } from "@/lib/actions/nav";
 
 export default async function FirmaSettingsPage() {
@@ -19,16 +21,19 @@ export default async function FirmaSettingsPage() {
   ]);
 
   return (
-    <div className="space-y-6">
-      <div className="rounded-card border border-ink-100 bg-surface p-6 shadow-card max-w-2xl">
-        <h2 className="font-display font-semibold text-ink-900 mb-1">Firmenprofil</h2>
-        <p className="text-sm text-ink-500 mb-4">Erscheint z.B. auf Rechnungen und Angeboten.</p>
+    <div className="space-y-4">
+      <SettingsSection
+        title="Firmenprofil"
+        description="Erscheint z.B. auf Rechnungen und Angeboten."
+        defaultOpen
+      >
         <CompanyProfileForm company={company} />
-      </div>
+      </SettingsSection>
 
-      <div className="rounded-card border border-ink-100 bg-surface p-6 shadow-card max-w-2xl">
-        <h2 className="font-display font-semibold text-ink-900 mb-1">Benutzerverwaltung</h2>
-        <p className="text-sm text-ink-500 mb-4">Admins sehen Finanzen &amp; Einblicke, Mitarbeiter nicht.</p>
+      <SettingsSection
+        title="Benutzerverwaltung"
+        description="Admins sehen Finanzen & Einblicke, Mitarbeiter nicht."
+      >
         <TeamManager
           currentUserId={admin.id}
           users={users.map((u) => ({
@@ -38,16 +43,25 @@ export default async function FirmaSettingsPage() {
             roleName: u.role?.name ?? "Mitarbeiter",
           }))}
         />
-      </div>
+      </SettingsSection>
 
-      <div className="rounded-card border border-ink-100 bg-surface p-6 shadow-card max-w-2xl">
-        <h2 className="font-display font-semibold text-ink-900 mb-1">Menü-Wording</h2>
-        <p className="text-sm text-ink-500 mb-4">
-          Eigene Bezeichnungen für die Menüpunkte — gilt firmenweit für alle Nutzer. Leer lassen
-          für den Standardtext.
-        </p>
+      <SettingsSection
+        title="E-Mail-Signatur"
+        description="Erscheint automatisch unter jeder aus dem System versendeten E-Mail."
+      >
+        <EmailSignatureForm
+          name={company.emailSignatureName}
+          role={company.emailSignatureRole}
+          text={company.emailSignatureText}
+        />
+      </SettingsSection>
+
+      <SettingsSection
+        title="Menü-Wording"
+        description="Eigene Bezeichnungen für die Menüpunkte — gilt firmenweit für alle Nutzer. Leer lassen für den Standardtext."
+      >
         <NavLabelManager initialLabels={navLabels} />
-      </div>
+      </SettingsSection>
     </div>
   );
 }

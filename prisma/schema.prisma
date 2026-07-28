@@ -30,6 +30,11 @@ model Company {
   invoiceFooterText String? // erscheint z.B. auf Rechnungen/Angeboten
   logoUrl     String?
 
+  // E-Mail-Signatur, erscheint unter jeder aus dem System versendeten E-Mail
+  emailSignatureName String? // z.B. "Max Mustermann"
+  emailSignatureRole String? // z.B. "Geschäftsführer"
+  emailSignatureText String? // freier Text, z.B. Adresse/Telefon/Social Links
+
   // Angebots-/Rechnungsvorlage
   showVatOnDocuments  Boolean @default(true) // aus für Kleinunternehmer (§19 UStG)
   documentAccentColor String  @default("#2F5FFF")

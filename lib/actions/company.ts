@@ -33,6 +33,22 @@ export async function updateCompanyProfile(formData: FormData) {
   revalidatePath("/einstellungen");
 }
 
+export async function updateEmailSignature(formData: FormData) {
+  const admin = await requireAdmin();
+  const get = (key: string) => (formData.get(key) as string)?.trim() || null;
+
+  await prisma.company.update({
+    where: { id: admin.companyId },
+    data: {
+      emailSignatureName: get("emailSignatureName"),
+      emailSignatureRole: get("emailSignatureRole"),
+      emailSignatureText: get("emailSignatureText"),
+    },
+  });
+
+  revalidatePath("/einstellungen/firma");
+}
+
 export async function updateDocumentDefaults(formData: FormData) {
   const admin = await requireAdmin();
 

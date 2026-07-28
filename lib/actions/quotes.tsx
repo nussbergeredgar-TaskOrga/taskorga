@@ -290,6 +290,7 @@ export async function sendQuoteEmail(
       amount: `${Number(quote.totalGross).toLocaleString("de-DE")} €`,
       message: customMessage,
       pdfBuffer,
+      company: quote.company,
     });
   } catch (err) {
     return { error: err instanceof Error ? err.message : "E-Mail-Versand fehlgeschlagen." };
