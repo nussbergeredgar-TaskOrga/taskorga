@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getCurrentCompany } from "@/lib/session";
-import type { AppointmentStatus, AppointmentType } from "@prisma/client";
+import type { AppointmentStatus } from "@prisma/client";
 
 function parseAmount(raw?: string | null) {
   if (!raw || !raw.trim()) return null;
@@ -15,7 +15,7 @@ export async function createAppointment(
   customerId: string,
   data: {
     title: string;
-    type: AppointmentType;
+    type: string;
     startAt: string;
     endAt: string;
     inquiryId?: string;

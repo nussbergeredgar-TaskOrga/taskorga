@@ -107,6 +107,17 @@ async function main() {
     });
   }
 
+  const appointmentTypeCount = await prisma.appointmentTypeOption.count({ where: { companyId: company.id } });
+  if (appointmentTypeCount === 0) {
+    await prisma.appointmentTypeOption.createMany({
+      data: [
+        { companyId: company.id, label: "Rückruf", order: 0 },
+        { companyId: company.id, label: "Vor-Ort-Termin", order: 1 },
+        { companyId: company.id, label: "Besprechung", order: 2 },
+      ],
+    });
+  }
+
   console.log("Seed abgeschlossen:", company.name);
 }
 

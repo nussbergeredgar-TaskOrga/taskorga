@@ -72,6 +72,21 @@ model Company {
   documentTemplates DocumentTemplate[]
   reminderLevels    ReminderLevel[]
   itemTemplates     ItemTemplate[]
+  appointmentTypes  AppointmentTypeOption[]
+}
+
+// Vom Admin frei definierbare Terminarten (Standard: 3 Beispiele, siehe Seed)
+model AppointmentTypeOption {
+  id        String   @id @default(cuid())
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id])
+
+  label String
+  order Int
+
+  createdAt DateTime @default(now())
+
+  @@unique([companyId, order])
 }
 
 // Einladungscodes für die Registrierung neuer Firmenkonten. Nicht an eine
@@ -284,7 +299,7 @@ model Appointment {
   inquiry    Inquiry?  @relation(fields: [inquiryId], references: [id])
 
   title       String
-  type        AppointmentType @default(CALLBACK_REQUEST)
+  type        String @default("Rückruf") // konfigurierbar, siehe AppointmentTypeOption
   requestedAt DateTime?  // vom Kunden gewünschter Zeitraum (grob)
   scheduledAt DateTime?  // Von-Zeitpunkt
   endAt       DateTime?  // Bis-Zeitpunkt
@@ -297,12 +312,6 @@ model Appointment {
 
   tasks      Task[]
   activities Activity[]
-}
-
-enum AppointmentType {
-  CALLBACK_REQUEST
-  ON_SITE_VISIT
-  MEETING
 }
 
 enum AppointmentStatus {

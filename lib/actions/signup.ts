@@ -112,6 +112,14 @@ export async function signUp(_prevState: SignupState, formData: FormData): Promi
     ],
   });
 
+  await prisma.appointmentTypeOption.createMany({
+    data: [
+      { companyId: company.id, label: "Rückruf", order: 0 },
+      { companyId: company.id, label: "Vor-Ort-Termin", order: 1 },
+      { companyId: company.id, label: "Besprechung", order: 2 },
+    ],
+  });
+
   await prisma.inviteCode.update({
     where: { id: invite.id },
     data: { usedCount: { increment: 1 } },

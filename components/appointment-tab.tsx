@@ -3,12 +3,12 @@
 import { useRef, useState, useTransition } from "react";
 import { createAppointment, updateAppointmentStatus } from "@/lib/actions/appointments";
 import { createInquiryQuick } from "@/lib/actions/inquiries";
-import type { AppointmentStatus, AppointmentType } from "@prisma/client";
+import type { AppointmentStatus } from "@prisma/client";
 
 type Appointment = {
   id: string;
   title: string;
-  type: AppointmentType;
+  type: string;
   status: AppointmentStatus;
   scheduledAt: Date | null;
   endAt: Date | null;
@@ -20,12 +20,6 @@ const STATUS_LABELS: Record<AppointmentStatus, string> = {
   SCHEDULED: "Geplant",
   DONE: "Erledigt",
   CANCELLED: "Storniert",
-};
-
-const TYPE_LABELS: Record<AppointmentType, string> = {
-  CALLBACK_REQUEST: "Rückruf",
-  ON_SITE_VISIT: "Vor-Ort-Termin",
-  MEETING: "Besprechung",
 };
 
 function formatRange(start: Date | null, end: Date | null) {
@@ -40,16 +34,20 @@ export function AppointmentTab({
   customerId,
   appointments,
   inquiries,
+  appointmentTypes,
 }: {
   customerId: string;
   appointments: Appointment[];
   inquiries: { id: string; title: string }[];
+  appointmentTypes: { id: string; label: string }[];
 }) {
   const titleRef = useRef<HTMLInputElement>(null);
-  const startRef = useRef<HTMLInputElement>(null);
-  const endRef = useRef<HTMLInputElement>(null);
+  const startDateRef = useRef<HTMLInputElement>(null);
+  const startTimeRef = useRef<HTMLInputElement>(null);
+  const endDateRef = useRef<HTMLInputElement>(null);
+  const endTimeRef = useRef<HTMLInputElement>(null);
   const amountRef = useRef<HTMLInputElement>(null);
-  const [type, setType] = useState<AppointmentType>("CALLBACK_REQUEST");
+  const [type, setType] = useState(appointmentTypes[0]?.label ?? "");
   const [inquiryId, setInquiryId] = useState("");
   const [showNewInquiry, setShowNewInquiry] = useState(false);
   const newInquiryTitleRef = useRef<HTMLInputElement>(null);
@@ -58,18 +56,24 @@ export function AppointmentTab({
 
   function submit() {
     const title = titleRef.current?.value ?? "";
-    const startAt = startRef.current?.value ?? "";
-    const endAt = endRef.current?.value ?? "";
+    const startDate = startDateRef.current?.value ?? "";
+    const startTime = startTimeRef.current?.value ?? "";
+    const endDate = endDateRef.current?.value ?? "";
+    const endTime = endTimeRef.current?.value ?? "";
     setError("");
 
     if (!title.trim()) {
       setError("Bitte einen Titel eingeben.");
       return;
     }
-    if (!startAt || !endAt) {
-      setError("Bitte Von- und Bis-Zeit angeben.");
+    if (!startDate || !startTime || !endDate || !endTime) {
+      setError("Bitte Datum und Uhrzeit für Von und Bis angeben.");
       return;
     }
+
+    const startAt = `${startDate}T${startTime}`;
+    const endAt = `${endDate}T${endTime}`;
+
     if (new Date(endAt) <= new Date(startAt)) {
       setError("Die Bis-Zeit muss nach der Von-Zeit liegen.");
       return;
@@ -93,8 +97,10 @@ export function AppointmentTab({
         amount: amountRef.current?.value,
       });
       if (titleRef.current) titleRef.current.value = "";
-      if (startRef.current) startRef.current.value = "";
-      if (endRef.current) endRef.current.value = "";
+      if (startDateRef.current) startDateRef.current.value = "";
+      if (startTimeRef.current) startTimeRef.current.value = "";
+      if (endDateRef.current) endDateRef.current.value = "";
+      if (endTimeRef.current) endTimeRef.current.value = "";
       if (amountRef.current) amountRef.current.value = "";
       if (newInquiryTitleRef.current) newInquiryTitleRef.current.value = "";
       setInquiryId("");
@@ -154,42 +160,62 @@ export function AppointmentTab({
           </div>
         )}
 
-        <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
-          <select
-            value={type}
-            onChange={(e) => setType(e.target.value as AppointmentType)}
-            className="rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface"
-          >
-            <option value="CALLBACK_REQUEST">Rückruf</option>
-            <option value="ON_SITE_VISIT">Vor-Ort-Termin</option>
-            <option value="MEETING">Besprechung</option>
-          </select>
+        <select
+          value={type}
+          onChange={(e) => setType(e.target.value)}
+          className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface"
+        >
+          {appointmentTypes.map((t) => (
+            <option key={t.id} value={t.label}>
+              {t.label}
+            </option>
+          ))}
+        </select>
+
+        <div className="grid grid-cols-2 gap-2">
           <div>
-            <label className="block text-xs text-ink-500 mb-1">Von</label>
+            <label className="block text-xs text-ink-500 mb-1">Von — Datum</label>
             <input
-              ref={startRef}
-              type="datetime-local"
+              ref={startDateRef}
+              type="date"
               className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500"
             />
           </div>
           <div>
-            <label className="block text-xs text-ink-500 mb-1">Bis</label>
+            <label className="block text-xs text-ink-500 mb-1">Von — Uhrzeit</label>
             <input
-              ref={endRef}
-              type="datetime-local"
+              ref={startTimeRef}
+              type="time"
               className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500"
             />
           </div>
           <div>
-            <label className="block text-xs text-ink-500 mb-1">Betrag (€)</label>
+            <label className="block text-xs text-ink-500 mb-1">Bis — Datum</label>
             <input
-              ref={amountRef}
-              type="number"
-              step="0.01"
-              placeholder="optional"
-              className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 font-mono"
+              ref={endDateRef}
+              type="date"
+              className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500"
             />
           </div>
+          <div>
+            <label className="block text-xs text-ink-500 mb-1">Bis — Uhrzeit</label>
+            <input
+              ref={endTimeRef}
+              type="time"
+              className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500"
+            />
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-xs text-ink-500 mb-1">Betrag (€)</label>
+          <input
+            ref={amountRef}
+            type="number"
+            step="0.01"
+            placeholder="optional"
+            className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 font-mono"
+          />
         </div>
         {error && <p className="text-xs text-danger">{error}</p>}
       </div>
@@ -208,7 +234,7 @@ export function AppointmentTab({
             <div>
               <p className="font-medium text-ink-900">{a.title}</p>
               <p className="text-xs text-ink-500">
-                {TYPE_LABELS[a.type]} · {formatRange(a.scheduledAt, a.endAt)}
+                {a.type} · {formatRange(a.scheduledAt, a.endAt)}
                 {a.amount != null && ` · ${a.amount.toLocaleString("de-DE")} €`}
               </p>
             </div>

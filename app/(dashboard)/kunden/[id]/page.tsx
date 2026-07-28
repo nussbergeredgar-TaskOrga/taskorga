@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { Tabs } from "@/components/tabs";
 import { AddComment } from "@/components/add-comment";
 import { AppointmentTab } from "@/components/appointment-tab";
+import { getAppointmentTypes } from "@/lib/actions/appointment-types";
 import { DocumentTab } from "@/components/document-tab";
 import { InlineInquiryForm } from "@/components/inline-inquiry-form";
 import { CustomerInsightCard } from "@/components/customer-insight-card";
@@ -44,9 +45,10 @@ export default async function KundeDetailPage({
 }: {
   params: { id: string };
 }) {
-  const [customer, tabsConfig] = await Promise.all([
+  const [customer, tabsConfig, appointmentTypes] = await Promise.all([
     getCustomer(params.id),
     getCustomerTabsConfig(),
+    getAppointmentTypes(),
   ]);
   if (!customer) notFound();
 
@@ -210,6 +212,7 @@ export default async function KundeDetailPage({
           customerId={customer.id}
           appointments={customer.appointments.map((a) => ({ ...a, amount: a.amount != null ? Number(a.amount) : null }))}
           inquiries={customer.inquiries.map((i) => ({ id: i.id, title: i.title }))}
+          appointmentTypes={appointmentTypes.map((t) => ({ id: t.id, label: t.label }))}
         />
       ),
     },

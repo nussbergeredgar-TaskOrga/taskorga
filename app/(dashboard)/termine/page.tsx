@@ -15,8 +15,8 @@ import {
 import { de } from "date-fns/locale";
 import { prisma } from "@/lib/prisma";
 import { getCurrentCompany } from "@/lib/session";
-import { cn } from "@/lib/utils";
-import { AppointmentQuickForm } from "@/components/appointment-quick-form";
+import { TermineCalendarSection } from "@/components/termine-calendar-section";
+import { getAppointmentTypes } from "@/lib/actions/appointment-types";
 import { KpiCard } from "@/components/kpi-card";
 import { CalendarCheck, CalendarClock, Wallet } from "lucide-react";
 
@@ -54,6 +54,8 @@ export default async function TerminePage({
     select: { id: true, title: true, customerId: true },
   });
 
+  const appointmentTypes = await getAppointmentTypes();
+
   const prevMonth = format(subMonths(anchorDate, 1), "yyyy-MM");
   const nextMonth = format(addMonths(anchorDate, 1), "yyyy-MM");
 
@@ -70,6 +72,24 @@ export default async function TerminePage({
   const todayCount = appointments.filter((a) => a.scheduledAt && isSameDay(a.scheduledAt, new Date())).length;
   const scheduledCount = monthAppointments.filter((a) => a.status === "SCHEDULED").length;
   const monthAmount = monthAppointments.reduce((sum, a) => sum + Number(a.amount ?? 0), 0);
+
+  const calendarDays = days.map((day) => {
+    const key = format(day, "yyyy-MM-dd");
+    const dayAppointments = appointmentsByDay.get(key) ?? [];
+    return {
+      key,
+      dayNumber: format(day, "d"),
+      inMonth: isSameMonth(day, anchorDate),
+      isToday: isSameDay(day, new Date()),
+      appointments: dayAppointments.map((a) => ({
+        id: a.id,
+        title: a.title,
+        time: a.scheduledAt ? format(a.scheduledAt, "HH:mm") : "",
+        customerId: a.customer?.id ?? null,
+        customerName: a.customer?.name ?? null,
+      })),
+    };
+  });
 
   return (
     <div className="space-y-6">
@@ -101,65 +121,18 @@ export default async function TerminePage({
         </div>
       </div>
 
-      <AppointmentQuickForm customers={customers} inquiries={openInquiries} />
-
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <KpiCard label="Heutige Termine" value={String(todayCount)} icon={CalendarClock} accent="border-l-turquoise-500" />
         <KpiCard label="Ausgemachte Termine (Monat)" value={String(scheduledCount)} icon={CalendarCheck} accent="border-l-brand-500" />
         <KpiCard label="Betrag Termine (Monat)" value={`${monthAmount.toLocaleString("de-DE")} €`} icon={Wallet} accent="border-l-success" />
       </div>
 
-      <div className="rounded-card border border-ink-100 bg-surface p-4 shadow-card overflow-x-auto">
-        <div className="grid grid-cols-7 min-w-[640px] gap-px bg-ink-100 rounded-lg overflow-hidden">
-          {["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"].map((d) => (
-            <div key={d} className="bg-ink-50 px-2 py-1.5 text-xs font-medium text-ink-500 text-center">
-              {d}
-            </div>
-          ))}
-          {days.map((day) => {
-            const key = format(day, "yyyy-MM-dd");
-            const dayAppointments = appointmentsByDay.get(key) ?? [];
-            const inMonth = isSameMonth(day, anchorDate);
-            const isToday = isSameDay(day, new Date());
-
-            return (
-              <div
-                key={key}
-                className={cn(
-                  "bg-surface min-h-[92px] p-1.5 align-top",
-                  !inMonth && "bg-ink-50"
-                )}
-              >
-                <span
-                  className={cn(
-                    "inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-mono",
-                    isToday ? "bg-brand-500 text-white" : inMonth ? "text-ink-700" : "text-ink-300"
-                  )}
-                >
-                  {format(day, "d")}
-                </span>
-                <div className="mt-1 space-y-1">
-                  {dayAppointments.slice(0, 3).map((a) => (
-                    <Link
-                      key={a.id}
-                      href={a.customer ? `/kunden/${a.customer.id}` : "#"}
-                      className="block truncate rounded bg-turquoise-100 px-1.5 py-0.5 text-[11px] text-turquoise-700 hover:bg-turquoise-500 hover:text-white transition-colors"
-                      title={`${a.title} — ${a.customer?.name ?? ""}`}
-                    >
-                      {a.scheduledAt && format(a.scheduledAt, "HH:mm")} {a.title}
-                    </Link>
-                  ))}
-                  {dayAppointments.length > 3 && (
-                    <span className="block text-[11px] text-ink-300">
-                      +{dayAppointments.length - 3} weitere
-                    </span>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
+      <TermineCalendarSection
+        days={calendarDays}
+        customers={customers}
+        inquiries={openInquiries}
+        appointmentTypes={appointmentTypes.map((t) => ({ id: t.id, label: t.label }))}
+      />
 
       <div className="rounded-card border border-ink-100 bg-surface p-5 shadow-card">
         <h2 className="font-display font-semibold text-ink-900 mb-3">
