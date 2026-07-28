@@ -1,4 +1,5 @@
 import type { PlaceholderContext } from "@/lib/document-placeholders";
+import { getSalutationGreeting } from "@/lib/customer-salutation";
 
 type CompanyLike = {
   name: string;
@@ -19,6 +20,8 @@ type CustomerLike = {
   city?: string | null;
   email?: string | null;
   phone?: string | null;
+  salutation?: "HERR" | "FRAU" | "DIVERS" | null;
+  lastName?: string | null;
 };
 
 export function buildPlaceholderContext(params: {
@@ -35,6 +38,7 @@ export function buildPlaceholderContext(params: {
 
   return {
     "kunde.name": customer.name,
+    "kunde.anrede": getSalutationGreeting(customer),
     "kunde.adresse": customer.address ?? "",
     "kunde.plz_ort": [customer.zip, customer.city].filter(Boolean).join(" "),
     "kunde.email": customer.email ?? "",

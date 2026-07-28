@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useFormState, useFormStatus } from "react-dom";
 import { createCustomer, updateCustomer, type CustomerFormState } from "@/lib/actions/customers";
 
@@ -9,6 +10,9 @@ type ExistingCustomer = {
   id: string;
   name: string;
   type: "PRIVATE" | "BUSINESS";
+  salutation: "HERR" | "FRAU" | "DIVERS" | null;
+  firstName: string | null;
+  lastName: string | null;
   email: string | null;
   phone: string | null;
   address: string | null;
@@ -45,9 +49,7 @@ function Field({
         defaultValue={defaultValue ?? ""}
         className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 transition-colors"
       />
-      {errors && (
-        <p className="text-xs text-danger mt-1">{errors[0]}</p>
-      )}
+      {errors && <p className="text-xs text-danger mt-1">{errors[0]}</p>}
     </div>
   );
 }
@@ -68,6 +70,7 @@ function SubmitButton({ label }: { label: string }) {
 export function CustomerForm({ customer }: { customer?: ExistingCustomer }) {
   const action = customer ? updateCustomer.bind(null, customer.id) : createCustomer;
   const [state, formAction] = useFormState(action, initialState);
+  const [type, setType] = useState<"PRIVATE" | "BUSINESS">(customer?.type ?? "PRIVATE");
 
   return (
     <form action={formAction} className="space-y-5 max-w-xl">
@@ -78,7 +81,8 @@ export function CustomerForm({ customer }: { customer?: ExistingCustomer }) {
         <select
           id="type"
           name="type"
-          defaultValue={customer?.type ?? "PRIVATE"}
+          value={type}
+          onChange={(e) => setType(e.target.value as "PRIVATE" | "BUSINESS")}
           className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 transition-colors bg-surface"
         >
           <option value="PRIVATE">Privatkunde</option>
@@ -86,7 +90,45 @@ export function CustomerForm({ customer }: { customer?: ExistingCustomer }) {
         </select>
       </div>
 
-      <Field label="Name" name="name" required defaultValue={customer?.name} errors={state.errors?.name} />
+      {type === "PRIVATE" ? (
+        <>
+          <div>
+            <label htmlFor="salutation" className="block text-sm font-medium text-ink-700 mb-1.5">
+              Anrede
+            </label>
+            <select
+              id="salutation"
+              name="salutation"
+              defaultValue={customer?.salutation ?? ""}
+              className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 transition-colors bg-surface"
+            >
+              <option value="">Keine Angabe</option>
+              <option value="HERR">Herr</option>
+              <option value="FRAU">Frau</option>
+              <option value="DIVERS">Divers</option>
+            </select>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <Field label="Vorname" name="firstName" defaultValue={customer?.firstName} />
+            <Field
+              label="Nachname"
+              name="lastName"
+              required
+              defaultValue={customer?.lastName}
+              errors={state.errors?.lastName}
+            />
+          </div>
+        </>
+      ) : (
+        <Field
+          label="Firmenname"
+          name="name"
+          required
+          defaultValue={customer?.name}
+          errors={state.errors?.name}
+        />
+      )}
+
       <Field label="E-Mail" name="email" type="email" defaultValue={customer?.email} errors={state.errors?.email} />
       <Field label="Telefon" name="phone" defaultValue={customer?.phone} />
 

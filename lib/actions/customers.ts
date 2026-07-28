@@ -7,8 +7,11 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentCompany, getCurrentUser } from "@/lib/session";
 
 const customerSchema = z.object({
-  name: z.string().min(2, "Name muss mindestens 2 Zeichen haben"),
+  name: z.string().optional(), // Firmenname bei Geschäftskunden, sonst Fallback
   type: z.enum(["PRIVATE", "BUSINESS"]),
+  salutation: z.enum(["HERR", "FRAU", "DIVERS"]).optional().or(z.literal("")),
+  firstName: z.string().optional(),
+  lastName: z.string().optional(),
   email: z.string().email("Ungültige E-Mail-Adresse").optional().or(z.literal("")),
   phone: z.string().optional(),
   address: z.string().optional(),
@@ -16,6 +19,21 @@ const customerSchema = z.object({
   city: z.string().optional(),
   notes: z.string().optional(),
 });
+
+// Bei Privatkunden wird der Anzeigename automatisch aus Vor-/Nachname
+// zusammengesetzt. Bei Geschäftskunden bleibt der eingegebene Firmenname.
+function resolveDisplayName(data: {
+  type: string;
+  name?: string;
+  firstName?: string;
+  lastName?: string;
+}): string {
+  if (data.type === "PRIVATE") {
+    const composed = [data.firstName, data.lastName].filter(Boolean).join(" ").trim();
+    if (composed) return composed;
+  }
+  return data.name?.trim() || "";
+}
 
 export type CustomerFormState = {
   errors?: Record<string, string[]>;
@@ -29,6 +47,9 @@ export async function createCustomer(
   const parsed = customerSchema.safeParse({
     name: formData.get("name"),
     type: formData.get("type"),
+    salutation: formData.get("salutation"),
+    firstName: formData.get("firstName"),
+    lastName: formData.get("lastName"),
     email: formData.get("email"),
     phone: formData.get("phone"),
     address: formData.get("address"),
@@ -41,13 +62,26 @@ export async function createCustomer(
     return { errors: parsed.error.flatten().fieldErrors };
   }
 
+  const name = resolveDisplayName(parsed.data);
+  if (!name) {
+    return {
+      errors:
+        parsed.data.type === "PRIVATE"
+          ? { lastName: ["Bitte mindestens den Nachnamen angeben."] }
+          : { name: ["Bitte einen Firmennamen angeben."] },
+    };
+  }
+
   const company = await getCurrentCompany();
 
   const customer = await prisma.customer.create({
     data: {
       companyId: company.id,
-      name: parsed.data.name,
+      name,
       type: parsed.data.type,
+      salutation: parsed.data.type === "PRIVATE" && parsed.data.salutation ? parsed.data.salutation : null,
+      firstName: parsed.data.type === "PRIVATE" ? parsed.data.firstName || null : null,
+      lastName: parsed.data.type === "PRIVATE" ? parsed.data.lastName || null : null,
       email: parsed.data.email || null,
       phone: parsed.data.phone || null,
       address: parsed.data.address || null,
@@ -78,6 +112,9 @@ export async function updateCustomer(
   const parsed = customerSchema.safeParse({
     name: formData.get("name"),
     type: formData.get("type"),
+    salutation: formData.get("salutation"),
+    firstName: formData.get("firstName"),
+    lastName: formData.get("lastName"),
     email: formData.get("email"),
     phone: formData.get("phone"),
     address: formData.get("address"),
@@ -90,11 +127,24 @@ export async function updateCustomer(
     return { errors: parsed.error.flatten().fieldErrors };
   }
 
+  const name = resolveDisplayName(parsed.data);
+  if (!name) {
+    return {
+      errors:
+        parsed.data.type === "PRIVATE"
+          ? { lastName: ["Bitte mindestens den Nachnamen angeben."] }
+          : { name: ["Bitte einen Firmennamen angeben."] },
+    };
+  }
+
   const customer = await prisma.customer.update({
     where: { id: customerId },
     data: {
-      name: parsed.data.name,
+      name,
       type: parsed.data.type,
+      salutation: parsed.data.type === "PRIVATE" && parsed.data.salutation ? parsed.data.salutation : null,
+      firstName: parsed.data.type === "PRIVATE" ? parsed.data.firstName || null : null,
+      lastName: parsed.data.type === "PRIVATE" ? parsed.data.lastName || null : null,
       email: parsed.data.email || null,
       phone: parsed.data.phone || null,
       address: parsed.data.address || null,

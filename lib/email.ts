@@ -24,7 +24,7 @@ export async function sendPasswordResetEmail(to: string, resetUrl: string) {
 
 export async function sendPaymentReminderEmail({
   to,
-  customerName,
+  greeting,
   invoiceNumber,
   amount,
   dueDate,
@@ -33,7 +33,7 @@ export async function sendPaymentReminderEmail({
   pdfBuffer,
 }: {
   to: string;
-  customerName: string;
+  greeting: string;
   invoiceNumber: string;
   amount: string;
   dueDate: string;
@@ -52,7 +52,7 @@ export async function sendPaymentReminderEmail({
     to,
     subject: `${levelLabel}: Rechnung ${invoiceNumber}`,
     html: `
-      <p>Hallo ${customerName},</p>
+      <p>${greeting},</p>
       <p>${introText}</p>
       <p>
         <strong>Rechnung:</strong> ${invoiceNumber}<br/>
@@ -72,7 +72,7 @@ export async function sendPaymentReminderEmail({
 
 export async function sendDocumentEmail({
   to,
-  customerName,
+  greeting,
   kind,
   number,
   amount,
@@ -80,7 +80,7 @@ export async function sendDocumentEmail({
   pdfBuffer,
 }: {
   to: string;
-  customerName: string;
+  greeting: string;
   kind: "Angebot" | "Rechnung";
   number: string;
   amount: string;
@@ -103,7 +103,7 @@ export async function sendDocumentEmail({
     to,
     subject: `${kind} ${number}`,
     html: `
-      <p>Hallo ${customerName},</p>
+      <p>${greeting},</p>
       <p>${message?.trim() || defaultMessage}</p>
       <p>
         <strong>${kind}:</strong> ${number}<br/>

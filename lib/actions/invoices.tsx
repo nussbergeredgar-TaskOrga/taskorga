@@ -5,6 +5,7 @@ import { renderToBuffer } from "@react-pdf/renderer";
 import { prisma } from "@/lib/prisma";
 import { getCurrentCompany } from "@/lib/session";
 import { sendPaymentReminderEmail, sendDocumentEmail } from "@/lib/email";
+import { getSalutationShort } from "@/lib/customer-salutation";
 import { DocumentPdf } from "@/lib/pdf/document-pdf";
 import { buildPlaceholderContext } from "@/lib/pdf/build-context";
 import { resolvePlaceholders } from "@/lib/document-placeholders";
@@ -151,7 +152,7 @@ export async function sendPaymentReminder(invoiceId: string): Promise<{ error?: 
   try {
     await sendPaymentReminderEmail({
       to: invoice.customer.email,
-      customerName: invoice.customer.name,
+      greeting: getSalutationShort(invoice.customer),
       invoiceNumber: invoice.number,
       amount: `${Number(invoice.totalGross).toLocaleString("de-DE")} €`,
       dueDate: dueDateStr,
@@ -253,7 +254,7 @@ export async function sendInvoiceEmail(
   try {
     await sendDocumentEmail({
       to: invoice.customer.email,
-      customerName: invoice.customer.name,
+      greeting: getSalutationShort(invoice.customer),
       kind: "Rechnung",
       number: invoice.number,
       amount: `${Number(invoice.totalGross).toLocaleString("de-DE")} €`,

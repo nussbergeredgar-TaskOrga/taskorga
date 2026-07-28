@@ -10,6 +10,7 @@ import { DocumentPdf } from "@/lib/pdf/document-pdf";
 import { buildPlaceholderContext } from "@/lib/pdf/build-context";
 import { resolvePlaceholders } from "@/lib/document-placeholders";
 import { sendDocumentEmail } from "@/lib/email";
+import { getSalutationShort } from "@/lib/customer-salutation";
 import { generateDocumentNumber } from "@/lib/numbering";
 import type { QuoteStatus } from "@prisma/client";
 
@@ -283,7 +284,7 @@ export async function sendQuoteEmail(
   try {
     await sendDocumentEmail({
       to: quote.customer.email,
-      customerName: quote.customer.name,
+      greeting: getSalutationShort(quote.customer),
       kind: "Angebot",
       number: quote.number,
       amount: `${Number(quote.totalGross).toLocaleString("de-DE")} €`,

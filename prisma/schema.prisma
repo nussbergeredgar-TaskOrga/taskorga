@@ -138,7 +138,10 @@ model Customer {
   companyId String
   company   Company  @relation(fields: [companyId], references: [id])
 
-  name        String
+  name        String // Anzeigename (bei Privatkunden automatisch aus Vor-/Nachname zusammengesetzt)
+  salutation  CustomerSalutation?
+  firstName   String?
+  lastName    String?
   type        CustomerType @default(PRIVATE)
   email       String?
   phone       String?
@@ -170,6 +173,12 @@ model Customer {
 enum CustomerType {
   PRIVATE
   BUSINESS
+}
+
+enum CustomerSalutation {
+  HERR
+  FRAU
+  DIVERS
 }
 
 // Ansprechpartner bei Firmenkunden

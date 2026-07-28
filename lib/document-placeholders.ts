@@ -3,6 +3,7 @@ export const PLACEHOLDER_GROUPS: { label: string; tokens: { token: string; label
     label: "Kunde",
     tokens: [
       { token: "kunde.name", label: "Name" },
+      { token: "kunde.anrede", label: "Briefanrede (automatisch)" },
       { token: "kunde.adresse", label: "Straße & Nr." },
       { token: "kunde.plz_ort", label: "PLZ & Ort" },
       { token: "kunde.email", label: "E-Mail" },
