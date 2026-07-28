@@ -5,6 +5,11 @@ export function ThemeScript() {
         var stored = localStorage.getItem('taskorga-theme');
         var isDark = stored === 'dark';
         if (isDark) document.documentElement.classList.add('dark');
+
+        var fontSize = localStorage.getItem('taskorga-font-size');
+        if (fontSize === 'sm' || fontSize === 'lg') {
+          document.documentElement.setAttribute('data-font-size', fontSize);
+        }
       } catch (e) {}
     })();
   `;

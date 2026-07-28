@@ -53,7 +53,14 @@ export default async function HeutePage() {
       where: { companyId: company.id, status: { in: ["OPEN", "IN_PROGRESS"] } },
       orderBy: { createdAt: "desc" },
       take: 6,
-      include: { project: { select: { title: true, id: true } }, customer: { select: { name: true, id: true } } },
+      include: {
+        project: { select: { title: true, id: true } },
+        customer: { select: { name: true, id: true } },
+        appointment: { select: { title: true, id: true } },
+        inquiry: { select: { title: true, id: true } },
+        quote: { select: { number: true, id: true } },
+        invoice: { select: { number: true, id: true } },
+      },
     }),
     prisma.activity.findMany({
       where: { companyId: company.id },
@@ -275,17 +282,38 @@ export default async function HeutePage() {
                   <Link href={`/aufgaben/${task.id}`} className="text-ink-900 hover:underline">
                     {task.title}
                   </Link>
-                  {(task.project || task.customer) && (
-                    <p className="text-xs text-ink-500">
-                      {task.project ? (
-                        <Link href={`/arbeit/${task.project.id}`} className="hover:underline">
-                          {task.project.title}
-                        </Link>
-                      ) : task.customer ? (
+                  {(task.project || task.customer || task.appointment || task.inquiry || task.quote || task.invoice) && (
+                    <p className="text-xs text-ink-500 space-x-2">
+                      {task.customer && (
                         <Link href={`/kunden/${task.customer.id}`} className="hover:underline">
                           {task.customer.name}
                         </Link>
-                      ) : null}
+                      )}
+                      {task.project && (
+                        <Link href={`/arbeit/${task.project.id}`} className="hover:underline">
+                          {task.project.title}
+                        </Link>
+                      )}
+                      {task.appointment && (
+                        <Link href={`/termine/${task.appointment.id}`} className="hover:underline">
+                          {task.appointment.title}
+                        </Link>
+                      )}
+                      {task.inquiry && (
+                        <Link href={`/anfragen/${task.inquiry.id}`} className="hover:underline">
+                          {task.inquiry.title}
+                        </Link>
+                      )}
+                      {task.quote && (
+                        <Link href={`/angebote/${task.quote.id}`} className="hover:underline">
+                          {task.quote.number}
+                        </Link>
+                      )}
+                      {task.invoice && (
+                        <Link href={`/finanzen/${task.invoice.id}`} className="hover:underline">
+                          {task.invoice.number}
+                        </Link>
+                      )}
                     </p>
                   )}
                 </li>

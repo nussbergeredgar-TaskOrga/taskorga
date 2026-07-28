@@ -40,6 +40,9 @@ model Company {
   documentAccentColor String  @default("#2F5FFF")
   documentIntroText   String? // erscheint über der Positionstabelle
 
+  // Persönliche Anpassung: Akzentfarbe der App selbst (getrennt von der Dokumentenfarbe)
+  appAccentColor String @default("#2F5FFF")
+
   // Angebots-/Rechnungs-Grundeinstellungen
   defaultQuoteValidityDays Int    @default(30)
   defaultDiscountType      String @default("AMOUNT") // AMOUNT | PERCENT

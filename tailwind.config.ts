@@ -9,15 +9,15 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Primär
+        // Primär — als CSS-Variablen, damit jede Firma ihre eigene Akzentfarbe wählen kann
         brand: {
-          DEFAULT: "#2F5FFF",
-          50: "#EEF2FF",
-          100: "#DCE4FF",
-          300: "#9DB2FF",
-          500: "#2F5FFF",
-          600: "#254BCC",
-          700: "#1C3999",
+          DEFAULT: "rgb(var(--brand-500) / <alpha-value>)",
+          50: "rgb(var(--brand-50) / <alpha-value>)",
+          100: "rgb(var(--brand-100) / <alpha-value>)",
+          300: "rgb(var(--brand-300) / <alpha-value>)",
+          500: "rgb(var(--brand-500) / <alpha-value>)",
+          600: "rgb(var(--brand-600) / <alpha-value>)",
+          700: "rgb(var(--brand-700) / <alpha-value>)",
         },
         // Sekundär (Anthrazit) — als CSS-Variablen, damit der Dunkelmodus
         // dieselben Klassennamen mit anderen Werten befüllen kann

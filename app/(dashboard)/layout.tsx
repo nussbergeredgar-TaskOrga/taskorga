@@ -2,9 +2,10 @@ import { NavSidebar } from "@/components/nav-sidebar";
 import { TopBar } from "@/components/top-bar";
 import { MobileNav } from "@/components/mobile-nav";
 import { HelpBook } from "@/components/help-book";
+import { BrandColorStyle } from "@/components/brand-color-style";
 import { getNavConfig, getNavLabels } from "@/lib/actions/nav";
 import { DEFAULT_NAV, NAV_CATALOG } from "@/lib/nav-items";
-import { getCurrentUserWithRole } from "@/lib/session";
+import { getCurrentUserWithRole, getCurrentCompany } from "@/lib/session";
 
 // Diese Menüpunkte sind nur für Admins sichtbar (die Seiten selbst sind
 // zusätzlich über requireAdmin() geschützt, das hier ist nur die Menü-Anzeige).
@@ -15,10 +16,11 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const [user, savedConfig, labels] = await Promise.all([
+  const [user, savedConfig, labels, company] = await Promise.all([
     getCurrentUserWithRole(),
     getNavConfig(),
     getNavLabels(),
+    getCurrentCompany(),
   ]);
   const isAdmin = user.role?.name === "Admin";
 
@@ -30,6 +32,7 @@ export default async function DashboardLayout({
 
   return (
     <div className="flex h-screen w-full overflow-hidden">
+      <BrandColorStyle color={company.appAccentColor} />
       <NavSidebar config={config} labels={labels} />
       <div className="flex flex-1 flex-col min-w-0">
         <TopBar />

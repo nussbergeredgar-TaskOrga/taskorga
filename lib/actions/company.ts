@@ -33,6 +33,15 @@ export async function updateCompanyProfile(formData: FormData) {
   revalidatePath("/einstellungen");
 }
 
+export async function updateAppAccentColor(color: string) {
+  const admin = await requireAdmin();
+  await prisma.company.update({
+    where: { id: admin.companyId },
+    data: { appAccentColor: color || "#2F5FFF" },
+  });
+  revalidatePath("/", "layout");
+}
+
 export async function updateEmailSignature(formData: FormData) {
   const admin = await requireAdmin();
   const get = (key: string) => (formData.get(key) as string)?.trim() || null;

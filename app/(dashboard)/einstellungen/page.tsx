@@ -1,6 +1,7 @@
 import { getCurrentUserWithRole } from "@/lib/session";
 import { ProfileForm } from "@/components/profile-form";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { FontSizeToggle } from "@/components/font-size-toggle";
 import { NavConfigManager } from "@/components/nav-config-manager";
 import { SettingsSection } from "@/components/settings-section";
 import { getNavConfig } from "@/lib/actions/nav";
@@ -20,7 +21,16 @@ export default async function MeinKontoPage() {
         title="Darstellung"
         description="Wird auf diesem Gerät gespeichert und gilt für zukünftige Besuche."
       >
-        <ThemeToggle />
+        <div className="space-y-4">
+          <div>
+            <p className="text-xs text-ink-500 mb-1.5">Farbmodus</p>
+            <ThemeToggle />
+          </div>
+          <div>
+            <p className="text-xs text-ink-500 mb-1.5">Schriftgröße</p>
+            <FontSizeToggle />
+          </div>
+        </div>
       </SettingsSection>
 
       <SettingsSection
