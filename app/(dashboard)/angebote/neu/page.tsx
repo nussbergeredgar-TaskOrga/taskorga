@@ -3,6 +3,7 @@ import { ArrowLeft } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { getCurrentCompany } from "@/lib/session";
 import { QuoteForm } from "@/components/quote-form";
+import { getItemTemplates } from "@/lib/actions/item-templates";
 
 export default async function NeuesAngebotPage({
   searchParams,
@@ -10,7 +11,7 @@ export default async function NeuesAngebotPage({
   searchParams: { customerId?: string; inquiryId?: string; title?: string };
 }) {
   const company = await getCurrentCompany();
-  const [customers, inquiries, projects] = await Promise.all([
+  const [customers, inquiries, projects, itemTemplates] = await Promise.all([
     prisma.customer.findMany({
       where: { companyId: company.id },
       orderBy: { name: "asc" },
@@ -24,7 +25,12 @@ export default async function NeuesAngebotPage({
       where: { companyId: company.id, quoteId: null },
       select: { id: true, title: true, number: true, customerId: true },
     }),
+    getItemTemplates(),
   ]);
+
+  const defaultValidUntilDate = new Date();
+  defaultValidUntilDate.setDate(defaultValidUntilDate.getDate() + company.defaultQuoteValidityDays);
+  const defaultValidUntil = defaultValidUntilDate.toISOString().slice(0, 10);
 
   return (
     <div className="space-y-6">
@@ -43,6 +49,15 @@ export default async function NeuesAngebotPage({
           customers={customers}
           inquiries={inquiries}
           projects={projects}
+          itemTemplates={itemTemplates.map((t) => ({
+            id: t.id,
+            description: t.description,
+            unit: t.unit,
+            unitPrice: Number(t.unitPrice),
+            taxRate: Number(t.taxRate),
+          }))}
+          defaultValidUntil={defaultValidUntil}
+          defaultDiscountType={company.defaultDiscountType as "AMOUNT" | "PERCENT"}
           defaultCustomerId={searchParams.customerId}
           defaultInquiryId={searchParams.inquiryId}
           defaultTitle={searchParams.title}

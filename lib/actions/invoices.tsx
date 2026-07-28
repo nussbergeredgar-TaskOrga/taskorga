@@ -134,10 +134,13 @@ export async function sendPaymentReminder(invoiceId: string): Promise<{ error?: 
         quantity: Number(i.quantity),
         unit: i.unit,
         unitPrice: Number(i.unitPrice),
+        taxRate: Number(i.taxRate),
       }))}
       totalNet={Number(invoice.totalNet)}
       totalGross={Number(invoice.totalGross)}
       taxRate={Number(invoice.taxRate)}
+      discountValue={invoice.discountValue != null ? Number(invoice.discountValue) : undefined}
+      discountType={invoice.discountType as "AMOUNT" | "PERCENT"}
       introTextOverride={template?.introText ? resolvePlaceholders(template.introText, context) : undefined}
       footerTextOverride={template?.footerText ? resolvePlaceholders(template.footerText, context) : undefined}
       showVatOverride={template?.showVat}
@@ -233,10 +236,13 @@ export async function sendInvoiceEmail(
         quantity: Number(i.quantity),
         unit: i.unit,
         unitPrice: Number(i.unitPrice),
+        taxRate: Number(i.taxRate),
       }))}
       totalNet={Number(invoice.totalNet)}
       totalGross={Number(invoice.totalGross)}
       taxRate={Number(invoice.taxRate)}
+      discountValue={invoice.discountValue != null ? Number(invoice.discountValue) : undefined}
+      discountType={invoice.discountType as "AMOUNT" | "PERCENT"}
       introTextOverride={template?.introText ? resolvePlaceholders(template.introText, context) : undefined}
       footerTextOverride={template?.footerText ? resolvePlaceholders(template.footerText, context) : undefined}
       showVatOverride={template?.showVat}

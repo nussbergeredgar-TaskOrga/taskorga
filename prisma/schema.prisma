@@ -35,6 +35,13 @@ model Company {
   documentAccentColor String  @default("#2F5FFF")
   documentIntroText   String? // erscheint über der Positionstabelle
 
+  // Angebots-/Rechnungs-Grundeinstellungen
+  defaultQuoteValidityDays Int    @default(30)
+  defaultDiscountType      String @default("AMOUNT") // AMOUNT | PERCENT
+  quoteNumberFormat        String @default("ANG-{YYYY}-{NNNN}")
+  invoiceNumberFormat      String @default("RE-{YYYY}-{NNNN}")
+  projectNumberFormat      String @default("AUF-{YYYY}-{NNNN}")
+
   // Firmenweite Anpassungen (nur Admin)
   navLabels           Json? // { [navItemId]: "Eigener Menütext" }
   customerTabsConfig  Json? // [{ id, visible, order }] für den Kundenstamm
@@ -59,6 +66,7 @@ model Company {
   customKpis  CustomKpi[]
   documentTemplates DocumentTemplate[]
   reminderLevels    ReminderLevel[]
+  itemTemplates     ItemTemplate[]
 }
 
 // Einladungscodes für die Registrierung neuer Firmenkonten. Nicht an eine
@@ -310,11 +318,14 @@ model Quote {
   totalNet   Decimal @db.Decimal(12, 2) @default(0)
   totalGross Decimal @db.Decimal(12, 2) @default(0)
   taxRate    Decimal @db.Decimal(5, 2) @default(19)
+  discountValue Decimal? @db.Decimal(12, 2)
+  discountType  String   @default("AMOUNT") // AMOUNT | PERCENT
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   items      QuoteItem[]
+  versions   QuoteVersion[]
   project    Project?
   documents  Document[]
   tasks      Task[]
@@ -343,6 +354,7 @@ model QuoteItem {
   quantity    Decimal @db.Decimal(10, 2)
   unit        String  @default("Stk")
   unitPrice   Decimal @db.Decimal(12, 2)
+  taxRate     Decimal @default(19) @db.Decimal(5, 2)
 }
 
 // ------------------------------------------------------------
@@ -411,6 +423,8 @@ model Invoice {
   paidAmount Decimal @db.Decimal(12, 2) @default(0)
   reminderLevel      Int       @default(0) // 0=keine, 1=Erinnerung, 2=1.Mahnung, 3=2.Mahnung
   lastReminderSentAt DateTime?
+  discountValue Decimal? @db.Decimal(12, 2)
+  discountType  String   @default("AMOUNT") // AMOUNT | PERCENT
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -445,6 +459,7 @@ model InvoiceItem {
   quantity    Decimal @db.Decimal(10, 2)
   unit        String  @default("Stk")
   unitPrice   Decimal @db.Decimal(12, 2)
+  taxRate     Decimal @default(19) @db.Decimal(5, 2)
 }
 
 model Expense {
@@ -725,6 +740,32 @@ model CustomerInsight {
   customer    Customer @relation(fields: [customerId], references: [id])
   content     String
   generatedAt DateTime @default(now())
+}
+
+// Vordefinierte Positionen für Angebote/Rechnungen ("Bibliothek")
+model ItemTemplate {
+  id          String   @id @default(cuid())
+  companyId   String
+  company     Company  @relation(fields: [companyId], references: [id])
+  description String
+  unit        String   @default("Stk")
+  unitPrice   Decimal  @db.Decimal(12, 2)
+  taxRate     Decimal  @default(19) @db.Decimal(5, 2)
+  createdAt   DateTime @default(now())
+
+  @@index([companyId])
+}
+
+// Gespeicherter Stand eines Angebots zu einem Zeitpunkt (Versionierung)
+model QuoteVersion {
+  id            String   @id @default(cuid())
+  quoteId       String
+  quote         Quote    @relation(fields: [quoteId], references: [id])
+  versionNumber Int
+  snapshot      Json // Titel, Positionen, Summen zum Zeitpunkt des Speicherns
+  createdAt     DateTime @default(now())
+
+  @@unique([quoteId, versionNumber])
 }
 
 model Dashboard {

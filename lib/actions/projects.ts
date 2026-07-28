@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentCompany } from "@/lib/session";
+import { generateDocumentNumber } from "@/lib/numbering";
 import type { ProjectStatus } from "@prisma/client";
 
 export async function createProject(customerId: string, title: string) {
@@ -11,7 +12,7 @@ export async function createProject(customerId: string, title: string) {
   const company = await getCurrentCompany();
 
   const count = await prisma.project.count({ where: { companyId: company.id } });
-  const number = `AUF-${new Date().getFullYear()}-${String(count + 1).padStart(4, "0")}`;
+  const number = generateDocumentNumber(company.projectNumberFormat, count + 1);
 
   const project = await prisma.project.create({
     data: {
@@ -79,20 +80,34 @@ export async function toggleTask(taskId: string, done: boolean) {
 }
 
 // Erzeugt aus einem Auftrag (und dessen ursprünglichem Angebot, falls vorhanden)
-// eine Entwurfs-Rechnung mit denselben Positionen.
+// eine Entwurfs-Rechnung mit denselben Positionen (inkl. MwSt.-Sätzen und Rabatt).
 export async function createInvoiceFromProject(projectId: string) {
   const project = await prisma.project.findUniqueOrThrow({
     where: { id: projectId },
-    include: { quote: { include: { items: true } } },
+    include: { quote: { include: { items: true } }, company: true },
   });
 
   const count = await prisma.invoice.count({ where: { companyId: project.companyId } });
-  const number = `RE-${new Date().getFullYear()}-${String(count + 1).padStart(4, "0")}`;
+  const number = generateDocumentNumber(project.company.invoiceNumberFormat, count + 1);
 
   const items = project.quote?.items ?? [];
-  const totalNet = items.reduce((sum, i) => sum + Number(i.quantity) * Number(i.unitPrice), 0);
-  const taxRate = 19;
-  const totalGross = totalNet * (1 + taxRate / 100);
+  const discountValue = project.quote?.discountValue ?? null;
+  const discountType = project.quote?.discountType ?? "AMOUNT";
+
+  const netBeforeDiscount = items.reduce((sum, i) => sum + Number(i.quantity) * Number(i.unitPrice), 0);
+  const grossBeforeDiscount = items.reduce(
+    (sum, i) => sum + Number(i.quantity) * Number(i.unitPrice) * (1 + Number(i.taxRate) / 100),
+    0
+  );
+  const discountAmount = discountValue
+    ? discountType === "PERCENT"
+      ? netBeforeDiscount * (Number(discountValue) / 100)
+      : Number(discountValue)
+    : 0;
+  const totalNet = Math.max(0, netBeforeDiscount - discountAmount);
+  const factor = netBeforeDiscount > 0 ? totalNet / netBeforeDiscount : 1;
+  const totalGross = grossBeforeDiscount * factor;
+  const avgTaxRate = totalNet > 0 ? ((totalGross - totalNet) / totalNet) * 100 : 19;
 
   const invoice = await prisma.invoice.create({
     data: {
@@ -103,7 +118,9 @@ export async function createInvoiceFromProject(projectId: string) {
       status: "DRAFT",
       totalNet,
       totalGross,
-      taxRate,
+      taxRate: avgTaxRate,
+      discountValue,
+      discountType,
       items: {
         create: items.map((item, i) => ({
           position: i + 1,
@@ -111,6 +128,7 @@ export async function createInvoiceFromProject(projectId: string) {
           quantity: item.quantity,
           unit: item.unit,
           unitPrice: item.unitPrice,
+          taxRate: item.taxRate,
         })),
       },
     },

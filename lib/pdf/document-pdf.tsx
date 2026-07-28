@@ -1,6 +1,6 @@
 import { Document, Page, Text, View, Image, StyleSheet } from "@react-pdf/renderer";
 
-type Item = { description: string; quantity: number; unit: string; unitPrice: number };
+type Item = { description: string; quantity: number; unit: string; unitPrice: number; taxRate?: number };
 
 type CompanyInfo = {
   name: string;
@@ -16,7 +16,6 @@ type CompanyInfo = {
   logoUrl?: string | null;
   showVatOnDocuments?: boolean;
   documentAccentColor?: string | null;
-  documentIntroText?: string | null;
 };
 
 type CustomerInfo = {
@@ -38,6 +37,8 @@ export function DocumentPdf({
   totalNet,
   totalGross,
   taxRate,
+  discountValue,
+  discountType,
   introTextOverride,
   footerTextOverride,
   showVatOverride,
@@ -54,6 +55,8 @@ export function DocumentPdf({
   totalNet: number;
   totalGross: number;
   taxRate: number;
+  discountValue?: number;
+  discountType?: "AMOUNT" | "PERCENT";
   introTextOverride?: string | null;
   footerTextOverride?: string | null;
   showVatOverride?: boolean;
@@ -61,8 +64,27 @@ export function DocumentPdf({
 }) {
   const accent = accentColorOverride || company.documentAccentColor || "#2F5FFF";
   const showVat = showVatOverride ?? company.showVatOnDocuments !== false;
-  const introText = introTextOverride ?? company.documentIntroText;
+  const introText = introTextOverride;
   const footerText = footerTextOverride ?? company.invoiceFooterText;
+
+  // Netto/MwSt je Steuersatz gruppieren (Positionen können unterschiedliche Sätze haben)
+  const netBeforeDiscount = items.reduce((sum, i) => sum + i.quantity * i.unitPrice, 0);
+  const discountFactor =
+    discountValue && netBeforeDiscount > 0
+      ? 1 -
+        (discountType === "PERCENT" ? discountValue / 100 : discountValue / netBeforeDiscount)
+      : 1;
+
+  const rateGroups = new Map<number, { net: number }>();
+  for (const item of items) {
+    const rate = item.taxRate ?? taxRate;
+    const net = item.quantity * item.unitPrice * discountFactor;
+    const existing = rateGroups.get(rate);
+    rateGroups.set(rate, { net: (existing?.net ?? 0) + net });
+  }
+  const rateRows = Array.from(rateGroups.entries())
+    .map(([rate, { net }]) => ({ rate, net, vat: net * (rate / 100) }))
+    .sort((a, b) => b.rate - a.rate);
 
   const styles = StyleSheet.create({
     page: { padding: 40, fontSize: 10, fontFamily: "Helvetica", color: "#1C2128" },
@@ -92,8 +114,9 @@ export function DocumentPdf({
     colDesc: { flex: 4 },
     colQty: { flex: 1, textAlign: "right" },
     colUnit: { flex: 1, textAlign: "right" },
-    colPrice: { flex: 1.5, textAlign: "right" },
-    colTotal: { flex: 1.5, textAlign: "right" },
+    colPrice: { flex: 1.3, textAlign: "right" },
+    colVat: { flex: 0.8, textAlign: "right" },
+    colTotal: { flex: 1.3, textAlign: "right" },
     headerCell: { fontSize: 8, fontWeight: 700, color: "#5B636D" },
     summary: { alignItems: "flex-end", marginTop: 10 },
     summaryRow: { flexDirection: "row", width: 220, justifyContent: "space-between", marginBottom: 3 },
@@ -170,6 +193,7 @@ export function DocumentPdf({
             <Text style={[styles.colQty, styles.headerCell]}>MENGE</Text>
             <Text style={[styles.colUnit, styles.headerCell]}>EINHEIT</Text>
             <Text style={[styles.colPrice, styles.headerCell]}>EINZELPREIS</Text>
+            {showVat && <Text style={[styles.colVat, styles.headerCell]}>MWST.</Text>}
             <Text style={[styles.colTotal, styles.headerCell]}>SUMME</Text>
           </View>
           {items.map((item, i) => (
@@ -178,6 +202,7 @@ export function DocumentPdf({
               <Text style={styles.colQty}>{item.quantity}</Text>
               <Text style={styles.colUnit}>{item.unit}</Text>
               <Text style={styles.colPrice}>{item.unitPrice.toLocaleString("de-DE")} €</Text>
+              {showVat && <Text style={styles.colVat}>{item.taxRate ?? taxRate}%</Text>}
               <Text style={styles.colTotal}>
                 {(item.quantity * item.unitPrice).toLocaleString("de-DE")} €
               </Text>
@@ -186,18 +211,33 @@ export function DocumentPdf({
         </View>
 
         <View style={styles.summary}>
+          {discountValue ? (
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>
+                Rabatt {discountType === "PERCENT" ? `(${discountValue}%)` : ""}
+              </Text>
+              <Text style={styles.summaryValue}>
+                −{(netBeforeDiscount - netBeforeDiscount * discountFactor).toLocaleString("de-DE")} €
+              </Text>
+            </View>
+          ) : null}
+
           {showVat ? (
             <>
-              <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>Netto</Text>
-                <Text style={styles.summaryValue}>{totalNet.toLocaleString("de-DE")} €</Text>
-              </View>
-              <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>MwSt. ({taxRate}%)</Text>
-                <Text style={styles.summaryValue}>
-                  {(totalGross - totalNet).toLocaleString("de-DE")} €
-                </Text>
-              </View>
+              {rateRows.map((r) => (
+                <View key={r.rate} style={styles.summaryRow}>
+                  <Text style={styles.summaryLabel}>
+                    Netto {rateRows.length > 1 ? `(${r.rate}%)` : ""}
+                  </Text>
+                  <Text style={styles.summaryValue}>{r.net.toLocaleString("de-DE")} €</Text>
+                </View>
+              ))}
+              {rateRows.map((r) => (
+                <View key={`vat-${r.rate}`} style={styles.summaryRow}>
+                  <Text style={styles.summaryLabel}>MwSt. ({r.rate}%)</Text>
+                  <Text style={styles.summaryValue}>{r.vat.toLocaleString("de-DE")} €</Text>
+                </View>
+              ))}
               <View style={styles.grossRow}>
                 <Text style={styles.grossLabel}>Gesamt</Text>
                 <Text style={styles.grossValue}>{totalGross.toLocaleString("de-DE")} €</Text>

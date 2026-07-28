@@ -3,13 +3,23 @@ import Link from "next/link";
 import { ArrowLeft, FileDown, Eye } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { QuoteActions } from "@/components/quote-actions";
+import { QuoteVersionHistory } from "@/components/quote-version-history";
 
 export default async function AngebotDetailPage({ params }: { params: { id: string } }) {
-  const quote = await prisma.quote.findUnique({
-    where: { id: params.id },
-    include: { customer: true, items: { orderBy: { position: "asc" } }, project: true },
-  });
+  const [quote, versions] = await Promise.all([
+    prisma.quote.findUnique({
+      where: { id: params.id },
+      include: { customer: true, items: { orderBy: { position: "asc" } }, project: true },
+    }),
+    prisma.quoteVersion.findMany({
+      where: { quoteId: params.id },
+      orderBy: { versionNumber: "desc" },
+    }),
+  ]);
   if (!quote) notFound();
+
+  const netBeforeDiscount = quote.items.reduce((s, i) => s + Number(i.quantity) * Number(i.unitPrice), 0);
+  const discountAmount = netBeforeDiscount - Number(quote.totalNet) * (netBeforeDiscount / Math.max(Number(quote.totalNet), 1));
 
   return (
     <div className="space-y-6">
@@ -52,6 +62,7 @@ export default async function AngebotDetailPage({ params }: { params: { id: stri
               <th className="text-left px-4 py-2.5">Beschreibung</th>
               <th className="text-right px-4 py-2.5">Menge</th>
               <th className="text-right px-4 py-2.5">Einzelpreis</th>
+              <th className="text-right px-4 py-2.5">MwSt.</th>
               <th className="text-right px-4 py-2.5">Summe</th>
             </tr>
           </thead>
@@ -65,6 +76,9 @@ export default async function AngebotDetailPage({ params }: { params: { id: stri
                 <td className="px-4 py-2.5 text-right font-mono text-ink-500">
                   {Number(item.unitPrice).toLocaleString("de-DE")} €
                 </td>
+                <td className="px-4 py-2.5 text-right font-mono text-ink-500">
+                  {Number(item.taxRate)}%
+                </td>
                 <td className="px-4 py-2.5 text-right font-mono text-ink-900">
                   {(Number(item.quantity) * Number(item.unitPrice)).toLocaleString("de-DE")} €
                 </td>
@@ -72,11 +86,20 @@ export default async function AngebotDetailPage({ params }: { params: { id: stri
             ))}
           </tbody>
         </table>
-        <div className="border-t border-ink-100 px-4 py-3 flex justify-end gap-6 text-sm font-mono bg-ink-50">
-          <span className="text-ink-500">Netto: {Number(quote.totalNet).toLocaleString("de-DE")} €</span>
-          <span className="font-medium text-ink-900">
-            Brutto: {Number(quote.totalGross).toLocaleString("de-DE")} €
-          </span>
+        <div className="border-t border-ink-100 px-4 py-3 bg-ink-50 space-y-1">
+          {quote.discountValue != null && (
+            <div className="flex justify-end gap-6 text-sm font-mono text-ink-500">
+              <span>
+                Rabatt {quote.discountType === "PERCENT" ? `(${Number(quote.discountValue)}%)` : ""}
+              </span>
+            </div>
+          )}
+          <div className="flex justify-end gap-6 text-sm font-mono">
+            <span className="text-ink-500">Netto: {Number(quote.totalNet).toLocaleString("de-DE")} €</span>
+            <span className="font-medium text-ink-900">
+              Brutto: {Number(quote.totalGross).toLocaleString("de-DE")} €
+            </span>
+          </div>
         </div>
       </div>
 
@@ -88,6 +111,16 @@ export default async function AngebotDetailPage({ params }: { params: { id: stri
           → Zugehörigen Auftrag {quote.project.number} ansehen
         </Link>
       )}
+
+      <QuoteVersionHistory
+        quoteId={quote.id}
+        versions={versions.map((v) => ({
+          id: v.id,
+          versionNumber: v.versionNumber,
+          createdAt: v.createdAt,
+          snapshot: v.snapshot as any,
+        }))}
+      />
     </div>
   );
 }

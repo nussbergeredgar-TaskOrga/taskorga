@@ -58,10 +58,13 @@ export async function GET(request: Request, { params }: { params: { id: string }
         quantity: Number(i.quantity),
         unit: i.unit,
         unitPrice: Number(i.unitPrice),
+        taxRate: Number(i.taxRate),
       }))}
       totalNet={Number(quote.totalNet)}
       totalGross={Number(quote.totalGross)}
       taxRate={Number(quote.taxRate)}
+      discountValue={quote.discountValue != null ? Number(quote.discountValue) : undefined}
+      discountType={quote.discountType as "AMOUNT" | "PERCENT"}
       introTextOverride={template?.introText ? resolvePlaceholders(template.introText, context) : undefined}
       footerTextOverride={template?.footerText ? resolvePlaceholders(template.footerText, context) : undefined}
       showVatOverride={template?.showVat}
