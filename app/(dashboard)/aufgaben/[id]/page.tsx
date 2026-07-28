@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentCompany } from "@/lib/session";
 import { getLinkablesForCompany } from "@/lib/task-linkables";
 import { getCompanyUsers } from "@/lib/actions/free-tasks";
+import { getFieldConfig } from "@/lib/actions/field-config";
 import { TaskForm } from "@/components/task-form";
 import { TaskDeleteButton } from "@/components/task-delete-button";
 
@@ -26,7 +27,7 @@ const LINK_LABELS: Record<string, string> = {
 
 export default async function AufgabeDetailPage({ params }: { params: { id: string } }) {
   const company = await getCurrentCompany();
-  const [task, users, customers, linkables] = await Promise.all([
+  const [task, users, customers, linkables, fieldConfig] = await Promise.all([
     prisma.task.findUnique({ where: { id: params.id } }),
     getCompanyUsers(),
     prisma.customer.findMany({
@@ -35,6 +36,7 @@ export default async function AufgabeDetailPage({ params }: { params: { id: stri
       select: { id: true, name: true },
     }),
     getLinkablesForCompany(company.id),
+    getFieldConfig("task"),
   ]);
   if (!task) notFound();
 
@@ -81,6 +83,7 @@ export default async function AufgabeDetailPage({ params }: { params: { id: stri
           users={users}
           customers={customers}
           linkables={linkables}
+          fieldConfig={fieldConfig}
         />
       </div>
     </div>

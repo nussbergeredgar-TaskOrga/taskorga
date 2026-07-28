@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Plus, CheckCircle2 } from "lucide-react";
 import { setTaskStatus } from "@/lib/actions/free-tasks";
 import { TaskForm, type LinkableRecord } from "@/components/task-form";
+import type { FieldConfigMap } from "@/lib/actions/field-config";
 import { cn } from "@/lib/utils";
 
 type LinkType = "inquiryId" | "quoteId" | "projectId" | "invoiceId" | "appointmentId";
@@ -39,12 +40,14 @@ export function TasksListView({
   users,
   customers,
   linkables,
+  fieldConfig,
   initialStatusFilter,
 }: {
   tasks: TaskRow[];
   users: { id: string; name: string }[];
   customers: { id: string; name: string }[];
   linkables: Record<LinkType, LinkableRecord[]>;
+  fieldConfig?: FieldConfigMap;
   initialStatusFilter?: string;
 }) {
   const router = useRouter();
@@ -98,6 +101,7 @@ export function TasksListView({
             users={users}
             customers={customers}
             linkables={linkables}
+            fieldConfig={fieldConfig}
             onDone={() => {
               setShowForm(false);
               router.refresh();

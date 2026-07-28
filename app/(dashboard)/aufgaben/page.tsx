@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentCompany } from "@/lib/session";
 import { getLinkablesForCompany } from "@/lib/task-linkables";
 import { getCompanyUsers } from "@/lib/actions/free-tasks";
+import { getFieldConfig } from "@/lib/actions/field-config";
 import { TasksListView } from "@/components/tasks-list-view";
 
 export default async function AufgabenPage({
@@ -11,7 +12,7 @@ export default async function AufgabenPage({
 }) {
   const company = await getCurrentCompany();
 
-  const [tasks, users, customers, linkables] = await Promise.all([
+  const [tasks, users, customers, linkables, fieldConfig] = await Promise.all([
     prisma.task.findMany({
       where: { companyId: company.id },
       orderBy: [{ dueDate: "asc" }, { createdAt: "desc" }],
@@ -24,6 +25,7 @@ export default async function AufgabenPage({
       select: { id: true, name: true },
     }),
     getLinkablesForCompany(company.id),
+    getFieldConfig("task"),
   ]);
 
   const openCount = tasks.filter((t) => t.status === "OPEN" || t.status === "IN_PROGRESS").length;
@@ -50,6 +52,7 @@ export default async function AufgabenPage({
         users={users}
         customers={customers}
         linkables={linkables}
+        fieldConfig={fieldConfig}
         initialStatusFilter={searchParams.status === "open" ? "OPEN_ALL" : ""}
       />
     </div>

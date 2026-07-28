@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { createFreeTask, updateFreeTask, type FreeTaskInput } from "@/lib/actions/free-tasks";
 import { CustomerAutocomplete } from "@/components/customer-autocomplete";
 import type { TaskPriority } from "@prisma/client";
+import type { FieldConfigMap } from "@/lib/actions/field-config";
 
 type LinkType = "inquiryId" | "quoteId" | "projectId" | "invoiceId" | "appointmentId";
 
@@ -23,6 +24,8 @@ const PRIORITY_LABELS: Record<TaskPriority, string> = {
   URGENT: "Dringend",
 };
 
+const DEFAULT_FIELD_STATE = { visible: true, required: false };
+
 export type LinkableRecord = { id: string; label: string; customerId: string | null };
 
 export function TaskForm({
@@ -31,6 +34,7 @@ export function TaskForm({
   users,
   customers,
   linkables,
+  fieldConfig,
   onDone,
 }: {
   taskId?: string;
@@ -47,6 +51,7 @@ export function TaskForm({
   users: { id: string; name: string }[];
   customers: { id: string; name: string }[];
   linkables: Record<LinkType, LinkableRecord[]>;
+  fieldConfig?: FieldConfigMap;
   onDone?: () => void;
 }) {
   const router = useRouter();
@@ -61,6 +66,8 @@ export function TaskForm({
   const [error, setError] = useState("");
   const [pending, startTransition] = useTransition();
 
+  const fc = (key: string) => fieldConfig?.[key] ?? DEFAULT_FIELD_STATE;
+
   const availableLinkRecords = useMemo(() => {
     if (!linkType) return [];
     const all = linkables[linkType] ?? [];
@@ -71,6 +78,22 @@ export function TaskForm({
   function submit() {
     if (!title.trim()) {
       setError("Bitte einen Titel eingeben.");
+      return;
+    }
+    if (fc("description").required && !description.trim()) {
+      setError("Beschreibung ist ein Pflichtfeld.");
+      return;
+    }
+    if (fc("dueDate").required && !dueDate) {
+      setError("Fälligkeitsdatum ist ein Pflichtfeld.");
+      return;
+    }
+    if (fc("assigneeId").required && !assigneeId) {
+      setError("Bitte eine zuständige Person auswählen.");
+      return;
+    }
+    if (fc("customerId").required && !customerId) {
+      setError("Bitte einen Kunden auswählen.");
       return;
     }
     setError("");
@@ -119,71 +142,93 @@ export function TaskForm({
         />
       </div>
 
-      <div>
-        <label className="block text-xs text-ink-500 mb-1">Beschreibung (optional)</label>
-        <textarea
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          rows={2}
-          className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 resize-none"
-        />
-      </div>
-
-      <div className="grid grid-cols-2 gap-2">
+      {fc("description").visible && (
         <div>
-          <label className="block text-xs text-ink-500 mb-1">Fällig am</label>
-          <input
-            type="date"
-            value={dueDate}
-            onChange={(e) => setDueDate(e.target.value)}
-            className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500"
+          <label className="block text-xs text-ink-500 mb-1">
+            Beschreibung {fc("description").required ? "" : "(optional)"}
+            {fc("description").required && <span className="text-danger ml-0.5">*</span>}
+          </label>
+          <textarea
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            rows={2}
+            className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 resize-none"
           />
         </div>
+      )}
+
+      <div className="grid grid-cols-2 gap-2">
+        {fc("dueDate").visible && (
+          <div>
+            <label className="block text-xs text-ink-500 mb-1">
+              Fällig am
+              {fc("dueDate").required && <span className="text-danger ml-0.5">*</span>}
+            </label>
+            <input
+              type="date"
+              value={dueDate}
+              onChange={(e) => setDueDate(e.target.value)}
+              className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500"
+            />
+          </div>
+        )}
+        {fc("priority").visible && (
+          <div>
+            <label className="block text-xs text-ink-500 mb-1">Priorität</label>
+            <select
+              value={priority}
+              onChange={(e) => setPriority(e.target.value as TaskPriority)}
+              className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface"
+            >
+              {Object.entries(PRIORITY_LABELS).map(([v, l]) => (
+                <option key={v} value={v}>
+                  {l}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+      </div>
+
+      {fc("assigneeId").visible && (
         <div>
-          <label className="block text-xs text-ink-500 mb-1">Priorität</label>
+          <label className="block text-xs text-ink-500 mb-1">
+            Zugewiesen an {fc("assigneeId").required ? "" : "(optional)"}
+            {fc("assigneeId").required && <span className="text-danger ml-0.5">*</span>}
+          </label>
           <select
-            value={priority}
-            onChange={(e) => setPriority(e.target.value as TaskPriority)}
+            value={assigneeId}
+            onChange={(e) => setAssigneeId(e.target.value)}
             className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface"
           >
-            {Object.entries(PRIORITY_LABELS).map(([v, l]) => (
-              <option key={v} value={v}>
-                {l}
+            <option value="">Niemand</option>
+            {users.map((u) => (
+              <option key={u.id} value={u.id}>
+                {u.name}
               </option>
             ))}
           </select>
         </div>
-      </div>
+      )}
 
-      <div>
-        <label className="block text-xs text-ink-500 mb-1">Zugewiesen an (optional)</label>
-        <select
-          value={assigneeId}
-          onChange={(e) => setAssigneeId(e.target.value)}
-          className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface"
-        >
-          <option value="">Niemand</option>
-          {users.map((u) => (
-            <option key={u.id} value={u.id}>
-              {u.name}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <div>
-        <label className="block text-xs text-ink-500 mb-1">Kunde (optional)</label>
-        <CustomerAutocomplete
-          customers={customers}
-          name="customerId"
-          defaultCustomerId={customerId || undefined}
-          allowCreate
-          onSelect={(id) => {
-            setCustomerId(id);
-            setLinkId("");
-          }}
-        />
-      </div>
+      {fc("customerId").visible && (
+        <div>
+          <label className="block text-xs text-ink-500 mb-1">
+            Kunde {fc("customerId").required ? "" : "(optional)"}
+            {fc("customerId").required && <span className="text-danger ml-0.5">*</span>}
+          </label>
+          <CustomerAutocomplete
+            customers={customers}
+            name="customerId"
+            defaultCustomerId={customerId || undefined}
+            allowCreate
+            onSelect={(id) => {
+              setCustomerId(id);
+              setLinkId("");
+            }}
+          />
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-2">
         <div>

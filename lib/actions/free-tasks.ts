@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getCurrentCompany } from "@/lib/session";
+import { getFieldConfig } from "@/lib/actions/field-config";
+import { FIELD_CATALOGS } from "@/lib/field-config-catalog";
 import type { TaskStatus, TaskPriority } from "@prisma/client";
 
 export type FreeTaskInput = {
@@ -16,8 +18,30 @@ export type FreeTaskInput = {
   linkId?: string;
 };
 
+async function checkRequiredTaskFields(data: FreeTaskInput): Promise<string | null> {
+  const config = await getFieldConfig("task");
+  const values: Record<string, string | null | undefined> = {
+    description: data.description,
+    dueDate: data.dueDate,
+    assigneeId: data.assigneeId,
+    customerId: data.customerId,
+  };
+
+  for (const field of FIELD_CATALOGS.task) {
+    if (field.key === "priority") continue; // Priorität hat immer einen Standardwert
+    const rule = config[field.key];
+    if (rule?.required && !values[field.key]?.trim()) {
+      return `${field.label} ist ein Pflichtfeld.`;
+    }
+  }
+  return null;
+}
+
 export async function createFreeTask(data: FreeTaskInput) {
   if (!data.title.trim()) return { error: "Bitte einen Titel eingeben." };
+  const requiredError = await checkRequiredTaskFields(data);
+  if (requiredError) return { error: requiredError };
+
   const company = await getCurrentCompany();
 
   const task = await prisma.task.create({
@@ -44,6 +68,8 @@ export async function createFreeTask(data: FreeTaskInput) {
 
 export async function updateFreeTask(taskId: string, data: FreeTaskInput) {
   if (!data.title.trim()) return { error: "Bitte einen Titel eingeben." };
+  const requiredError = await checkRequiredTaskFields(data);
+  if (requiredError) return { error: requiredError };
 
   await prisma.task.update({
     where: { id: taskId },
