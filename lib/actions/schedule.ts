@@ -46,6 +46,16 @@ export async function saveWorkingHours(
   revalidatePath("/termine");
 }
 
+export async function getAllUsersWorkingHours(companyId: string) {
+  const users = await prisma.user.findMany({ where: { companyId }, select: { id: true } });
+  const all = await Promise.all(users.map((u) => getWorkingHours(u.id)));
+  const map: Record<string, Awaited<ReturnType<typeof getWorkingHours>>> = {};
+  users.forEach((u, i) => {
+    map[u.id] = all[i];
+  });
+  return map;
+}
+
 export async function getAbsences() {
   const company = await getCurrentCompany();
   return prisma.absence.findMany({

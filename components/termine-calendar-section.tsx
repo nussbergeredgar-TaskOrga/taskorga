@@ -15,6 +15,7 @@ type DayAppointment = {
   customerId: string | null;
   customerName: string | null;
   assigneeName?: string | null;
+  assigneeId?: string | null;
 };
 
 type Day = {
@@ -22,12 +23,11 @@ type Day = {
   dayNumber: string;
   inMonth: boolean;
   isToday: boolean;
-  absenceType?: string | null;
-  absenceNote?: string | null;
   appointments: DayAppointment[];
 };
 
 type WorkingHourRow = { weekday: number; startTime: string; endTime: string; isWorkingDay: boolean };
+type AbsenceRow = { userId: string | null; type: string; startDate: string; endDate: string; note: string | null };
 
 const WEEKDAY_LABELS = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
 const WEEKDAY_FULL = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"];
@@ -55,7 +55,8 @@ export function TermineCalendarSection({
   inquiries,
   appointmentTypes,
   fieldConfig,
-  workingHours,
+  workingHoursByUser,
+  absences,
   users,
   currentUserId,
 }: {
@@ -64,13 +65,15 @@ export function TermineCalendarSection({
   inquiries: { id: string; title: string; customerId: string }[];
   appointmentTypes: { id: string; label: string }[];
   fieldConfig?: FieldConfigMap;
-  workingHours?: WorkingHourRow[];
+  workingHoursByUser: Record<string, WorkingHourRow[]>;
+  absences: AbsenceRow[];
   users: { id: string; name: string }[];
   currentUserId: string;
 }) {
   const [formOpen, setFormOpen] = useState(false);
   const [defaultDate, setDefaultDate] = useState<string | undefined>(undefined);
   const [view, setView] = useState<ViewMode>("monat");
+  const [personFilter, setPersonFilter] = useState<string>(currentUserId);
   const [selectedIndex, setSelectedIndex] = useState(() => {
     const todayIdx = days.findIndex((d) => d.isToday);
     return todayIdx >= 0 ? todayIdx : 0;
@@ -81,12 +84,18 @@ export function TermineCalendarSection({
     setFormOpen(true);
   }
 
+  // Termine ggf. nach ausgewählter Person filtern (leer = alle)
+  const visibleDays = useMemo(() => {
+    if (!personFilter) return days;
+    return days.map((d) => ({ ...d, appointments: d.appointments.filter((a) => a.assigneeId === personFilter) }));
+  }, [days, personFilter]);
+
   const weekDays = useMemo(() => {
     const weekIndex = Math.floor(selectedIndex / 7);
-    return days.slice(weekIndex * 7, weekIndex * 7 + 7);
-  }, [days, selectedIndex]);
+    return visibleDays.slice(weekIndex * 7, weekIndex * 7 + 7);
+  }, [visibleDays, selectedIndex]);
 
-  const selectedDay = days[selectedIndex];
+  const selectedDay = visibleDays[selectedIndex];
 
   function shiftDay(delta: number) {
     setSelectedIndex((i) => Math.max(0, Math.min(days.length - 1, i + delta)));
@@ -96,11 +105,19 @@ export function TermineCalendarSection({
     setSelectedIndex((i) => Math.max(0, Math.min(days.length - 1, i + delta * 7)));
   }
 
+  function absenceFor(dateKey: string) {
+    return absences.find((a) => {
+      if (a.type !== "FEIERTAG" && a.userId !== (personFilter || currentUserId)) return false;
+      return dateKey >= a.startDate && dateKey <= a.endDate;
+    });
+  }
+
   const hourMarks = Array.from({ length: HOUR_END - HOUR_START + 1 }, (_, i) => HOUR_START + i);
   const gridHeight = (HOUR_END - HOUR_START) * HOUR_HEIGHT;
 
   function workingHoursFor(dateKey: string) {
-    const wh = workingHours?.find((h) => h.weekday === weekdayIndex(dateKey));
+    const refUserId = personFilter || currentUserId;
+    const wh = workingHoursByUser[refUserId]?.find((h) => h.weekday === weekdayIndex(dateKey));
     return wh ?? { startTime: "08:00", endTime: "17:00", isWorkingDay: true };
   }
 
@@ -114,6 +131,7 @@ export function TermineCalendarSection({
 
   function DayColumn({ day, narrow }: { day: Day; narrow?: boolean }) {
     const wh = workingHoursFor(day.key);
+    const absence = absenceFor(day.key);
     const nonWorkingTop = wh.isWorkingDay
       ? Math.max(0, ((timeToMinutes(wh.startTime) - HOUR_START * 60) / 60) * HOUR_HEIGHT)
       : 0;
@@ -136,9 +154,7 @@ export function TermineCalendarSection({
           />
         ))}
 
-        {!wh.isWorkingDay && (
-          <div className="absolute inset-0 bg-ink-50/60" />
-        )}
+        {!wh.isWorkingDay && <div className="absolute inset-0 bg-ink-50/60" />}
         {wh.isWorkingDay && (
           <>
             <div className="absolute left-0 right-0 bg-ink-50/40" style={{ top: 0, height: nonWorkingTop }} />
@@ -149,9 +165,9 @@ export function TermineCalendarSection({
           </>
         )}
 
-        {day.absenceType && (
+        {absence && (
           <div className="absolute inset-x-0 top-0 z-10 bg-warning/15 text-warning text-[10px] font-medium text-center py-0.5">
-            {ABSENCE_LABELS[day.absenceType] ?? day.absenceType}
+            {ABSENCE_LABELS[absence.type] ?? absence.type}
           </div>
         )}
 
@@ -189,19 +205,33 @@ export function TermineCalendarSection({
           onOpenChange={setFormOpen}
           defaultDate={defaultDate}
         />
-        <div className="inline-flex rounded-lg border border-ink-100 p-1">
-          {(["monat", "woche", "tag"] as ViewMode[]).map((v) => (
-            <button
-              key={v}
-              onClick={() => setView(v)}
-              className={cn(
-                "rounded-md px-3 py-1.5 text-xs font-medium capitalize transition-colors",
-                view === v ? "bg-brand-500 text-white" : "text-ink-700 hover:bg-ink-50"
-              )}
-            >
-              {v}
-            </button>
-          ))}
+        <div className="flex items-center gap-2">
+          <select
+            value={personFilter}
+            onChange={(e) => setPersonFilter(e.target.value)}
+            className="rounded-lg border border-ink-100 px-3 py-1.5 text-xs bg-surface outline-none focus:border-brand-500"
+          >
+            <option value="">Alle Personen</option>
+            {users.map((u) => (
+              <option key={u.id} value={u.id}>
+                {u.id === currentUserId ? `${u.name} (ich)` : u.name}
+              </option>
+            ))}
+          </select>
+          <div className="inline-flex rounded-lg border border-ink-100 p-1">
+            {(["monat", "woche", "tag"] as ViewMode[]).map((v) => (
+              <button
+                key={v}
+                onClick={() => setView(v)}
+                className={cn(
+                  "rounded-md px-3 py-1.5 text-xs font-medium capitalize transition-colors",
+                  view === v ? "bg-brand-500 text-white" : "text-ink-700 hover:bg-ink-50"
+                )}
+              >
+                {v}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -215,48 +245,51 @@ export function TermineCalendarSection({
                   {d}
                 </div>
               ))}
-              {days.map((day, i) => (
-                <div
-                  key={day.key}
-                  onClick={() => setSelectedIndex(i)}
-                  onDoubleClick={() => openForDay(day.key)}
-                  title="Doppelklick: neuer Termin an diesem Tag"
-                  className={cn(
-                    "bg-surface min-h-[92px] p-1.5 align-top cursor-pointer hover:bg-brand-50/50 transition-colors",
-                    !day.inMonth && "bg-ink-50"
-                  )}
-                >
-                  <div className="flex items-center justify-between">
-                    <span
-                      className={cn(
-                        "inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-mono",
-                        day.isToday ? "bg-brand-500 text-white" : day.inMonth ? "text-ink-700" : "text-ink-300"
-                      )}
-                    >
-                      {day.dayNumber}
-                    </span>
-                    {day.absenceType && (
-                      <span className="text-[9px] font-medium text-warning">{ABSENCE_LABELS[day.absenceType]}</span>
+              {visibleDays.map((day, i) => {
+                const absence = absenceFor(day.key);
+                return (
+                  <div
+                    key={day.key}
+                    onClick={() => setSelectedIndex(i)}
+                    onDoubleClick={() => openForDay(day.key)}
+                    title="Doppelklick: neuer Termin an diesem Tag"
+                    className={cn(
+                      "bg-surface min-h-[92px] p-1.5 align-top cursor-pointer hover:bg-brand-50/50 transition-colors",
+                      !day.inMonth && "bg-ink-50"
                     )}
-                  </div>
-                  <div className="mt-1 space-y-1">
-                    {day.appointments.slice(0, 3).map((a) => (
-                      <Link
-                        key={a.id}
-                        href={`/termine/${a.id}`}
-                        onClick={(e) => e.stopPropagation()}
-                        className="block truncate rounded bg-turquoise-100 px-1.5 py-0.5 text-[11px] text-turquoise-700 hover:bg-turquoise-500 hover:text-white transition-colors"
-                        title={`${a.title} — ${a.customerName ?? ""}`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span
+                        className={cn(
+                          "inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-mono",
+                          day.isToday ? "bg-brand-500 text-white" : day.inMonth ? "text-ink-700" : "text-ink-300"
+                        )}
                       >
-                        {a.time} {a.title}
-                      </Link>
-                    ))}
-                    {day.appointments.length > 3 && (
-                      <span className="block text-[11px] text-ink-300">+{day.appointments.length - 3} weitere</span>
-                    )}
+                        {day.dayNumber}
+                      </span>
+                      {absence && (
+                        <span className="text-[9px] font-medium text-warning">{ABSENCE_LABELS[absence.type]}</span>
+                      )}
+                    </div>
+                    <div className="mt-1 space-y-1">
+                      {day.appointments.slice(0, 3).map((a) => (
+                        <Link
+                          key={a.id}
+                          href={`/termine/${a.id}`}
+                          onClick={(e) => e.stopPropagation()}
+                          className="block truncate rounded bg-turquoise-100 px-1.5 py-0.5 text-[11px] text-turquoise-700 hover:bg-turquoise-500 hover:text-white transition-colors"
+                          title={`${a.title} — ${a.customerName ?? ""}`}
+                        >
+                          {a.time} {a.title}
+                        </Link>
+                      ))}
+                      {day.appointments.length > 3 && (
+                        <span className="block text-[11px] text-ink-300">+{day.appointments.length - 3} weitere</span>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </>

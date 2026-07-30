@@ -24,7 +24,7 @@ import { TermineListView } from "@/components/termine-list-view";
 import { CollapsiblePanel } from "@/components/collapsible-panel";
 import { getAppointmentTypes } from "@/lib/actions/appointment-types";
 import { getFieldConfig } from "@/lib/actions/field-config";
-import { getCalendarScheduleContext } from "@/lib/actions/schedule";
+import { getAllUsersWorkingHours, getAbsences } from "@/lib/actions/schedule";
 import { KpiCard } from "@/components/kpi-card";
 import { CalendarCheck, CalendarClock, Wallet } from "lucide-react";
 
@@ -43,7 +43,7 @@ export default async function TerminePage({
   const gridEnd = endOfWeek(monthEnd, { weekStartsOn: 1 });
   const days = eachDayOfInterval({ start: gridStart, end: gridEnd });
 
-  const [appointments, allAppointments, customers, openInquiries, appointmentTypes, appointmentFieldConfig, scheduleContext, companyUsers] = await Promise.all([
+  const [appointments, allAppointments, customers, openInquiries, appointmentTypes, appointmentFieldConfig, companyUsers, allUsersWorkingHours, allAbsences] = await Promise.all([
     prisma.appointment.findMany({
       where: {
         companyId: company.id,
@@ -68,8 +68,9 @@ export default async function TerminePage({
     }),
     getAppointmentTypes(),
     getFieldConfig("appointment"),
-    getCalendarScheduleContext(),
     prisma.user.findMany({ where: { companyId: company.id }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
+    getAllUsersWorkingHours(company.id),
+    getAbsences(),
   ]);
 
   const prevMonth = format(subMonths(anchorDate, 1), "yyyy-MM");
@@ -92,18 +93,11 @@ export default async function TerminePage({
   const calendarDays = days.map((day) => {
     const key = format(day, "yyyy-MM-dd");
     const dayAppointments = appointmentsByDay.get(key) ?? [];
-    const absence = scheduleContext.absences.find((a) => {
-      const startKey = new Date(a.startDate).toISOString().slice(0, 10);
-      const endKey = new Date(a.endDate).toISOString().slice(0, 10);
-      return key >= startKey && key <= endKey;
-    });
     return {
       key,
       dayNumber: format(day, "d"),
       inMonth: isSameMonth(day, anchorDate),
       isToday: isSameDay(day, new Date()),
-      absenceType: absence?.type ?? null,
-      absenceNote: absence?.note ?? null,
       appointments: dayAppointments.map((a) => ({
         id: a.id,
         title: a.title,
@@ -117,6 +111,7 @@ export default async function TerminePage({
         customerId: a.customer?.id ?? null,
         customerName: a.customer?.name ?? null,
         assigneeName: a.assignee?.name ?? null,
+        assigneeId: a.assigneeId ?? null,
       })),
     };
   });
@@ -166,11 +161,18 @@ export default async function TerminePage({
           inquiries={openInquiries}
           appointmentTypes={appointmentTypes.map((t) => ({ id: t.id, label: t.label }))}
           fieldConfig={appointmentFieldConfig}
-          workingHours={scheduleContext.workingHours.map((h) => ({
-            weekday: h.weekday,
-            startTime: h.startTime,
-            endTime: h.endTime,
-            isWorkingDay: h.isWorkingDay,
+          workingHoursByUser={Object.fromEntries(
+            Object.entries(allUsersWorkingHours).map(([uid, hours]) => [
+              uid,
+              hours.map((h) => ({ weekday: h.weekday, startTime: h.startTime, endTime: h.endTime, isWorkingDay: h.isWorkingDay })),
+            ])
+          )}
+          absences={allAbsences.map((a) => ({
+            userId: a.userId,
+            type: a.type,
+            startDate: a.startDate.toISOString().slice(0, 10),
+            endDate: a.endDate.toISOString().slice(0, 10),
+            note: a.note,
           }))}
           users={companyUsers}
           currentUserId={currentUser.id}
