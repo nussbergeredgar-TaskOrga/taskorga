@@ -9,6 +9,7 @@ import { getCustomKpiValues } from "@/lib/actions/custom-kpi";
 import { DEFAULT_WIDGETS } from "@/lib/dashboard-widgets";
 import { formatDistanceToNow, format, isSameDay, startOfDay, endOfDay } from "date-fns";
 import { de } from "date-fns/locale";
+import { computeRevenue } from "@/lib/revenue";
 
 export default async function HeutePage() {
   const company = await getCurrentCompany();
@@ -42,10 +43,7 @@ export default async function HeutePage() {
       where: { companyId: company.id, status: { in: ["SENT", "OPEN", "PARTIALLY_PAID", "OVERDUE"] } },
       _sum: { totalGross: true },
     }),
-    prisma.invoice.aggregate({
-      where: { companyId: company.id, status: "PAID", paidAt: { gte: startOfMonth } },
-      _sum: { totalGross: true },
-    }),
+    computeRevenue(company.id, { gte: startOfMonth }),
     prisma.inquiry.count({
       where: { companyId: company.id, createdAt: { gte: startOfMonth } },
     }),
@@ -160,7 +158,7 @@ export default async function HeutePage() {
       node: (
         <KpiCard
           label="Umsatz diesen Monat"
-          value={`${Number(paidThisMonth._sum.totalGross ?? 0).toLocaleString("de-DE")} €`}
+          value={`${Number(paidThisMonth ?? 0).toLocaleString("de-DE")} €`}
           icon={Wallet}
           accent="border-l-success"
           href="/finanzen"

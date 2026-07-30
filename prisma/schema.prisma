@@ -43,6 +43,9 @@ model Company {
   // Persönliche Anpassung: Akzentfarbe der App selbst (getrennt von der Dokumentenfarbe)
   appAccentColor String @default("#2F5FFF")
 
+  // Woraus sich "Umsatz" zusammensetzt (mehrfach kombinierbar): z.B. ["invoice_paid", "appointment_done"]
+  revenueSources String[] @default(["invoice_paid"])
+
   // Angebots-/Rechnungs-Grundeinstellungen
   defaultQuoteValidityDays Int    @default(30)
   defaultDiscountType      String @default("AMOUNT") // AMOUNT | PERCENT

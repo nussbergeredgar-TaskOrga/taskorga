@@ -8,19 +8,29 @@ import { DocumentDefaultsForm } from "@/components/document-defaults-form";
 import { ItemTemplatesManager } from "@/components/item-templates-manager";
 import { getItemTemplates } from "@/lib/actions/item-templates";
 import { SettingsSection } from "@/components/settings-section";
+import { RevenueSourcesManager } from "@/components/revenue-sources-manager";
+import { getRevenueSources } from "@/lib/actions/revenue-config";
 
 export default async function DokumenteSettingsPage() {
   const admin = await requireAdmin();
 
-  const [documentTemplates, reminderLevels, itemTemplates, company] = await Promise.all([
+  const [documentTemplates, reminderLevels, itemTemplates, company, revenueSources] = await Promise.all([
     getDocumentTemplates(),
     getReminderLevels(),
     getItemTemplates(),
     prisma.company.findUniqueOrThrow({ where: { id: admin.companyId } }),
+    getRevenueSources(),
   ]);
 
   return (
     <div className="space-y-4">
+      <SettingsSection
+        title="Umsatz-Zusammensetzung"
+        description="Woraus sich „Umsatz" im Dashboard und Kundenprofil berechnet — mehrere Quellen kombinierbar."
+      >
+        <RevenueSourcesManager initialSources={revenueSources} />
+      </SettingsSection>
+
       <SettingsSection
         title="Angebots-Grundeinstellungen"
         description="Standard-Gültigkeit, Rabattart und Nummernformate für Angebote und Rechnungen."

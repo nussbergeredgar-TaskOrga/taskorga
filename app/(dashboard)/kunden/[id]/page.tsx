@@ -14,6 +14,7 @@ import { RecordTasks } from "@/components/record-tasks";
 import { KpiCard } from "@/components/kpi-card";
 import { getCustomerTabsConfig } from "@/lib/actions/customer-tabs";
 import { getCurrentUser } from "@/lib/session";
+import { computeRevenue } from "@/lib/revenue";
 import { formatDistanceToNow } from "date-fns";
 import { de } from "date-fns/locale";
 
@@ -67,9 +68,7 @@ export default async function KundeDetailPage({
     .filter((i) => ["OPEN", "SENT", "PARTIALLY_PAID", "OVERDUE"].includes(i.status))
     .reduce((sum, i) => sum + Number(i.totalGross), 0);
 
-  const totalRevenue = customer.invoices
-    .filter((i) => i.status === "PAID")
-    .reduce((sum, i) => sum + Number(i.totalGross), 0);
+  const totalRevenue = await computeRevenue(customer.companyId, undefined, customer.id);
 
   const allTabs: Record<string, { label: string; content: React.ReactNode }> = {
     uebersicht: {
