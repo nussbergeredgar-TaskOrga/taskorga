@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentCompany } from "@/lib/session";
 import { QuoteForm } from "@/components/quote-form";
 import { getItemTemplates } from "@/lib/actions/item-templates";
+import { getFieldConfig } from "@/lib/actions/field-config";
 
 export default async function NeuesAngebotPage({
   searchParams,
@@ -11,7 +12,7 @@ export default async function NeuesAngebotPage({
   searchParams: { customerId?: string; inquiryId?: string; title?: string };
 }) {
   const company = await getCurrentCompany();
-  const [customers, inquiries, projects, itemTemplates] = await Promise.all([
+  const [customers, inquiries, projects, itemTemplates, fieldConfig] = await Promise.all([
     prisma.customer.findMany({
       where: { companyId: company.id },
       orderBy: { name: "asc" },
@@ -26,6 +27,7 @@ export default async function NeuesAngebotPage({
       select: { id: true, title: true, number: true, customerId: true },
     }),
     getItemTemplates(),
+    getFieldConfig("quote"),
   ]);
 
   const defaultValidUntilDate = new Date();
@@ -61,6 +63,7 @@ export default async function NeuesAngebotPage({
           defaultCustomerId={searchParams.customerId}
           defaultInquiryId={searchParams.inquiryId}
           defaultTitle={searchParams.title}
+          fieldConfig={fieldConfig}
         />
       </div>
     </div>

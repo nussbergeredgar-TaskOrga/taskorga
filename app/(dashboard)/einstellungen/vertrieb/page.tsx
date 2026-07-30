@@ -13,7 +13,7 @@ import { FIELD_CATALOGS } from "@/lib/field-config-catalog";
 export default async function VertriebSettingsPage() {
   const admin = await requireAdmin();
 
-  const [steps, customerTabs, appointmentTypes, customerFieldConfig, inquiryFieldConfig, taskFieldConfig, appointmentFieldConfig] = await Promise.all([
+  const [steps, customerTabs, appointmentTypes, customerFieldConfig, inquiryFieldConfig, taskFieldConfig, appointmentFieldConfig, quoteFieldConfig] = await Promise.all([
     prisma.workflowStep.findMany({
       where: { companyId: admin.companyId },
       orderBy: { order: "asc" },
@@ -24,6 +24,7 @@ export default async function VertriebSettingsPage() {
     getFieldConfig("inquiry"),
     getFieldConfig("task"),
     getFieldConfig("appointment"),
+    getFieldConfig("quote"),
   ]);
 
   return (
@@ -75,6 +76,13 @@ export default async function VertriebSettingsPage() {
         description="Titel, Art, Datum/Uhrzeit sind immer vorhanden. Nur der Betrag ist konfigurierbar."
       >
         <FieldConfigManager formKey="appointment" catalog={FIELD_CATALOGS.appointment} initialConfig={appointmentFieldConfig} />
+      </SettingsSection>
+
+      <SettingsSection
+        title="Angebots-Formular — Felder"
+        description="Kunde, Titel und Positionen sind immer vorhanden. Nur „Gültig bis" ist konfigurierbar (Rabatt hat eigene Grundeinstellung unter Dokumente & Finanzen)."
+      >
+        <FieldConfigManager formKey="quote" catalog={FIELD_CATALOGS.quote} initialConfig={quoteFieldConfig} />
       </SettingsSection>
     </div>
   );
