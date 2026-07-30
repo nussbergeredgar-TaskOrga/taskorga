@@ -13,6 +13,7 @@ import { CustomerInsightCard } from "@/components/customer-insight-card";
 import { RecordTasks } from "@/components/record-tasks";
 import { KpiCard } from "@/components/kpi-card";
 import { getCustomerTabsConfig } from "@/lib/actions/customer-tabs";
+import { getCurrentUser } from "@/lib/session";
 import { formatDistanceToNow } from "date-fns";
 import { de } from "date-fns/locale";
 
@@ -47,13 +48,20 @@ export default async function KundeDetailPage({
 }: {
   params: { id: string };
 }) {
-  const [customer, tabsConfig, appointmentTypes, appointmentFieldConfig] = await Promise.all([
+  const [customer, tabsConfig, appointmentTypes, appointmentFieldConfig, currentUser] = await Promise.all([
     getCustomer(params.id),
     getCustomerTabsConfig(),
     getAppointmentTypes(),
     getFieldConfig("appointment"),
+    getCurrentUser(),
   ]);
   if (!customer) notFound();
+
+  const companyUsers = await prisma.user.findMany({
+    where: { companyId: customer.companyId },
+    select: { id: true, name: true },
+    orderBy: { name: "asc" },
+  });
 
   const openInvoicesTotal = customer.invoices
     .filter((i) => ["OPEN", "SENT", "PARTIALLY_PAID", "OVERDUE"].includes(i.status))
@@ -217,6 +225,8 @@ export default async function KundeDetailPage({
           inquiries={customer.inquiries.map((i) => ({ id: i.id, title: i.title }))}
           appointmentTypes={appointmentTypes.map((t) => ({ id: t.id, label: t.label }))}
           fieldConfig={appointmentFieldConfig}
+          users={companyUsers}
+          currentUserId={currentUser.id}
         />
       ),
     },

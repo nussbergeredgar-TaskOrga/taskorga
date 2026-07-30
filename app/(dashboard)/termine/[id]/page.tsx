@@ -2,21 +2,33 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { prisma } from "@/lib/prisma";
+import { getCurrentCompany } from "@/lib/session";
 import { RecordNotes } from "@/components/record-notes";
 import { RecordTasks } from "@/components/record-tasks";
 import { AppointmentStatusSelect } from "@/components/appointment-status-select";
+import { AppointmentAssigneeSelect } from "@/components/appointment-assignee-select";
 
 export default async function TerminDetailPage({ params }: { params: { id: string } }) {
-  const appointment = await prisma.appointment.findUnique({
-    where: { id: params.id },
-    include: {
-      customer: true,
-      inquiry: { select: { id: true, title: true } },
-      comments: { orderBy: { createdAt: "desc" }, include: { user: true } },
-      tasks: { orderBy: { createdAt: "desc" } },
-    },
-  });
+  const [appointment, company] = await Promise.all([
+    prisma.appointment.findUnique({
+      where: { id: params.id },
+      include: {
+        customer: true,
+        inquiry: { select: { id: true, title: true } },
+        assignee: { select: { id: true, name: true } },
+        comments: { orderBy: { createdAt: "desc" }, include: { user: true } },
+        tasks: { orderBy: { createdAt: "desc" } },
+      },
+    }),
+    getCurrentCompany(),
+  ]);
   if (!appointment) notFound();
+
+  const users = await prisma.user.findMany({
+    where: { companyId: company.id },
+    select: { id: true, name: true },
+    orderBy: { name: "asc" },
+  });
 
   const link = { appointmentId: appointment.id };
 
@@ -54,12 +66,22 @@ export default async function TerminDetailPage({ params }: { params: { id: strin
             {appointment.endAt && ` – ${appointment.endAt.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })}`}
             {appointment.amount != null && ` · ${Number(appointment.amount).toLocaleString("de-DE")} €`}
           </p>
+          <p className="text-sm text-ink-500 mt-1">
+            Zuständig: {appointment.assignee?.name ?? "Niemand"}
+          </p>
         </div>
-        <AppointmentStatusSelect
-          appointmentId={appointment.id}
-          status={appointment.status}
-          customerId={appointment.customer?.id}
-        />
+        <div className="flex items-center gap-2">
+          <AppointmentAssigneeSelect
+            appointmentId={appointment.id}
+            assigneeId={appointment.assigneeId}
+            users={users}
+          />
+          <AppointmentStatusSelect
+            appointmentId={appointment.id}
+            status={appointment.status}
+            customerId={appointment.customer?.id}
+          />
+        </div>
       </div>
 
       <div className="rounded-card border border-ink-100 bg-surface p-6 shadow-card">

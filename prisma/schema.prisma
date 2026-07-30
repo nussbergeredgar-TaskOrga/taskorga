@@ -141,6 +141,7 @@ model User {
   updatedAt DateTime @updatedAt
 
   assignedTasks   Task[]        @relation("TaskAssignee")
+  assignedAppointments Appointment[] @relation("AppointmentAssignee")
   workingHours    UserWorkingHours[]
   absences        Absence[]
   comments        Comment[]
@@ -323,6 +324,8 @@ model Appointment {
   customer   Customer? @relation(fields: [customerId], references: [id])
   inquiryId  String?
   inquiry    Inquiry?  @relation(fields: [inquiryId], references: [id])
+  assigneeId String?
+  assignee   User?     @relation("AppointmentAssignee", fields: [assigneeId], references: [id])
 
   title       String
   type        String @default("Rückruf") // konfigurierbar, siehe AppointmentTypeOption

@@ -14,6 +14,7 @@ type DayAppointment = {
   endMinutes: number;
   customerId: string | null;
   customerName: string | null;
+  assigneeName?: string | null;
 };
 
 type Day = {
@@ -55,6 +56,8 @@ export function TermineCalendarSection({
   appointmentTypes,
   fieldConfig,
   workingHours,
+  users,
+  currentUserId,
 }: {
   days: Day[];
   customers: { id: string; name: string }[];
@@ -62,6 +65,8 @@ export function TermineCalendarSection({
   appointmentTypes: { id: string; label: string }[];
   fieldConfig?: FieldConfigMap;
   workingHours?: WorkingHourRow[];
+  users: { id: string; name: string }[];
+  currentUserId: string;
 }) {
   const [formOpen, setFormOpen] = useState(false);
   const [defaultDate, setDefaultDate] = useState<string | undefined>(undefined);
@@ -159,7 +164,7 @@ export function TermineCalendarSection({
               onClick={(e) => e.stopPropagation()}
               className="absolute left-1 right-1 z-20 rounded bg-turquoise-500 text-white px-1.5 py-0.5 text-[11px] overflow-hidden hover:bg-turquoise-700 transition-colors shadow-sm"
               style={{ top, height }}
-              title={`${a.time} ${a.title}${a.customerName ? " — " + a.customerName : ""}`}
+              title={`${a.time} ${a.title}${a.customerName ? " — " + a.customerName : ""}${a.assigneeName ? " · " + a.assigneeName : ""}`}
             >
               <span className="font-medium">{a.time}</span> {a.title}
               {!narrow && a.customerName && <span className="block truncate opacity-90">{a.customerName}</span>}
@@ -178,6 +183,8 @@ export function TermineCalendarSection({
           inquiries={inquiries}
           appointmentTypes={appointmentTypes}
           fieldConfig={fieldConfig}
+          users={users}
+          currentUserId={currentUserId}
           open={formOpen}
           onOpenChange={setFormOpen}
           defaultDate={defaultDate}

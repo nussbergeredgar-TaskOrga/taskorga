@@ -38,14 +38,19 @@ export function AppointmentTab({
   inquiries,
   appointmentTypes,
   fieldConfig,
+  users,
+  currentUserId,
 }: {
   customerId: string;
   appointments: Appointment[];
   inquiries: { id: string; title: string }[];
   appointmentTypes: { id: string; label: string }[];
   fieldConfig?: FieldConfigMap;
+  users: { id: string; name: string }[];
+  currentUserId: string;
 }) {
   const fc = (key: string) => fieldConfig?.[key] ?? { visible: true, required: false };
+  const [assigneeId, setAssigneeId] = useState(currentUserId);
   const titleRef = useRef<HTMLInputElement>(null);
   const startDateRef = useRef<HTMLInputElement>(null);
   const startTimeRef = useRef<HTMLInputElement>(null);
@@ -104,6 +109,7 @@ export function AppointmentTab({
         endAt,
         inquiryId: finalInquiryId || undefined,
         amount: amountRef.current?.value,
+        assigneeId: assigneeId || undefined,
       });
       if (titleRef.current) titleRef.current.value = "";
       if (startDateRef.current) startDateRef.current.value = "";
@@ -177,6 +183,18 @@ export function AppointmentTab({
           {appointmentTypes.map((t) => (
             <option key={t.id} value={t.label}>
               {t.label}
+            </option>
+          ))}
+        </select>
+
+        <select
+          value={assigneeId}
+          onChange={(e) => setAssigneeId(e.target.value)}
+          className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface"
+        >
+          {users.map((u) => (
+            <option key={u.id} value={u.id}>
+              {u.id === currentUserId ? `${u.name} (ich)` : u.name}
             </option>
           ))}
         </select>

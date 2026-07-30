@@ -21,6 +21,7 @@ export async function createAppointment(
     endAt: string;
     inquiryId?: string;
     amount?: string;
+    assigneeId?: string;
   }
 ) {
   if (!data.title.trim() || !data.startAt || !data.endAt) return;
@@ -35,6 +36,7 @@ export async function createAppointment(
       companyId: company.id,
       customerId,
       inquiryId: data.inquiryId || null,
+      assigneeId: data.assigneeId || null,
       title: data.title,
       type: data.type,
       scheduledAt: new Date(data.startAt),
@@ -59,6 +61,15 @@ export async function createAppointment(
   revalidatePath("/termine");
   revalidatePath("/anfragen");
   if (data.inquiryId) revalidatePath(`/anfragen/${data.inquiryId}`);
+}
+
+export async function updateAppointmentAssignee(appointmentId: string, assigneeId: string) {
+  await prisma.appointment.update({
+    where: { id: appointmentId },
+    data: { assigneeId: assigneeId || null },
+  });
+  revalidatePath(`/termine/${appointmentId}`);
+  revalidatePath("/termine");
 }
 
 export async function updateAppointmentStatus(

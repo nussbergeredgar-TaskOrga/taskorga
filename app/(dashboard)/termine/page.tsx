@@ -18,7 +18,7 @@ import {
 } from "date-fns";
 import { de } from "date-fns/locale";
 import { prisma } from "@/lib/prisma";
-import { getCurrentCompany } from "@/lib/session";
+import { getCurrentCompany, getCurrentUser } from "@/lib/session";
 import { TermineCalendarSection } from "@/components/termine-calendar-section";
 import { TermineListView } from "@/components/termine-list-view";
 import { CollapsiblePanel } from "@/components/collapsible-panel";
@@ -34,6 +34,7 @@ export default async function TerminePage({
   searchParams: { month?: string };
 }) {
   const company = await getCurrentCompany();
+  const currentUser = await getCurrentUser();
 
   const anchorDate = searchParams.month ? new Date(`${searchParams.month}-01`) : new Date();
   const monthStart = startOfMonth(anchorDate);
@@ -42,14 +43,14 @@ export default async function TerminePage({
   const gridEnd = endOfWeek(monthEnd, { weekStartsOn: 1 });
   const days = eachDayOfInterval({ start: gridStart, end: gridEnd });
 
-  const [appointments, allAppointments, customers, openInquiries, appointmentTypes, appointmentFieldConfig, scheduleContext] = await Promise.all([
+  const [appointments, allAppointments, customers, openInquiries, appointmentTypes, appointmentFieldConfig, scheduleContext, companyUsers] = await Promise.all([
     prisma.appointment.findMany({
       where: {
         companyId: company.id,
         scheduledAt: { gte: gridStart, lte: gridEnd },
       },
       orderBy: { scheduledAt: "asc" },
-      include: { customer: { select: { id: true, name: true } } },
+      include: { customer: { select: { id: true, name: true } }, assignee: { select: { name: true } } },
     }),
     prisma.appointment.findMany({
       where: { companyId: company.id },
@@ -68,6 +69,7 @@ export default async function TerminePage({
     getAppointmentTypes(),
     getFieldConfig("appointment"),
     getCalendarScheduleContext(),
+    prisma.user.findMany({ where: { companyId: company.id }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
   ]);
 
   const prevMonth = format(subMonths(anchorDate, 1), "yyyy-MM");
@@ -114,6 +116,7 @@ export default async function TerminePage({
             : 30,
         customerId: a.customer?.id ?? null,
         customerName: a.customer?.name ?? null,
+        assigneeName: a.assignee?.name ?? null,
       })),
     };
   });
@@ -169,6 +172,8 @@ export default async function TerminePage({
             endTime: h.endTime,
             isWorkingDay: h.isWorkingDay,
           }))}
+          users={companyUsers}
+          currentUserId={currentUser.id}
         />
       </CollapsiblePanel>
 
