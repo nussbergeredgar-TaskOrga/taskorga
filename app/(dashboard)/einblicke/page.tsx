@@ -1,8 +1,10 @@
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/session";
 import { getCustomKpiValues } from "@/lib/actions/custom-kpi";
+import { getCustomChartsWithData } from "@/lib/actions/custom-chart";
 import { getDashboardLayout } from "@/lib/actions/dashboard";
 import { KpiManager } from "@/components/kpi-manager";
+import { ChartManager } from "@/components/chart-manager";
 import { RevenueChart } from "@/components/charts/revenue-chart";
 import { PipelineChart } from "@/components/charts/pipeline-chart";
 import { InvoiceStatusChart } from "@/components/charts/invoice-status-chart";
@@ -30,8 +32,9 @@ export default async function EinblickePage() {
   sixMonthsAgo.setDate(1);
   sixMonthsAgo.setHours(0, 0, 0, 0);
 
-  const [kpis, layout, paidInvoices, inquiryCounts, invoiceSums] = await Promise.all([
+  const [kpis, customCharts, layout, paidInvoices, inquiryCounts, invoiceSums] = await Promise.all([
     getCustomKpiValues(),
+    getCustomChartsWithData(),
     getDashboardLayout(),
     prisma.invoice.findMany({
       where: { companyId, status: "PAID", paidAt: { gte: sixMonthsAgo } },
@@ -87,7 +90,7 @@ export default async function EinblickePage() {
       <div>
         <h1 className="text-2xl font-semibold text-ink-900">Einblicke</h1>
         <p className="text-sm text-ink-500 mt-1">
-          Auswertungen aus deinen Daten, plus eigene Kennzahlen fürs Dashboard.
+          Auswertungen aus deinen Daten, plus eigene Kennzahlen und Diagramme fürs Dashboard.
         </p>
       </div>
 
@@ -126,6 +129,27 @@ export default async function EinblickePage() {
             dateTo: k.dateTo,
             value: k.value,
             onDashboard: onDashboardIds.has(`custom:${k.id}`),
+          }))}
+        />
+      </div>
+
+      <div className="rounded-card border border-ink-100 bg-surface p-6 shadow-card">
+        <h2 className="font-display font-semibold text-ink-900 mb-1">Eigene Diagramme</h2>
+        <p className="text-sm text-ink-500 mb-4">
+          Wähle einen Datentyp, ein Diagrammtyp (Balken/Linie) und eine Gruppierung (nach Status
+          oder Verlauf pro Monat). Über das Raster-Symbol erscheint das Diagramm auch auf „Heute".
+          Vorerst für Rechnungen und Anfragen — weitere Datentypen folgen.
+        </p>
+        <ChartManager
+          charts={customCharts.map((c) => ({
+            id: c.id,
+            label: c.label,
+            entity: c.entity,
+            chartType: c.chartType,
+            groupBy: c.groupBy,
+            aggregation: c.aggregation,
+            data: c.data,
+            onDashboard: onDashboardIds.has(`chart:${c.id}`),
           }))}
         />
       </div>

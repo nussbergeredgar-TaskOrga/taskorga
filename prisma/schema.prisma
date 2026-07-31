@@ -81,6 +81,7 @@ model Company {
   appointmentTypes  AppointmentTypeOption[]
   fieldConfigs      FieldConfig[]
   absences          Absence[]
+  customCharts      CustomChart[]
 }
 
 // Admin kann pro Formular (z.B. "customer") einzelne Felder ausblenden oder
@@ -742,6 +743,27 @@ model CustomKpi {
   dateRangeType String  @default("ALL") // ALL | TODAY | THIS_WEEK | THIS_MONTH | THIS_YEAR | CUSTOM
   dateFrom      DateTime?
   dateTo        DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([companyId])
+}
+
+// Frei erstellbare Diagramme fürs Dashboard: Nutzer wählt Datentyp, Diagrammtyp
+// (Balken/Linie), Gruppierung (nach Status oder Verlauf pro Monat) und Berechnung.
+// Vorerst nur "invoices"/"inquiries" unterstützt (siehe lib/actions/custom-chart.ts),
+// weitere Datentypen und Diagrammtypen folgen schrittweise.
+model CustomChart {
+  id        String   @id @default(cuid())
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id])
+
+  label       String
+  entity      String // "invoices" | "inquiries"
+  chartType   String // "bar" | "line"
+  groupBy     String // "status" | "month"
+  aggregation String // "count" | "sum"
+  sumField    String?
 
   createdAt DateTime @default(now())
 

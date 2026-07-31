@@ -6,6 +6,8 @@ import { KpiCard } from "@/components/kpi-card";
 import { DashboardGrid } from "@/components/dashboard-grid";
 import { getDashboardLayout } from "@/lib/actions/dashboard";
 import { getCustomKpiValues } from "@/lib/actions/custom-kpi";
+import { getCustomChartsWithData } from "@/lib/actions/custom-chart";
+import { CustomChart } from "@/components/charts/custom-chart";
 import { DEFAULT_WIDGETS } from "@/lib/dashboard-widgets";
 import { formatDistanceToNow, format, isSameDay, startOfDay, endOfDay } from "date-fns";
 import { de } from "date-fns/locale";
@@ -35,6 +37,7 @@ export default async function HeutePage() {
     sentQuotesAgg,
     savedLayout,
     customKpis,
+    customCharts,
   ] = await Promise.all([
     prisma.task.count({
       where: { companyId: company.id, status: { in: ["OPEN", "IN_PROGRESS"] } },
@@ -99,10 +102,12 @@ export default async function HeutePage() {
     }),
     getDashboardLayout(),
     getCustomKpiValues(),
+    getCustomChartsWithData(),
   ]);
 
-  const customWidgetIds = customKpis.map((k) => `custom:${k.id}`);
-  const allDefaultIds = [...DEFAULT_WIDGETS.map((w) => w.id), ...customWidgetIds];
+  const customKpiWidgetIds = customKpis.map((k) => `custom:${k.id}`);
+  const customChartWidgetIds = customCharts.map((c) => `chart:${c.id}`);
+  const allDefaultIds = [...DEFAULT_WIDGETS.map((w) => w.id), ...customKpiWidgetIds, ...customChartWidgetIds];
 
   // Neue Standard-Kacheln und neu erstellte eigene Kacheln ergänzen, falls sie
   // in der gespeicherten Konfiguration noch fehlen. Gelöschte eigene Kacheln
@@ -112,10 +117,13 @@ export default async function HeutePage() {
   const baseLayout = savedLayout ?? DEFAULT_WIDGETS;
   const savedIds = new Set(baseLayout.map((w) => w.id));
   const missingDefaults = savedLayout ? DEFAULT_WIDGETS.filter((w) => !savedIds.has(w.id)) : [];
-  const missingCustom = customWidgetIds
+  const missingCustomKpis = customKpiWidgetIds
     .filter((id) => !savedIds.has(id))
     .map((id) => ({ id, visible: true, size: "sm" as const, order: 0 }));
-  const missing = [...missingDefaults, ...missingCustom].map((w, i) => ({
+  const missingCustomCharts = customChartWidgetIds
+    .filter((id) => !savedIds.has(id))
+    .map((id) => ({ id, visible: true, size: "md" as const, order: 0 }));
+  const missing = [...missingDefaults, ...missingCustomKpis, ...missingCustomCharts].map((w, i) => ({
     ...w,
     order: baseLayout.length + i,
   }));
@@ -389,6 +397,20 @@ export default async function HeutePage() {
           }
           accent={kpi.accent}
         />
+      ),
+    })),
+    ...customCharts.map((chart) => ({
+      id: `chart:${chart.id}`,
+      label: chart.label,
+      node: (
+        <div className="rounded-card border border-ink-100 bg-surface p-5 shadow-card h-full">
+          <h2 className="font-display font-semibold text-ink-900 mb-3">{chart.label}</h2>
+          <CustomChart
+            chartType={chart.chartType as "bar" | "line"}
+            data={chart.data}
+            valueSuffix={chart.aggregation === "sum" ? " €" : undefined}
+          />
+        </div>
       ),
     })),
   ];
