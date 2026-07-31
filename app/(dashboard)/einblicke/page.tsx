@@ -138,7 +138,6 @@ export default async function EinblickePage() {
         <p className="text-sm text-ink-500 mb-4">
           Wähle einen Datentyp, ein Diagrammtyp (Balken/Linie) und eine Gruppierung (nach Status
           oder Verlauf pro Monat). Über das Raster-Symbol erscheint das Diagramm auch auf „Heute".
-          Vorerst für Rechnungen und Anfragen — weitere Datentypen folgen.
         </p>
         <ChartManager
           charts={customCharts.map((c) => ({

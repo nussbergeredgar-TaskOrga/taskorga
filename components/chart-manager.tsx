@@ -10,11 +10,7 @@ import {
   toggleChartOnDashboard,
 } from "@/lib/actions/custom-chart";
 import { CustomChart } from "@/components/charts/custom-chart";
-
-const CHART_ENTITIES = [
-  { value: "invoices", label: "Rechnungen", sumField: "totalGross", sumLabel: "Betrag brutto" },
-  { value: "inquiries", label: "Anfragen", sumField: "amount", sumLabel: "Geschätzter Betrag" },
-] as const;
+import { ENTITY_META, ENTITY_KEYS, type EntityKey } from "@/lib/custom-kpi";
 
 type Chart = {
   id: string;
@@ -28,11 +24,11 @@ type Chart = {
 };
 
 function describeChart(chart: Chart) {
-  const entityMeta = CHART_ENTITIES.find((e) => e.value === chart.entity);
+  const meta = ENTITY_META[chart.entity as EntityKey];
   const chartLabel = chart.chartType === "bar" ? "Balkendiagramm" : "Liniendiagramm";
   const groupLabel = chart.groupBy === "status" ? "nach Status" : "Verlauf pro Monat (6 Monate)";
-  const aggLabel = chart.aggregation === "sum" ? `${entityMeta?.sumLabel ?? "Betrag"} summiert` : "Anzahl";
-  return `${entityMeta?.label ?? chart.entity} · ${chartLabel} · ${groupLabel} · ${aggLabel}`;
+  const aggLabel = chart.aggregation === "sum" ? `${meta?.sumFields[0]?.label ?? "Betrag"} summiert` : "Anzahl";
+  return `${meta?.label ?? chart.entity} · ${chartLabel} · ${groupLabel} · ${aggLabel}`;
 }
 
 // Gemeinsames Formular für Neu anlegen UND Bearbeiten
@@ -46,23 +42,27 @@ function ChartForm({
   onSaved: () => void;
 }) {
   const [label, setLabel] = useState(initial?.label ?? "");
-  const [entity, setEntity] = useState(initial?.entity ?? "invoices");
+  const [entity, setEntity] = useState<EntityKey>((initial?.entity as EntityKey) ?? "invoices");
   const [chartType, setChartType] = useState((initial?.chartType as "bar" | "line") ?? "bar");
   const [groupBy, setGroupBy] = useState((initial?.groupBy as "status" | "month") ?? "status");
   const [aggregation, setAggregation] = useState((initial?.aggregation as "count" | "sum") ?? "count");
   const [pending, startTransition] = useTransition();
 
-  const entityMeta = CHART_ENTITIES.find((e) => e.value === entity) ?? CHART_ENTITIES[0];
+  const meta = ENTITY_META[entity];
+  const canGroupByStatus = meta.statusOptions.length > 0;
+  const canSum = meta.sumFields.length > 0;
 
   function submit() {
     if (!label.trim()) return;
+    const effectiveGroupBy = groupBy === "status" && !canGroupByStatus ? "month" : groupBy;
+    const effectiveAggregation = aggregation === "sum" && !canSum ? "count" : aggregation;
     const payload = {
       label,
-      entity: entity as "invoices" | "inquiries",
+      entity,
       chartType,
-      groupBy,
-      aggregation,
-      sumField: entityMeta.sumField,
+      groupBy: effectiveGroupBy,
+      aggregation: effectiveAggregation,
+      sumField: meta.sumFields[0]?.key,
     };
     startTransition(async () => {
       if (initial) {
@@ -85,12 +85,12 @@ function ChartForm({
         />
         <select
           value={entity}
-          onChange={(e) => setEntity(e.target.value)}
+          onChange={(e) => setEntity(e.target.value as EntityKey)}
           className="rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface"
         >
-          {CHART_ENTITIES.map((e) => (
-            <option key={e.value} value={e.value}>
-              {e.label}
+          {ENTITY_KEYS.map((key) => (
+            <option key={key} value={key}>
+              {ENTITY_META[key].label}
             </option>
           ))}
         </select>
@@ -106,20 +106,20 @@ function ChartForm({
           <option value="line">Liniendiagramm</option>
         </select>
         <select
-          value={groupBy}
+          value={canGroupByStatus ? groupBy : "month"}
           onChange={(e) => setGroupBy(e.target.value as "status" | "month")}
           className="rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface"
         >
-          <option value="status">Gruppiert nach Status</option>
+          {canGroupByStatus && <option value="status">Gruppiert nach Status</option>}
           <option value="month">Verlauf pro Monat (6 Monate)</option>
         </select>
         <select
-          value={aggregation}
+          value={canSum ? aggregation : "count"}
           onChange={(e) => setAggregation(e.target.value as "count" | "sum")}
           className="rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface"
         >
           <option value="count">Anzahl zählen</option>
-          <option value="sum">{entityMeta.sumLabel} summieren</option>
+          {canSum && <option value="sum">{meta.sumFields[0].label} summieren</option>}
         </select>
       </div>
 
