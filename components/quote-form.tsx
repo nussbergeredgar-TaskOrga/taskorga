@@ -5,11 +5,14 @@ import { useFormState, useFormStatus } from "react-dom";
 import { Plus, Trash2, Library, Save } from "lucide-react";
 import { createQuote, type QuoteFormState } from "@/lib/actions/quotes";
 import { createItemTemplate } from "@/lib/actions/item-templates";
+import type { FieldConfigMap } from "@/lib/actions/field-config";
 
 const initialState: QuoteFormState = {};
 
 type Item = { description: string; quantity: string; unit: string; unitPrice: string; taxRate: string };
 type Template = { id: string; description: string; unit: string; unitPrice: number; taxRate: number };
+
+const DEFAULT_FIELD_STATE = { visible: true, required: false };
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -38,6 +41,7 @@ export function QuoteForm({
   defaultCustomerId,
   defaultInquiryId,
   defaultTitle,
+  fieldConfig,
 }: {
   customers: { id: string; name: string }[];
   inquiries: { id: string; title: string; customerId: string }[];
@@ -48,7 +52,9 @@ export function QuoteForm({
   defaultCustomerId?: string;
   defaultInquiryId?: string;
   defaultTitle?: string;
+  fieldConfig?: FieldConfigMap;
 }) {
+  const fc = (key: string) => fieldConfig?.[key] ?? DEFAULT_FIELD_STATE;
   const [state, formAction] = useFormState(createQuote, initialState);
   const [customerId, setCustomerId] = useState(defaultCustomerId || "");
   const [items, setItems] = useState<Item[]>([emptyItem()]);
@@ -193,19 +199,23 @@ export function QuoteForm({
         )}
       </div>
 
-      <div>
-        <label htmlFor="validUntil" className="block text-sm font-medium text-ink-700 mb-1.5">
-          Gültig bis
-        </label>
-        <input
-          id="validUntil"
-          name="validUntil"
-          type="date"
-          defaultValue={defaultValidUntil}
-          className="w-full max-w-xs rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500"
-        />
-        <p className="text-xs text-ink-300 mt-1">Standardmäßig vorausgefüllt, kann angepasst werden.</p>
-      </div>
+      {fc("validUntil").visible && (
+        <div>
+          <label htmlFor="validUntil" className="block text-sm font-medium text-ink-700 mb-1.5">
+            Gültig bis
+            {fc("validUntil").required && <span className="text-danger ml-0.5">*</span>}
+          </label>
+          <input
+            id="validUntil"
+            name="validUntil"
+            type="date"
+            required={fc("validUntil").required}
+            defaultValue={defaultValidUntil}
+            className="w-full max-w-xs rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500"
+          />
+          <p className="text-xs text-ink-300 mt-1">Standardmäßig vorausgefüllt, kann angepasst werden.</p>
+        </div>
+      )}
 
       {/* Positionen */}
       <div>
@@ -311,25 +321,31 @@ export function QuoteForm({
 
         {state.message && <p className="text-xs text-danger mt-2">{state.message}</p>}
 
-        <div className="flex items-center justify-end gap-2 mt-4 pt-3 border-t border-ink-100">
-          <label className="text-sm text-ink-500">Rabatt</label>
-          <input
-            type="number"
-            step="0.01"
-            value={discountValue}
-            onChange={(e) => setDiscountValue(e.target.value)}
-            placeholder="0"
-            className="w-24 rounded-lg border border-ink-100 px-2.5 py-1.5 text-sm outline-none focus:border-brand-500 font-mono"
-          />
-          <select
-            value={discountType}
-            onChange={(e) => setDiscountType(e.target.value as "AMOUNT" | "PERCENT")}
-            className="rounded-lg border border-ink-100 px-2 py-1.5 text-sm outline-none focus:border-brand-500 bg-surface"
-          >
-            <option value="AMOUNT">€</option>
-            <option value="PERCENT">%</option>
-          </select>
-        </div>
+        {fc("discount").visible && (
+          <div className="flex items-center justify-end gap-2 mt-4 pt-3 border-t border-ink-100">
+            <label className="text-sm text-ink-500">
+              Rabatt
+              {fc("discount").required && <span className="text-danger ml-0.5">*</span>}
+            </label>
+            <input
+              type="number"
+              step="0.01"
+              required={fc("discount").required}
+              value={discountValue}
+              onChange={(e) => setDiscountValue(e.target.value)}
+              placeholder="0"
+              className="w-24 rounded-lg border border-ink-100 px-2.5 py-1.5 text-sm outline-none focus:border-brand-500 font-mono"
+            />
+            <select
+              value={discountType}
+              onChange={(e) => setDiscountType(e.target.value as "AMOUNT" | "PERCENT")}
+              className="rounded-lg border border-ink-100 px-2 py-1.5 text-sm outline-none focus:border-brand-500 bg-surface"
+            >
+              <option value="AMOUNT">€</option>
+              <option value="PERCENT">%</option>
+            </select>
+          </div>
+        )}
 
         <div className="flex justify-end gap-6 mt-2 text-sm font-mono">
           <span className="text-ink-500">Netto: {netAfterDiscount.toFixed(2)} €</span>
