@@ -101,7 +101,7 @@ export const HELP_CHAPTERS: HelpChapter[] = [
     title: "Einstellungen im Überblick",
     description: "Die vier Bereiche.",
     paragraphs: [
-      "**Mein Konto** — Profil, Passwort, Darstellung, eigene Navigation (jeder Nutzer für sich).",
+      "**Mein Konto** — Profil, Passwort, Systemeinstellungen (Farbmodus & Schriftgröße persönlich, App-Akzentfarbe firmenweit für Admins), eigene Navigation (jeder Nutzer für sich).",
       "**Firma** — Firmenprofil, Logo, Benutzerverwaltung, Menü-Wording, E-Mail-Signatur (nur Admin).",
       "**Anfragen & Vertrieb** — Anfragen-Workflow, Kundenstamm-Tabs, Terminarten (nur Admin).",
       "**Dokumente & Finanzen** — Angebots-/Rechnungsvorlagen, Positions-Bibliothek, Mahnstufen, Grundeinstellungen für Nummernformate und Rabatte (nur Admin).",

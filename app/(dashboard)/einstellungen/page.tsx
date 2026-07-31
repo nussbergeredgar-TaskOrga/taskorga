@@ -1,7 +1,9 @@
 import { getCurrentUserWithRole } from "@/lib/session";
+import { prisma } from "@/lib/prisma";
 import { ProfileForm } from "@/components/profile-form";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { FontSizeToggle } from "@/components/font-size-toggle";
+import { AppColorForm } from "@/components/app-color-form";
 import { NavConfigManager } from "@/components/nav-config-manager";
 import { SettingsSection } from "@/components/settings-section";
 import { getNavConfig } from "@/lib/actions/nav";
@@ -9,7 +11,11 @@ import { DEFAULT_NAV } from "@/lib/nav-items";
 
 export default async function MeinKontoPage() {
   const user = await getCurrentUserWithRole();
+  const isAdmin = user.role?.name === "Admin";
   const navConfig = await getNavConfig();
+  const company = isAdmin
+    ? await prisma.company.findUniqueOrThrow({ where: { id: user.companyId } })
+    : null;
 
   return (
     <div className="space-y-4">
@@ -18,18 +24,24 @@ export default async function MeinKontoPage() {
       </SettingsSection>
 
       <SettingsSection
-        title="Darstellung"
-        description="Wird auf diesem Gerät gespeichert und gilt für zukünftige Besuche."
+        title="Systemeinstellungen"
+        description="Darstellung der App — persönliche Einstellungen gelten nur auf diesem Gerät, firmenweite für alle Nutzer."
       >
         <div className="space-y-4">
           <div>
-            <p className="text-xs text-ink-500 mb-1.5">Farbmodus</p>
+            <p className="text-xs text-ink-500 mb-1.5">Farbmodus (persönlich)</p>
             <ThemeToggle />
           </div>
           <div>
-            <p className="text-xs text-ink-500 mb-1.5">Schriftgröße</p>
+            <p className="text-xs text-ink-500 mb-1.5">Schriftgröße (persönlich)</p>
             <FontSizeToggle />
           </div>
+          {company && (
+            <div>
+              <p className="text-xs text-ink-500 mb-1.5">App-Akzentfarbe (firmenweit)</p>
+              <AppColorForm color={company.appAccentColor} />
+            </div>
+          )}
         </div>
       </SettingsSection>
 

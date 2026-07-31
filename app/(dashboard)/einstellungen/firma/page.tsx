@@ -4,7 +4,6 @@ import { CompanyProfileForm } from "@/components/company-profile-form";
 import { TeamManager } from "@/components/team-manager";
 import { NavLabelManager } from "@/components/nav-label-manager";
 import { EmailSignatureForm } from "@/components/email-signature-form";
-import { AppColorForm } from "@/components/app-color-form";
 import { ScheduleManager } from "@/components/schedule-manager";
 import { SettingsSection } from "@/components/settings-section";
 import { getNavLabels } from "@/lib/actions/nav";
@@ -66,13 +65,6 @@ export default async function FirmaSettingsPage({
           role={company.emailSignatureRole}
           text={company.emailSignatureText}
         />
-      </SettingsSection>
-
-      <SettingsSection
-        title="App-Akzentfarbe"
-        description="Bestimmt die Hauptfarbe der App selbst (Buttons, Hervorhebungen) — gilt für alle Nutzer der Firma."
-      >
-        <AppColorForm color={company.appAccentColor} />
       </SettingsSection>
 
       <SettingsSection
