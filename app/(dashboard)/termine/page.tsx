@@ -31,7 +31,7 @@ import { CalendarCheck, CalendarClock, Wallet } from "lucide-react";
 export default async function TerminePage({
   searchParams,
 }: {
-  searchParams: { month?: string };
+  searchParams: { month?: string; status?: string; day?: string };
 }) {
   const company = await getCurrentCompany();
   const currentUser = await getCurrentUser();
@@ -118,6 +118,27 @@ export default async function TerminePage({
 
   const distinctTypes = Array.from(new Set(allAppointments.map((a) => a.type)));
 
+  const statusFilter = searchParams.status;
+  const dayFilter = searchParams.day === "today";
+  const filteredAppointments = allAppointments.filter((a) => {
+    if (statusFilter && a.status !== statusFilter) return false;
+    if (dayFilter && (!a.scheduledAt || !isSameDay(a.scheduledAt, new Date()))) return false;
+    return true;
+  });
+  const hasListFilter = Boolean(statusFilter || dayFilter);
+  const APPOINTMENT_STATUS_LABELS: Record<string, string> = {
+    REQUESTED: "Angefragt",
+    SCHEDULED: "Geplant",
+    DONE: "Erledigt",
+    CANCELLED: "Storniert",
+  };
+  const filterLabel = [
+    statusFilter ? APPOINTMENT_STATUS_LABELS[statusFilter] ?? statusFilter : null,
+    dayFilter ? "Heute" : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
@@ -179,9 +200,21 @@ export default async function TerminePage({
         />
       </CollapsiblePanel>
 
-      <CollapsiblePanel title="Listenansicht — alle Termine" badge={`${allAppointments.length}`}>
+      <CollapsiblePanel
+        title={hasListFilter ? `Listenansicht — gefiltert (${filterLabel})` : "Listenansicht — alle Termine"}
+        badge={`${filteredAppointments.length}`}
+        defaultOpen={hasListFilter}
+      >
+        {hasListFilter && (
+          <div className="flex items-center gap-2 text-sm text-ink-500 mb-3">
+            Gefiltert: <span className="font-medium text-ink-900">{filterLabel}</span>
+            <Link href="/termine" className="text-brand-700 hover:underline">
+              Zurücksetzen
+            </Link>
+          </div>
+        )}
         <TermineListView
-          appointments={allAppointments.map((a) => ({
+          appointments={filteredAppointments.map((a) => ({
             id: a.id,
             title: a.title,
             type: a.type,

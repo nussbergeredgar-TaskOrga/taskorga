@@ -12,13 +12,27 @@ const STATUS_LABELS: Record<string, string> = {
   EXPIRED: "Abgelaufen",
 };
 
-export default async function AngebotePage() {
+const OPEN_QUOTE_STATUSES = ["DRAFT", "SENT"];
+
+export default async function AngebotePage({
+  searchParams,
+}: {
+  searchParams: { status?: string };
+}) {
   const company = await getCurrentCompany();
   const quotes = await prisma.quote.findMany({
     where: { companyId: company.id },
     orderBy: { createdAt: "desc" },
     include: { customer: { select: { name: true } } },
   });
+
+  const statusFilter = searchParams.status;
+  const displayedQuotes = statusFilter
+    ? quotes.filter((q) =>
+        statusFilter === "open" ? OPEN_QUOTE_STATUSES.includes(q.status) : q.status === statusFilter
+      )
+    : quotes;
+  const statusFilterLabel = statusFilter === "open" ? "Offen" : statusFilter ? STATUS_LABELS[statusFilter] : null;
 
   return (
     <div className="space-y-6">
@@ -36,13 +50,26 @@ export default async function AngebotePage() {
         </Link>
       </div>
 
+      {statusFilterLabel && (
+        <div className="flex items-center gap-2 text-sm text-ink-500">
+          Gefiltert: <span className="font-medium text-ink-900">{statusFilterLabel}</span>
+          <Link href="/angebote" className="text-brand-700 hover:underline">
+            Zurücksetzen
+          </Link>
+        </div>
+      )}
+
       {quotes.length === 0 ? (
         <div className="rounded-card border border-dashed border-ink-100 bg-surface p-12 text-center">
           <p className="text-ink-500 text-sm">Noch keine Angebote vorhanden.</p>
         </div>
+      ) : displayedQuotes.length === 0 ? (
+        <div className="rounded-card border border-dashed border-ink-100 bg-surface p-8 text-center">
+          <p className="text-ink-500 text-sm">Keine Angebote mit diesem Filter.</p>
+        </div>
       ) : (
         <div className="space-y-2">
-          {quotes.map((q) => (
+          {displayedQuotes.map((q) => (
             <Link
               key={q.id}
               href={`/angebote/${q.id}`}

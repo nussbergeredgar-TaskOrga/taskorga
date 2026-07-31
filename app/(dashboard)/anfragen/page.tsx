@@ -7,8 +7,16 @@ import { AnfrageDecisionRow } from "@/components/anfrage-decision-row";
 import { AnfragenListView } from "@/components/anfragen-list-view";
 import { CollapsiblePanel } from "@/components/collapsible-panel";
 
-export default async function AnfragenPage() {
+export default async function AnfragenPage({
+  searchParams,
+}: {
+  searchParams: { range?: string };
+}) {
   const company = await getCurrentCompany();
+  const isMonthFilter = searchParams.range === "month";
+  const startOfMonth = new Date();
+  startOfMonth.setDate(1);
+  startOfMonth.setHours(0, 0, 0, 0);
 
   const [steps, inquiries, wonAgg, lostAgg, scheduledAppointments] = await Promise.all([
     prisma.workflowStep.findMany({
@@ -16,7 +24,11 @@ export default async function AnfragenPage() {
       orderBy: { order: "asc" },
     }),
     prisma.inquiry.findMany({
-      where: { companyId: company.id, status: { notIn: ["WON", "LOST"] } },
+      where: {
+        companyId: company.id,
+        status: { notIn: ["WON", "LOST"] },
+        ...(isMonthFilter ? { createdAt: { gte: startOfMonth } } : {}),
+      },
       orderBy: { createdAt: "desc" },
       include: {
         customer: { select: { id: true, name: true } },
@@ -88,6 +100,15 @@ export default async function AnfragenPage() {
           Neue Anfrage
         </Link>
       </div>
+
+      {isMonthFilter && (
+        <div className="flex items-center gap-2 text-sm text-ink-500">
+          Gefiltert: <span className="font-medium text-ink-900">Diesen Monat erstellt</span>
+          <Link href="/anfragen" className="text-brand-700 hover:underline">
+            Zurücksetzen
+          </Link>
+        </div>
+      )}
 
       {scheduledAppointments.length > 0 && (
         <div className="rounded-card border border-ink-100 bg-surface p-5 shadow-card">

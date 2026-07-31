@@ -11,7 +11,11 @@ const STATUS_LABELS: Record<string, string> = {
   CANCELLED: "Storniert",
 };
 
-export default async function ArbeitPage() {
+export default async function ArbeitPage({
+  searchParams,
+}: {
+  searchParams: { status?: string };
+}) {
   const company = await getCurrentCompany();
   const projects = await prisma.project.findMany({
     where: { companyId: company.id },
@@ -21,6 +25,10 @@ export default async function ArbeitPage() {
       _count: { select: { tasks: true } },
     },
   });
+
+  const statusFilter = searchParams.status;
+  const displayedProjects = statusFilter ? projects.filter((p) => p.status === statusFilter) : projects;
+  const statusFilterLabel = statusFilter ? STATUS_LABELS[statusFilter] : null;
 
   return (
     <div className="space-y-6">
@@ -71,8 +79,22 @@ export default async function ArbeitPage() {
           </div>
         </div>
       ) : (
+        <>
+          {statusFilterLabel && (
+            <div className="flex items-center gap-2 text-sm text-ink-500">
+              Gefiltert: <span className="font-medium text-ink-900">{statusFilterLabel}</span>
+              <Link href="/arbeit" className="text-brand-700 hover:underline">
+                Zurücksetzen
+              </Link>
+            </div>
+          )}
+          {displayedProjects.length === 0 ? (
+            <div className="rounded-card border border-dashed border-ink-100 bg-surface p-8 text-center">
+              <p className="text-ink-500 text-sm">Keine Aufträge mit diesem Filter.</p>
+            </div>
+          ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {projects.map((p) => (
+          {displayedProjects.map((p) => (
             <Link
               key={p.id}
               href={`/arbeit/${p.id}`}
@@ -87,6 +109,8 @@ export default async function ArbeitPage() {
             </Link>
           ))}
         </div>
+          )}
+        </>
       )}
     </div>
   );

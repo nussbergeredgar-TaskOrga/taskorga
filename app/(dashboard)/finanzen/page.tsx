@@ -18,7 +18,13 @@ const STATUS_LABELS: Record<string, string> = {
   CANCELLED: "Storniert",
 };
 
-export default async function FinanzenPage() {
+const OPEN_INVOICE_STATUSES = ["SENT", "OPEN", "PARTIALLY_PAID", "OVERDUE"];
+
+export default async function FinanzenPage({
+  searchParams,
+}: {
+  searchParams: { status?: string };
+}) {
   const admin = await requireAdmin();
   const company = { id: admin.companyId };
 
@@ -46,6 +52,14 @@ export default async function FinanzenPage() {
     .reduce((sum, i) => sum + Number(i.totalGross), 0);
   const overdueInvoices = invoices.filter((i) => i.status === "OVERDUE");
   const overdueTotal = overdueInvoices.reduce((sum, i) => sum + Number(i.totalGross), 0);
+
+  const statusFilter = searchParams.status;
+  const displayedInvoices = statusFilter
+    ? invoices.filter((i) =>
+        statusFilter === "open" ? OPEN_INVOICE_STATUSES.includes(i.status) : i.status === statusFilter
+      )
+    : invoices;
+  const statusFilterLabel = statusFilter === "open" ? "Offen" : statusFilter ? STATUS_LABELS[statusFilter] : null;
 
   const openExpenses = expenses.filter((e) => e.status === "OPEN");
   const paidExpenses = expenses.filter((e) => e.status === "PAID");
@@ -116,6 +130,15 @@ export default async function FinanzenPage() {
         </div>
       )}
 
+      {statusFilterLabel && (
+        <div className="flex items-center gap-2 text-sm text-ink-500">
+          Gefiltert: <span className="font-medium text-ink-900">{statusFilterLabel}</span>
+          <Link href="/finanzen" className="text-brand-700 hover:underline">
+            Zurücksetzen
+          </Link>
+        </div>
+      )}
+
       {invoices.length === 0 ? (
         <div className="rounded-card border border-dashed border-ink-100 bg-surface p-12 text-center">
           <p className="text-ink-500 text-sm">
@@ -130,9 +153,13 @@ export default async function FinanzenPage() {
             .
           </p>
         </div>
+      ) : displayedInvoices.length === 0 ? (
+        <div className="rounded-card border border-dashed border-ink-100 bg-surface p-8 text-center">
+          <p className="text-ink-500 text-sm">Keine Rechnungen mit diesem Filter.</p>
+        </div>
       ) : (
         <div className="space-y-2">
-          {invoices.map((inv) => (
+          {displayedInvoices.map((inv) => (
             <Link
               key={inv.id}
               href={`/finanzen/${inv.id}`}

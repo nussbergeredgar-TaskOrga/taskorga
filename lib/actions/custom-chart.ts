@@ -163,6 +163,7 @@ async function computeStatusBuckets(companyId: string, entity: EntityKey, aggreg
     meta.statusOptions.map(async (opt) => ({
       label: opt.label,
       value: await statusBucketValue(companyId, entity, opt.value, aggregation),
+      status: opt.value,
     }))
   );
 }

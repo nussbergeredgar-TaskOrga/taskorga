@@ -19,7 +19,7 @@ type Chart = {
   chartType: string;
   groupBy: string;
   aggregation: string;
-  data: { label: string; value: number }[];
+  data: { label: string; value: number; status?: string }[];
   onDashboard: boolean;
 };
 
@@ -192,6 +192,7 @@ function ChartCard({ chart, onEdit }: { chart: Chart; onEdit: () => void }) {
         chartType={chart.chartType as "bar" | "line"}
         data={chart.data}
         valueSuffix={chart.aggregation === "sum" ? " €" : undefined}
+        entity={chart.entity as EntityKey}
       />
     </div>
   );

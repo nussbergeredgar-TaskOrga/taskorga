@@ -1,16 +1,25 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { ResponsiveContainer, BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
+import { entityStatusHref } from "@/lib/entity-links";
+import type { EntityKey } from "@/lib/custom-kpi";
+
+type ChartPoint = { label: string; value: number; status?: string };
 
 export function CustomChart({
   chartType,
   data,
   valueSuffix,
+  entity,
 }: {
   chartType: "bar" | "line";
-  data: { label: string; value: number }[];
+  data: ChartPoint[];
   valueSuffix?: string;
+  entity?: EntityKey;
 }) {
+  const router = useRouter();
+
   if (data.every((d) => d.value === 0)) {
     return (
       <div className="h-[240px] flex items-center justify-center text-sm text-ink-300">
@@ -22,6 +31,12 @@ export function CustomChart({
   const tickFormatter = (v: number) => (valueSuffix ? `${v.toLocaleString("de-DE")}${valueSuffix}` : String(v));
   const tooltipFormatter = (value: number) =>
     valueSuffix ? `${value.toLocaleString("de-DE")}${valueSuffix}` : String(value);
+
+  function handleBarClick(_: unknown, index: number) {
+    const point = data[index];
+    if (!entity || !point?.status) return;
+    router.push(entityStatusHref(entity, point.status));
+  }
 
   if (chartType === "line") {
     return (
@@ -43,6 +58,8 @@ export function CustomChart({
     );
   }
 
+  const clickable = Boolean(entity && data.some((d) => d.status));
+
   return (
     <ResponsiveContainer width="100%" height={240}>
       <BarChart data={data}>
@@ -56,7 +73,13 @@ export function CustomChart({
           tickFormatter={tickFormatter}
         />
         <Tooltip formatter={tooltipFormatter} contentStyle={{ borderRadius: 8, border: "1px solid #E8EAED", fontSize: 13 }} />
-        <Bar dataKey="value" fill="#2F5FFF" radius={[6, 6, 0, 0]} />
+        <Bar
+          dataKey="value"
+          fill="#2F5FFF"
+          radius={[6, 6, 0, 0]}
+          onClick={clickable ? handleBarClick : undefined}
+          className={clickable ? "cursor-pointer" : undefined}
+        />
       </BarChart>
     </ResponsiveContainer>
   );

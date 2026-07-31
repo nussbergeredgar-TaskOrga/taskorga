@@ -8,6 +8,8 @@ import { getDashboardLayout } from "@/lib/actions/dashboard";
 import { getCustomKpiValues } from "@/lib/actions/custom-kpi";
 import { getCustomChartsWithData } from "@/lib/actions/custom-chart";
 import { CustomChart } from "@/components/charts/custom-chart";
+import { entityStatusHref } from "@/lib/entity-links";
+import type { EntityKey } from "@/lib/custom-kpi";
 import { DEFAULT_WIDGETS } from "@/lib/dashboard-widgets";
 import { formatDistanceToNow, format, isSameDay, startOfDay, endOfDay } from "date-fns";
 import { de } from "date-fns/locale";
@@ -157,7 +159,7 @@ export default async function HeutePage() {
           value={`${Number(openInvoices._sum.totalGross ?? 0).toLocaleString("de-DE")} €`}
           icon={FileText}
           accent="border-l-warning"
-          href="/finanzen"
+          href="/finanzen?status=open"
         />
       ),
     },
@@ -169,7 +171,7 @@ export default async function HeutePage() {
           value={`${Number(paidThisMonth ?? 0).toLocaleString("de-DE")} €`}
           icon={Wallet}
           accent="border-l-success"
-          href="/finanzen"
+          href="/einblicke"
         />
       ),
     },
@@ -181,7 +183,7 @@ export default async function HeutePage() {
           value={String(newInquiriesThisMonth)}
           icon={TrendingUp}
           accent="border-l-turquoise-500"
-          href="/anfragen"
+          href="/anfragen?range=month"
         />
       ),
     },
@@ -217,7 +219,7 @@ export default async function HeutePage() {
           value={String(todayAppointmentsCount)}
           icon={CalendarClock}
           accent="border-l-turquoise-500"
-          href="/termine"
+          href="/termine?day=today"
         />
       ),
     },
@@ -229,7 +231,7 @@ export default async function HeutePage() {
           value={String(scheduledAppointmentsAgg._count)}
           icon={CalendarCheck}
           accent="border-l-brand-500"
-          href="/termine"
+          href="/termine?status=SCHEDULED"
         />
       ),
     },
@@ -241,7 +243,7 @@ export default async function HeutePage() {
           value={`${Number(scheduledAppointmentsAgg._sum.amount ?? 0).toLocaleString("de-DE")} €`}
           icon={Wallet}
           accent="border-l-success"
-          href="/termine"
+          href="/termine?status=SCHEDULED"
         />
       ),
     },
@@ -253,7 +255,7 @@ export default async function HeutePage() {
           value={String(openQuotesCount)}
           icon={FileText}
           accent="border-l-warning"
-          href="/angebote"
+          href="/angebote?status=open"
         />
       ),
     },
@@ -265,7 +267,7 @@ export default async function HeutePage() {
           value={`${Number(sentQuotesAgg._sum.totalGross ?? 0).toLocaleString("de-DE")} €`}
           icon={Wallet}
           accent="border-l-turquoise-500"
-          href="/angebote"
+          href="/angebote?status=SENT"
         />
       ),
     },
@@ -396,6 +398,7 @@ export default async function HeutePage() {
               : String(kpi.value)
           }
           accent={kpi.accent}
+          href={entityStatusHref(kpi.entity as EntityKey, kpi.statusValue)}
         />
       ),
     })),
@@ -409,6 +412,7 @@ export default async function HeutePage() {
             chartType={chart.chartType as "bar" | "line"}
             data={chart.data}
             valueSuffix={chart.aggregation === "sum" ? " €" : undefined}
+            entity={chart.entity as EntityKey}
           />
         </div>
       ),
