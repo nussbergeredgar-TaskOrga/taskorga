@@ -10,17 +10,22 @@ import { getItemTemplates } from "@/lib/actions/item-templates";
 import { SettingsSection } from "@/components/settings-section";
 import { RevenueSourcesManager } from "@/components/revenue-sources-manager";
 import { getRevenueSources } from "@/lib/actions/revenue-config";
+import { FieldConfigManager } from "@/components/field-config-manager";
+import { getFieldConfig } from "@/lib/actions/field-config";
+import { FIELD_CATALOGS } from "@/lib/field-config-catalog";
 
 export default async function DokumenteSettingsPage() {
   const admin = await requireAdmin();
 
-  const [documentTemplates, reminderLevels, itemTemplates, company, revenueSources] = await Promise.all([
-    getDocumentTemplates(),
-    getReminderLevels(),
-    getItemTemplates(),
-    prisma.company.findUniqueOrThrow({ where: { id: admin.companyId } }),
-    getRevenueSources(),
-  ]);
+  const [documentTemplates, reminderLevels, itemTemplates, company, revenueSources, invoiceFieldConfig] =
+    await Promise.all([
+      getDocumentTemplates(),
+      getReminderLevels(),
+      getItemTemplates(),
+      prisma.company.findUniqueOrThrow({ where: { id: admin.companyId } }),
+      getRevenueSources(),
+      getFieldConfig("invoice"),
+    ]);
 
   return (
     <div className="space-y-4">
@@ -74,6 +79,13 @@ export default async function DokumenteSettingsPage() {
             accentColor: t.accentColor,
           }))}
         />
+      </SettingsSection>
+
+      <SettingsSection
+        title="Rechnungs-Formular — Felder"
+        description="Pflichtfelder/Ausblenden für die eigenständige Rechnungserstellung (ohne vorheriges Angebot)."
+      >
+        <FieldConfigManager formKey="invoice" catalog={FIELD_CATALOGS.invoice} initialConfig={invoiceFieldConfig} />
       </SettingsSection>
 
       <SettingsSection

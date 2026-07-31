@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Search, Bell, Plus, LogOut, Users, Inbox, FileText, Briefcase, Calendar, ListTodo } from "lucide-react";
+import { Search, Bell, Plus, LogOut, Users, Inbox, FileText, Briefcase, Calendar, ListTodo, Wallet } from "lucide-react";
 import { signOut, useSession } from "next-auth/react";
 
 const NEW_ITEMS = [
@@ -11,6 +11,7 @@ const NEW_ITEMS = [
   { label: "Neue Anfrage", href: "/anfragen/neu", icon: Inbox },
   { label: "Neues Angebot", href: "/angebote/neu", icon: FileText },
   { label: "Neuer Auftrag", href: "/arbeit/neu", icon: Briefcase },
+  { label: "Neue Rechnung", href: "/finanzen/neu", icon: Wallet },
   { label: "Neuer Termin", href: "/termine", icon: Calendar },
   { label: "Neue Aufgabe", href: "/aufgaben", icon: ListTodo },
 ];

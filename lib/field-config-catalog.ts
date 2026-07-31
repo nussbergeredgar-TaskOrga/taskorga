@@ -27,6 +27,7 @@ export const FIELD_CATALOGS: Record<string, FieldCatalogEntry[]> = {
     { key: "validUntil", label: "Gültig bis" },
     { key: "discount", label: "Rabatt" },
   ],
+  invoice: [{ key: "discount", label: "Rabatt" }],
 };
 
 export const FORM_LABELS: Record<string, string> = {
@@ -35,4 +36,5 @@ export const FORM_LABELS: Record<string, string> = {
   task: "Aufgaben-Formular",
   appointment: "Termin-Formular",
   quote: "Angebots-Formular",
+  invoice: "Rechnungs-Formular",
 };

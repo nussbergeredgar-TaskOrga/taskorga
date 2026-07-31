@@ -1,6 +1,8 @@
 "use server";
 
+import { z } from "zod";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { renderToBuffer } from "@react-pdf/renderer";
 import { prisma } from "@/lib/prisma";
 import { getCurrentCompany } from "@/lib/session";
@@ -9,6 +11,118 @@ import { getSalutationShort } from "@/lib/customer-salutation";
 import { DocumentPdf } from "@/lib/pdf/document-pdf";
 import { buildPlaceholderContext } from "@/lib/pdf/build-context";
 import { resolvePlaceholders } from "@/lib/document-placeholders";
+import { generateDocumentNumber } from "@/lib/numbering";
+
+const invoiceSchema = z.object({
+  customerId: z.string().min(1, "Bitte einen Kunden auswählen"),
+  projectId: z.string().optional(),
+  discountValue: z.string().optional(),
+  discountType: z.string().optional(),
+});
+
+export type InvoiceFormState = {
+  errors?: Record<string, string[]>;
+  message?: string;
+};
+
+function computeInvoiceTotals(
+  items: { quantity: number; unitPrice: number; taxRate: number }[],
+  discountValue: number,
+  discountType: string
+) {
+  const netBeforeDiscount = items.reduce((sum, i) => sum + i.quantity * i.unitPrice, 0);
+  const grossBeforeDiscount = items.reduce(
+    (sum, i) => sum + i.quantity * i.unitPrice * (1 + i.taxRate / 100),
+    0
+  );
+  const discountAmount =
+    discountType === "PERCENT" ? netBeforeDiscount * (discountValue / 100) : discountValue;
+  const netAfterDiscount = Math.max(0, netBeforeDiscount - discountAmount);
+  const factor = netBeforeDiscount > 0 ? netAfterDiscount / netBeforeDiscount : 1;
+  const grossAfterDiscount = grossBeforeDiscount * factor;
+  const avgTaxRate = netAfterDiscount > 0 ? ((grossAfterDiscount - netAfterDiscount) / netAfterDiscount) * 100 : 19;
+  return { netAfterDiscount, grossAfterDiscount, avgTaxRate };
+}
+
+// Erzeugt eine eigenständige Entwurfs-Rechnung ohne vorheriges Angebot/Auftrag
+// (optional mit einem bestehenden Auftrag verknüpfbar).
+export async function createInvoice(
+  _prevState: InvoiceFormState,
+  formData: FormData
+): Promise<InvoiceFormState> {
+  const parsed = invoiceSchema.safeParse({
+    customerId: formData.get("customerId"),
+    projectId: formData.get("projectId") || undefined,
+    discountValue: formData.get("discountValue") || undefined,
+    discountType: formData.get("discountType") || undefined,
+  });
+
+  if (!parsed.success) {
+    return { errors: parsed.error.flatten().fieldErrors };
+  }
+
+  const itemCount = Number(formData.get("itemCount") || 0);
+  const items: { description: string; quantity: number; unit: string; unitPrice: number; taxRate: number }[] = [];
+
+  for (let i = 0; i < itemCount; i++) {
+    const description = String(formData.get(`item_description_${i}`) || "").trim();
+    const quantity = Number(formData.get(`item_quantity_${i}`) || 0);
+    const unit = String(formData.get(`item_unit_${i}`) || "Stk");
+    const unitPrice = Number(formData.get(`item_unitPrice_${i}`) || 0);
+    const taxRate = Number(formData.get(`item_taxRate_${i}`) || 19);
+    if (description && quantity > 0) {
+      items.push({ description, quantity, unit, unitPrice, taxRate });
+    }
+  }
+
+  if (items.length === 0) {
+    return { message: "Bitte mindestens eine Position mit Menge > 0 hinzufügen." };
+  }
+
+  const company = await getCurrentCompany();
+  const discountValue = Number(parsed.data.discountValue) || 0;
+  const discountType = parsed.data.discountType === "PERCENT" ? "PERCENT" : "AMOUNT";
+  const { netAfterDiscount, grossAfterDiscount, avgTaxRate } = computeInvoiceTotals(
+    items,
+    discountValue,
+    discountType
+  );
+
+  const count = await prisma.invoice.count({ where: { companyId: company.id } });
+  const number = generateDocumentNumber(company.invoiceNumberFormat, count + 1);
+
+  const invoice = await prisma.invoice.create({
+    data: {
+      companyId: company.id,
+      customerId: parsed.data.customerId,
+      projectId: parsed.data.projectId || null,
+      number,
+      status: "DRAFT",
+      totalNet: netAfterDiscount,
+      totalGross: grossAfterDiscount,
+      taxRate: avgTaxRate,
+      discountValue: discountValue > 0 ? discountValue : null,
+      discountType,
+      items: {
+        create: items.map((item, i) => ({ ...item, position: i + 1 })),
+      },
+    },
+  });
+
+  await prisma.activity.create({
+    data: {
+      companyId: company.id,
+      customerId: parsed.data.customerId,
+      invoiceId: invoice.id,
+      type: "invoice.created",
+      message: `Rechnung ${invoice.number} wurde direkt erstellt (${grossAfterDiscount.toFixed(2)} €).`,
+    },
+  });
+
+  revalidatePath("/finanzen");
+  if (parsed.data.projectId) revalidatePath(`/arbeit/${parsed.data.projectId}`);
+  redirect(`/finanzen/${invoice.id}`);
+}
 
 export async function markInvoiceSent(invoiceId: string) {
   const invoice = await prisma.invoice.update({

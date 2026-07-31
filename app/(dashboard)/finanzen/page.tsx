@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, Plus } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/session";
 import { statusColor } from "@/lib/utils";
@@ -65,9 +65,18 @@ export default async function FinanzenPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-ink-900">Finanzen</h1>
-        <p className="text-sm text-ink-500 mt-1">{invoices.length} Rechnungen insgesamt</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold text-ink-900">Finanzen</h1>
+          <p className="text-sm text-ink-500 mt-1">{invoices.length} Rechnungen insgesamt</p>
+        </div>
+        <Link
+          href="/finanzen/neu"
+          className="flex items-center gap-1.5 rounded-lg bg-brand-500 text-white text-sm font-medium px-4 py-2.5 hover:bg-brand-600 transition-colors"
+        >
+          <Plus size={16} />
+          Neue Rechnung
+        </Link>
       </div>
 
       <div className="grid grid-cols-3 gap-4">
@@ -110,7 +119,11 @@ export default async function FinanzenPage() {
       {invoices.length === 0 ? (
         <div className="rounded-card border border-dashed border-ink-100 bg-surface p-12 text-center">
           <p className="text-ink-500 text-sm">
-            Noch keine Rechnungen. Erstelle eine Rechnung aus einem Auftrag im{" "}
+            Noch keine Rechnungen. Direkt{" "}
+            <Link href="/finanzen/neu" className="text-brand-700 hover:underline">
+              eine neue Rechnung erstellen
+            </Link>{" "}
+            oder aus einem Auftrag im{" "}
             <Link href="/arbeit" className="text-brand-700 hover:underline">
               „Arbeit"-Workspace
             </Link>
