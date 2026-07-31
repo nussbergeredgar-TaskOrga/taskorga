@@ -80,7 +80,7 @@ export default async function VertriebSettingsPage() {
 
       <SettingsSection
         title="Angebots-Formular — Felder"
-        description="Kunde, Titel und Positionen sind immer vorhanden. Nur „Gültig bis" ist konfigurierbar (Rabatt hat eigene Grundeinstellung unter Dokumente & Finanzen)."
+        description="Kunde, Titel und Positionen sind immer vorhanden. Nur „Gültig bis“ ist konfigurierbar (Rabatt hat eigene Grundeinstellung unter Dokumente & Finanzen)."
       >
         <FieldConfigManager formKey="quote" catalog={FIELD_CATALOGS.quote} initialConfig={quoteFieldConfig} />
       </SettingsSection>

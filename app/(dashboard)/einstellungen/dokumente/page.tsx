@@ -26,7 +26,7 @@ export default async function DokumenteSettingsPage() {
     <div className="space-y-4">
       <SettingsSection
         title="Umsatz-Zusammensetzung"
-        description="Woraus sich "Umsatz" im Dashboard und Kundenprofil berechnet — mehrere Quellen kombinierbar."
+        description="Woraus sich „Umsatz“ im Dashboard und Kundenprofil berechnet — mehrere Quellen kombinierbar."
       >
         <RevenueSourcesManager initialSources={revenueSources} />
       </SettingsSection>
