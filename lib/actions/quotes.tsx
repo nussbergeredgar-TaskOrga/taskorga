@@ -168,6 +168,151 @@ export async function createQuote(
   redirect(`/angebote/${quote.id}`);
 }
 
+// Bearbeitet ein bestehendes Angebot -- nur solange es im Entwurf ist (danach
+// könnte der Kunde es bereits gesehen haben, oder es ist schon zu einem
+// Auftrag geworden).
+export async function updateQuote(
+  quoteId: string,
+  _prevState: QuoteFormState,
+  formData: FormData
+): Promise<QuoteFormState> {
+  const parsed = quoteSchema.safeParse({
+    customerId: formData.get("customerId"),
+    inquiryId: formData.get("inquiryId") || undefined,
+    projectId: formData.get("projectId") || undefined,
+    title: formData.get("title"),
+    validUntil: formData.get("validUntil") || undefined,
+    discountValue: formData.get("discountValue") || undefined,
+    discountType: formData.get("discountType") || undefined,
+  });
+
+  if (!parsed.success) {
+    return { errors: parsed.error.flatten().fieldErrors };
+  }
+
+  const itemCount = Number(formData.get("itemCount") || 0);
+  const items: { description: string; quantity: number; unit: string; unitPrice: number; taxRate: number }[] = [];
+
+  for (let i = 0; i < itemCount; i++) {
+    const description = String(formData.get(`item_description_${i}`) || "").trim();
+    const quantity = Number(formData.get(`item_quantity_${i}`) || 0);
+    const unit = String(formData.get(`item_unit_${i}`) || "Stk");
+    const unitPrice = Number(formData.get(`item_unitPrice_${i}`) || 0);
+    const taxRate = Number(formData.get(`item_taxRate_${i}`) || 19);
+    if (description && quantity > 0) {
+      items.push({ description, quantity, unit, unitPrice, taxRate });
+    }
+  }
+
+  if (items.length === 0) {
+    return { message: "Bitte mindestens eine Position mit Menge > 0 hinzufügen." };
+  }
+
+  const company = await getCurrentCompany();
+  const existing = await prisma.quote.findFirst({ where: { id: quoteId, companyId: company.id } });
+  if (!existing) return { message: "Angebot nicht gefunden." };
+  if (existing.status !== "DRAFT") {
+    return { message: "Nur Angebote im Entwurf können bearbeitet werden." };
+  }
+
+  const customer = await prisma.customer.findFirst({ where: { id: parsed.data.customerId, companyId: company.id } });
+  if (!customer) {
+    return { errors: { customerId: ["Kunde nicht gefunden."] } };
+  }
+
+  const discountValue = Number(parsed.data.discountValue) || 0;
+  const discountType = parsed.data.discountType === "PERCENT" ? "PERCENT" : "AMOUNT";
+  const { netAfterDiscount, grossAfterDiscount, avgTaxRate } = computeTotals(items, discountValue, discountType);
+
+  await prisma.$transaction(async (tx) => {
+    await tx.quoteItem.deleteMany({ where: { quoteId } });
+    await tx.quote.update({
+      where: { id: quoteId },
+      data: {
+        customerId: parsed.data.customerId,
+        inquiryId: parsed.data.inquiryId || null,
+        title: parsed.data.title,
+        validUntil: parsed.data.validUntil ? new Date(parsed.data.validUntil) : null,
+        totalNet: netAfterDiscount,
+        totalGross: grossAfterDiscount,
+        taxRate: avgTaxRate,
+        discountValue: discountValue > 0 ? discountValue : null,
+        discountType,
+        items: {
+          create: items.map((item, i) => ({ ...item, position: i + 1 })),
+        },
+      },
+    });
+  });
+
+  await prisma.activity.create({
+    data: {
+      companyId: company.id,
+      customerId: parsed.data.customerId,
+      quoteId,
+      type: "quote.updated",
+      message: `Angebot ${existing.number} „${parsed.data.title}“ wurde bearbeitet.`,
+    },
+  });
+
+  revalidatePath("/angebote");
+  revalidatePath(`/angebote/${quoteId}`);
+  redirect(`/angebote/${quoteId}`);
+}
+
+// Dupliziert ein Angebot als Ausgangspunkt fuer eine neue Variante (z.B. ein
+// revidiertes Angebot nach Ablehnung, oder eine aehnliche Leistung fuer einen
+// anderen Kunden). Immer als neuer Entwurf, unabhaengig vom Status des Originals.
+export async function duplicateQuote(quoteId: string) {
+  const company = await getCurrentCompany();
+  const original = await prisma.quote.findFirst({
+    where: { id: quoteId, companyId: company.id },
+    include: { items: { orderBy: { position: "asc" } } },
+  });
+  if (!original) return;
+
+  const number = await nextNumber(company.id, company.quoteNumberFormat, "quote");
+
+  const quote = await prisma.quote.create({
+    data: {
+      companyId: company.id,
+      customerId: original.customerId,
+      number,
+      title: `${original.title} (Kopie)`,
+      status: "DRAFT",
+      validUntil: original.validUntil,
+      totalNet: original.totalNet,
+      totalGross: original.totalGross,
+      taxRate: original.taxRate,
+      discountValue: original.discountValue,
+      discountType: original.discountType,
+      items: {
+        create: original.items.map((item) => ({
+          position: item.position,
+          description: item.description,
+          quantity: item.quantity,
+          unit: item.unit,
+          unitPrice: item.unitPrice,
+          taxRate: item.taxRate,
+        })),
+      },
+    },
+  });
+
+  await prisma.activity.create({
+    data: {
+      companyId: company.id,
+      customerId: original.customerId,
+      quoteId: quote.id,
+      type: "quote.created",
+      message: `Angebot ${quote.number} als Kopie von ${original.number} erstellt.`,
+    },
+  });
+
+  revalidatePath("/angebote");
+  redirect(`/angebote/${quote.id}`);
+}
+
 export async function updateQuoteStatus(quoteId: string, status: QuoteStatus) {
   const company = await getCurrentCompany();
   const existing = await prisma.quote.findFirst({ where: { id: quoteId, companyId: company.id } });

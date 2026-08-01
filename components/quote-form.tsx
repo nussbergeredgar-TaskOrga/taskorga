@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useFormState, useFormStatus } from "react-dom";
 import { Plus, Trash2, Library, Save } from "lucide-react";
-import { createQuote, type QuoteFormState } from "@/lib/actions/quotes";
+import { createQuote, updateQuote, type QuoteFormState } from "@/lib/actions/quotes";
 import { createItemTemplate } from "@/lib/actions/item-templates";
 import type { FieldConfigMap } from "@/lib/actions/field-config";
 
@@ -14,7 +14,7 @@ type Template = { id: string; description: string; unit: string; unitPrice: numb
 
 const DEFAULT_FIELD_STATE = { visible: true, required: false };
 
-function SubmitButton() {
+function SubmitButton({ editing }: { editing: boolean }) {
   const { pending } = useFormStatus();
   return (
     <button
@@ -22,7 +22,7 @@ function SubmitButton() {
       disabled={pending}
       className="rounded-lg bg-brand-500 text-white text-sm font-medium px-4 py-2.5 hover:bg-brand-600 disabled:opacity-60 transition-colors"
     >
-      {pending ? "Wird gespeichert …" : "Angebot erstellen"}
+      {pending ? "Wird gespeichert …" : editing ? "Änderungen speichern" : "Angebot erstellen"}
     </button>
   );
 }
@@ -42,6 +42,9 @@ export function QuoteForm({
   defaultInquiryId,
   defaultTitle,
   fieldConfig,
+  editQuoteId,
+  initialItems,
+  initialDiscountValue,
 }: {
   customers: { id: string; name: string }[];
   inquiries: { id: string; title: string; customerId: string }[];
@@ -53,12 +56,18 @@ export function QuoteForm({
   defaultInquiryId?: string;
   defaultTitle?: string;
   fieldConfig?: FieldConfigMap;
+  // Bearbeiten-Modus: bestehendes Angebot ändern statt ein neues anzulegen
+  editQuoteId?: string;
+  initialItems?: Item[];
+  initialDiscountValue?: string;
 }) {
   const fc = (key: string) => fieldConfig?.[key] ?? DEFAULT_FIELD_STATE;
-  const [state, formAction] = useFormState(createQuote, initialState);
+  const editing = Boolean(editQuoteId);
+  const action = editing ? updateQuote.bind(null, editQuoteId!) : createQuote;
+  const [state, formAction] = useFormState(action, initialState);
   const [customerId, setCustomerId] = useState(defaultCustomerId || "");
-  const [items, setItems] = useState<Item[]>([emptyItem()]);
-  const [discountValue, setDiscountValue] = useState("");
+  const [items, setItems] = useState<Item[]>(initialItems?.length ? initialItems : [emptyItem()]);
+  const [discountValue, setDiscountValue] = useState(initialDiscountValue || "");
   const [discountType, setDiscountType] = useState<"AMOUNT" | "PERCENT">(defaultDiscountType);
   const [libraryPick, setLibraryPick] = useState("");
   const [savingIndex, setSavingIndex] = useState<number | null>(null);
@@ -355,7 +364,7 @@ export function QuoteForm({
         </div>
       </div>
 
-      <SubmitButton />
+      <SubmitButton editing={editing} />
     </form>
   );
 }

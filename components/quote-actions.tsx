@@ -2,10 +2,24 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Mail } from "lucide-react";
-import { updateQuoteStatus, acceptQuote, sendQuoteEmail } from "@/lib/actions/quotes";
+import Link from "next/link";
+import { Mail, Pencil, Copy } from "lucide-react";
+import { updateQuoteStatus, acceptQuote, sendQuoteEmail, duplicateQuote } from "@/lib/actions/quotes";
 import { ConfirmSendDialog } from "@/components/confirm-send-dialog";
 import type { QuoteStatus } from "@prisma/client";
+
+function DuplicateButton({ quoteId, pending, startTransition }: { quoteId: string; pending: boolean; startTransition: (fn: () => void) => void }) {
+  return (
+    <button
+      disabled={pending}
+      onClick={() => startTransition(() => duplicateQuote(quoteId))}
+      className="flex items-center gap-1.5 rounded-lg border border-ink-100 px-3 py-2 text-sm font-medium text-ink-700 hover:bg-ink-50 transition-colors disabled:opacity-60"
+    >
+      <Copy size={15} />
+      Duplizieren
+    </button>
+  );
+}
 
 export function QuoteActions({
   quoteId,
@@ -34,15 +48,38 @@ export function QuoteActions({
   }
 
   if (status === "ACCEPTED") {
-    return <p className="text-sm text-success font-medium">Angenommen – Auftrag wurde erstellt.</p>;
+    return (
+      <div className="flex flex-wrap items-center gap-3">
+        <p className="text-sm text-success font-medium">Angenommen – Auftrag wurde erstellt.</p>
+        <DuplicateButton quoteId={quoteId} pending={pending} startTransition={startTransition} />
+      </div>
+    );
   }
   if (status === "REJECTED" || status === "EXPIRED") {
-    return null;
+    return (
+      <div className="flex flex-wrap items-center gap-3">
+        <p className="text-sm text-ink-500">
+          {status === "REJECTED" ? "Abgelehnt." : "Abgelaufen."} Möchtest du ein überarbeitetes
+          Angebot erstellen?
+        </p>
+        <DuplicateButton quoteId={quoteId} pending={pending} startTransition={startTransition} />
+      </div>
+    );
   }
 
   return (
     <div className="space-y-2">
       <div className="flex flex-wrap gap-2">
+        {status === "DRAFT" && (
+          <Link
+            href={`/angebote/${quoteId}/bearbeiten`}
+            className="flex items-center gap-1.5 rounded-lg border border-ink-100 px-3 py-2 text-sm font-medium text-ink-700 hover:bg-ink-50 transition-colors"
+          >
+            <Pencil size={15} />
+            Bearbeiten
+          </Link>
+        )}
+        <DuplicateButton quoteId={quoteId} pending={pending} startTransition={startTransition} />
         {hasCustomerEmail ? (
           <button
             disabled={pending}
