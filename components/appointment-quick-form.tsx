@@ -126,7 +126,7 @@ export function AppointmentQuickForm({
         finalInquiryId = created?.id ?? "";
       }
 
-      await createAppointment(customerId, {
+      const result = await createAppointment(customerId, {
         title,
         type,
         startAt,
@@ -135,6 +135,10 @@ export function AppointmentQuickForm({
         amount: amountRef.current?.value,
         assigneeId: assigneeId || undefined,
       });
+      if (result?.error) {
+        setError(result.error);
+        return;
+      }
       reset();
       setOpen(false);
     });

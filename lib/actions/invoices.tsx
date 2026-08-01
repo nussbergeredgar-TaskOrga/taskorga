@@ -217,6 +217,9 @@ export async function sendPaymentReminder(invoiceId: string): Promise<{ error?: 
   });
 
   if (!invoice) return { error: "Rechnung nicht gefunden." };
+  if (!["SENT", "OPEN", "PARTIALLY_PAID", "OVERDUE"].includes(invoice.status)) {
+    return { error: "Diese Rechnung ist nicht mehr offen — es wurde keine Mahnung verschickt." };
+  }
   if (!invoice.customer.email) {
     return { error: "Für diesen Kunden ist keine E-Mail-Adresse hinterlegt." };
   }

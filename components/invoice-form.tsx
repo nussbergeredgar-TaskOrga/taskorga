@@ -190,13 +190,13 @@ export function InvoiceForm({
 
         <div className="space-y-2">
           {items.map((item, i) => (
-            <div key={i} className="grid grid-cols-12 gap-2 items-center">
+            <div key={i} className="grid grid-cols-2 sm:grid-cols-12 gap-2 items-center">
               <input
                 name={`item_description_${i}`}
                 placeholder="Beschreibung"
                 value={item.description}
                 onChange={(e) => updateItem(i, { description: e.target.value })}
-                className="col-span-4 rounded-lg border border-ink-100 px-2.5 py-2 text-sm outline-none focus:border-brand-500"
+                className="col-span-2 sm:col-span-4 rounded-lg border border-ink-100 px-2.5 py-2 text-sm outline-none focus:border-brand-500"
               />
               <input
                 name={`item_quantity_${i}`}
@@ -212,7 +212,7 @@ export function InvoiceForm({
                 placeholder="Einheit"
                 value={item.unit}
                 onChange={(e) => updateItem(i, { unit: e.target.value })}
-                className="col-span-2 rounded-lg border border-ink-100 px-2.5 py-2 text-sm outline-none focus:border-brand-500"
+                className="col-span-1 sm:col-span-2 rounded-lg border border-ink-100 px-2.5 py-2 text-sm outline-none focus:border-brand-500"
               />
               <input
                 name={`item_unitPrice_${i}`}
@@ -221,7 +221,7 @@ export function InvoiceForm({
                 placeholder="Preis €"
                 value={item.unitPrice}
                 onChange={(e) => updateItem(i, { unitPrice: e.target.value })}
-                className="col-span-2 rounded-lg border border-ink-100 px-2.5 py-2 text-sm outline-none focus:border-brand-500 font-mono"
+                className="col-span-1 sm:col-span-2 rounded-lg border border-ink-100 px-2.5 py-2 text-sm outline-none focus:border-brand-500 font-mono"
               />
               <select
                 name={`item_taxRate_${i}`}
@@ -233,23 +233,25 @@ export function InvoiceForm({
                 <option value="7">7%</option>
                 <option value="0">0%</option>
               </select>
-              <button
-                type="button"
-                onClick={() => saveToLibrary(i)}
-                disabled={savingIndex === i || !item.description.trim()}
-                title="In Bibliothek speichern"
-                className="col-span-1 text-ink-300 hover:text-brand-600 disabled:opacity-30 transition-colors"
-              >
-                <Save size={15} />
-              </button>
-              <button
-                type="button"
-                onClick={() => setItems(items.filter((_, idx) => idx !== i))}
-                disabled={items.length === 1}
-                className="col-span-1 text-ink-300 hover:text-danger disabled:opacity-30 transition-colors"
-              >
-                <Trash2 size={16} />
-              </button>
+              <div className="col-span-2 sm:col-span-2 flex items-center justify-end gap-3 sm:gap-1">
+                <button
+                  type="button"
+                  onClick={() => saveToLibrary(i)}
+                  disabled={savingIndex === i || !item.description.trim()}
+                  title="In Bibliothek speichern"
+                  className="text-ink-300 hover:text-brand-600 disabled:opacity-30 transition-colors"
+                >
+                  <Save size={15} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setItems(items.filter((_, idx) => idx !== i))}
+                  disabled={items.length === 1}
+                  className="text-ink-300 hover:text-danger disabled:opacity-30 transition-colors"
+                >
+                  <Trash2 size={16} />
+                </button>
+              </div>
             </div>
           ))}
         </div>

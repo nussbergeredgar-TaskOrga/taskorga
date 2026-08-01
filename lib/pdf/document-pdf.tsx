@@ -69,11 +69,15 @@ export function DocumentPdf({
 
   // Netto/MwSt je Steuersatz gruppieren (Positionen können unterschiedliche Sätze haben)
   const netBeforeDiscount = items.reduce((sum, i) => sum + i.quantity * i.unitPrice, 0);
-  const discountFactor =
-    discountValue && netBeforeDiscount > 0
-      ? 1 -
-        (discountType === "PERCENT" ? discountValue / 100 : discountValue / netBeforeDiscount)
-      : 1;
+  const discountAmount = discountValue
+    ? discountType === "PERCENT"
+      ? netBeforeDiscount * (discountValue / 100)
+      : discountValue
+    : 0;
+  // Bei 0 geclampt, damit ein Rabatt, der den Nettowert übersteigt, nicht zu
+  // negativen Zeilen im Kunden-PDF führt (analog zur Berechnung in quotes.tsx/invoices.tsx).
+  const netAfterDiscount = Math.max(0, netBeforeDiscount - discountAmount);
+  const discountFactor = netBeforeDiscount > 0 ? netAfterDiscount / netBeforeDiscount : 1;
 
   const rateGroups = new Map<number, { net: number }>();
   for (const item of items) {

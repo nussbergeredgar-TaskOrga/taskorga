@@ -102,7 +102,7 @@ export function AppointmentTab({
         finalInquiryId = created?.id ?? "";
       }
 
-      await createAppointment(customerId, {
+      const result = await createAppointment(customerId, {
         title,
         type,
         startAt,
@@ -111,6 +111,10 @@ export function AppointmentTab({
         amount: amountRef.current?.value,
         assigneeId: assigneeId || undefined,
       });
+      if (result?.error) {
+        setError(result.error);
+        return;
+      }
       if (titleRef.current) titleRef.current.value = "";
       if (startDateRef.current) startDateRef.current.value = "";
       if (startTimeRef.current) startTimeRef.current.value = "";

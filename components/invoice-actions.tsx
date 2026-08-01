@@ -28,6 +28,10 @@ export function InvoiceActions({
   const [dialogOpen, setDialogOpen] = useState(false);
 
   function sendReminder() {
+    const nextLevel = Math.min(reminderLevel + 1, 3);
+    const label = REMINDER_LABELS[nextLevel] || "Erinnerung";
+    if (!confirm(`${label} jetzt per E-Mail an den Kunden versenden?`)) return;
+
     setError("");
     startTransition(async () => {
       const result = await sendPaymentReminder(invoiceId);

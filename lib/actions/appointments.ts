@@ -23,18 +23,41 @@ export async function createAppointment(
     amount?: string;
     assigneeId?: string;
   }
-) {
-  if (!data.title.trim() || !data.startAt || !data.endAt) return;
+): Promise<{ error?: string; success?: boolean }> {
+  if (!data.title.trim() || !data.startAt || !data.endAt) {
+    return { error: "Bitte Titel, Von- und Bis-Zeit angeben." };
+  }
 
   const config = await getFieldConfig("appointment");
-  if (config.amount?.required && !data.amount?.trim()) return;
+  if (config.amount?.required && !data.amount?.trim()) {
+    return { error: "Betrag ist ein Pflichtfeld." };
+  }
 
   const company = await getCurrentCompany();
   const customer = await prisma.customer.findFirst({ where: { id: customerId, companyId: company.id } });
-  if (!customer) return;
+  if (!customer) return { error: "Kunde nicht gefunden." };
   if (data.inquiryId) {
     const inquiry = await prisma.inquiry.findFirst({ where: { id: data.inquiryId, companyId: company.id } });
-    if (!inquiry) return;
+    if (!inquiry) return { error: "Anfrage nicht gefunden." };
+  }
+
+  const scheduledAt = new Date(data.startAt);
+  const endAt = new Date(data.endAt);
+
+  if (data.assigneeId) {
+    const overlapping = await prisma.appointment.findFirst({
+      where: {
+        companyId: company.id,
+        assigneeId: data.assigneeId,
+        status: { not: "CANCELLED" },
+        scheduledAt: { lt: endAt },
+        endAt: { gt: scheduledAt },
+      },
+      select: { title: true },
+    });
+    if (overlapping) {
+      return { error: `Zeitüberschneidung: „${overlapping.title}“ ist zu dieser Zeit bereits geplant.` };
+    }
   }
 
   const appointment = await prisma.appointment.create({
@@ -45,8 +68,8 @@ export async function createAppointment(
       assigneeId: data.assigneeId || null,
       title: data.title,
       type: data.type,
-      scheduledAt: new Date(data.startAt),
-      endAt: new Date(data.endAt),
+      scheduledAt,
+      endAt,
       status: "SCHEDULED",
       amount: parseAmount(data.amount),
     },
@@ -67,6 +90,7 @@ export async function createAppointment(
   revalidatePath("/termine");
   revalidatePath("/anfragen");
   if (data.inquiryId) revalidatePath(`/anfragen/${data.inquiryId}`);
+  return { success: true };
 }
 
 export async function updateAppointmentAssignee(appointmentId: string, assigneeId: string) {

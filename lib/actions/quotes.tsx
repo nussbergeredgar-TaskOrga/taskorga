@@ -185,6 +185,18 @@ export async function updateQuoteStatus(quoteId: string, status: QuoteStatus) {
     },
   });
 
+  // Bei Ablehnung/Ablauf bleibt die Anfrage sonst dauerhaft auf "Angebot erstellt"
+  // stehen, obwohl der Vorgang gescheitert ist -- zurück auf "Telefonat erfolgt",
+  // damit die Pipeline korrekt anzeigt, dass wieder nachgefasst werden muss.
+  if ((status === "REJECTED" || status === "EXPIRED") && quote.inquiryId) {
+    const inquiry = await prisma.inquiry.findUnique({ where: { id: quote.inquiryId } });
+    if (inquiry?.status === "QUOTE_CREATED") {
+      await prisma.inquiry.update({ where: { id: quote.inquiryId }, data: { status: "CALL_DONE" } });
+      revalidatePath(`/anfragen/${quote.inquiryId}`);
+      revalidatePath("/anfragen");
+    }
+  }
+
   revalidatePath(`/angebote/${quoteId}`);
   revalidatePath("/angebote");
 }
@@ -200,36 +212,44 @@ export async function acceptQuote(quoteId: string) {
   if (!quote) return;
 
   let project = quote.project;
+  const projectNumber = project ? null : await nextNumber(quote.companyId, "AUF-{YYYY}-{NNNN}", "project");
 
-  if (!project) {
-    const number = await nextNumber(quote.companyId, "AUF-{YYYY}-{NNNN}", "project");
-    project = await prisma.project.create({
-      data: {
-        companyId: quote.companyId,
-        customerId: quote.customerId,
-        quoteId: quote.id,
-        number,
-        title: quote.title,
-        status: "PLANNED",
-      },
-    });
+  project = await prisma.$transaction(async (tx) => {
+    let currentProject = quote.project;
 
-    await prisma.activity.create({
-      data: {
-        companyId: quote.companyId,
-        customerId: quote.customerId,
-        projectId: project.id,
-        type: "project.created",
-        message: `Auftrag ${project.number} aus Angebot ${quote.number} erstellt.`,
-      },
-    });
-  }
+    if (!currentProject && projectNumber) {
+      currentProject = await tx.project.create({
+        data: {
+          companyId: quote.companyId,
+          customerId: quote.customerId,
+          quoteId: quote.id,
+          number: projectNumber,
+          title: quote.title,
+          status: "PLANNED",
+        },
+      });
 
-  await prisma.quote.update({ where: { id: quoteId }, data: { status: "ACCEPTED" } });
+      await tx.activity.create({
+        data: {
+          companyId: quote.companyId,
+          customerId: quote.customerId,
+          projectId: currentProject.id,
+          type: "project.created",
+          message: `Auftrag ${currentProject.number} aus Angebot ${quote.number} erstellt.`,
+        },
+      });
+    }
 
-  if (quote.inquiryId) {
-    await prisma.inquiry.update({ where: { id: quote.inquiryId }, data: { status: "WON" } });
-  }
+    await tx.quote.update({ where: { id: quoteId }, data: { status: "ACCEPTED" } });
+
+    if (quote.inquiryId) {
+      await tx.inquiry.update({ where: { id: quote.inquiryId }, data: { status: "WON" } });
+    }
+
+    return currentProject;
+  });
+
+  if (!project) return;
 
   revalidatePath("/angebote");
   revalidatePath("/arbeit");
