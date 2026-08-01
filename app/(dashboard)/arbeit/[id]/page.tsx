@@ -6,6 +6,8 @@ import { getCurrentUser, getCurrentCompany } from "@/lib/session";
 import { ProjectActions } from "@/components/project-actions";
 import { TaskList } from "@/components/task-list";
 import { TimeTracking } from "@/components/time-tracking";
+import { ExpenseForm } from "@/components/expense-form";
+import { ExpensesList } from "@/components/expenses-list";
 
 export default async function AuftragDetailPage({ params }: { params: { id: string } }) {
   const user = await getCurrentUser();
@@ -18,9 +20,23 @@ export default async function AuftragDetailPage({ params }: { params: { id: stri
       invoices: { orderBy: { createdAt: "desc" } },
       quote: true,
       timeEntries: { orderBy: { date: "desc" }, include: { user: { select: { name: true } } } },
+      expenses: {
+        orderBy: { date: "desc" },
+        include: { documents: { select: { id: true, fileName: true, fileUrl: true } } },
+      },
     },
   });
   if (!project) notFound();
+
+  const mappedExpenses = project.expenses.map((e) => ({
+    id: e.id,
+    title: e.title,
+    category: e.category,
+    amount: Number(e.amount),
+    date: e.date,
+    status: e.status,
+    documents: e.documents,
+  }));
 
   return (
     <div className="space-y-6">
@@ -71,6 +87,14 @@ export default async function AuftragDetailPage({ params }: { params: { id: stri
 
       <div className="rounded-card border border-ink-100 bg-surface p-5 shadow-card">
         <TimeTracking projectId={project.id} entries={project.timeEntries} currentUserId={user.id} />
+      </div>
+
+      <div className="rounded-card border border-ink-100 bg-surface p-5 shadow-card space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="font-display font-semibold text-ink-900">Ausgaben</h2>
+          <ExpenseForm defaultProjectId={project.id} />
+        </div>
+        <ExpensesList title="Materialkosten & Ausgaben" expenses={mappedExpenses} />
       </div>
     </div>
   );

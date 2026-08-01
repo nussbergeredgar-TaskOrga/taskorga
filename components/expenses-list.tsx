@@ -1,6 +1,7 @@
 "use client";
 
 import { useTransition } from "react";
+import Link from "next/link";
 import { FileText } from "lucide-react";
 import { updateExpenseStatus } from "@/lib/actions/expenses";
 
@@ -12,6 +13,7 @@ type Expense = {
   date: Date;
   status: "OPEN" | "PAID";
   documents: { id: string; fileName: string; fileUrl: string }[];
+  project?: { id: string; title: string; number: string } | null;
 };
 
 function ExpenseRow({ expense }: { expense: Expense }) {
@@ -25,6 +27,14 @@ function ExpenseRow({ expense }: { expense: Expense }) {
         <p className="text-xs text-ink-500">
           {expense.date.toLocaleDateString("de-DE")}
           {expense.category && ` · ${expense.category}`}
+          {expense.project && (
+            <>
+              {" · "}
+              <Link href={`/arbeit/${expense.project.id}`} className="text-brand-700 hover:underline">
+                {expense.project.number}
+              </Link>
+            </>
+          )}
           {doc && (
             <>
               {" · "}

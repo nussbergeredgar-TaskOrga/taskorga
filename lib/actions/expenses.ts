@@ -10,14 +10,25 @@ export async function createExpense(data: {
   category?: string;
   amount: string;
   date: string;
+  projectId?: string;
   file?: { fileName: string; fileUrl: string; mimeType: string; fileSize: number };
 }) {
   if (!data.title.trim() || !data.amount || !data.date) return;
   const company = await getCurrentCompany();
 
+  let projectId: string | null = null;
+  if (data.projectId) {
+    const project = await prisma.project.findFirst({
+      where: { id: data.projectId, companyId: company.id },
+      select: { id: true },
+    });
+    if (project) projectId = project.id;
+  }
+
   const expense = await prisma.expense.create({
     data: {
       companyId: company.id,
+      projectId,
       title: data.title.trim(),
       category: data.category?.trim() || null,
       amount: Number(data.amount.replace(",", ".")),
@@ -39,6 +50,7 @@ export async function createExpense(data: {
   }
 
   revalidatePath("/finanzen");
+  if (projectId) revalidatePath(`/arbeit/${projectId}`);
 }
 
 export async function updateExpenseStatus(expenseId: string, status: ExpenseStatus) {

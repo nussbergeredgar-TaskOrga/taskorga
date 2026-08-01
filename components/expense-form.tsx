@@ -5,8 +5,15 @@ import { upload } from "@vercel/blob/client";
 import { Upload, Plus } from "lucide-react";
 import { createExpense } from "@/lib/actions/expenses";
 
-export function ExpenseForm() {
+export function ExpenseForm({
+  projects,
+  defaultProjectId,
+}: {
+  projects?: { id: string; title: string; number: string }[];
+  defaultProjectId?: string;
+}) {
   const [open, setOpen] = useState(false);
+  const [projectId, setProjectId] = useState(defaultProjectId ?? "");
   const titleRef = useRef<HTMLInputElement>(null);
   const categoryRef = useRef<HTMLInputElement>(null);
   const amountRef = useRef<HTMLInputElement>(null);
@@ -51,6 +58,7 @@ export function ExpenseForm() {
         category: categoryRef.current?.value,
         amount,
         date,
+        projectId: projectId || undefined,
         file: pendingFile ?? undefined,
       });
       if (titleRef.current) titleRef.current.value = "";
@@ -59,6 +67,7 @@ export function ExpenseForm() {
       if (dateRef.current) dateRef.current.value = "";
       setPendingFile(null);
       setFileName("");
+      setProjectId(defaultProjectId ?? "");
       setOpen(false);
     });
   }
@@ -101,6 +110,21 @@ export function ExpenseForm() {
           className="rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500"
         />
       </div>
+
+      {projects && projects.length > 0 && !defaultProjectId && (
+        <select
+          value={projectId}
+          onChange={(e) => setProjectId(e.target.value)}
+          className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface"
+        >
+          <option value="">Kein Auftragsbezug</option>
+          {projects.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.number} — {p.title}
+            </option>
+          ))}
+        </select>
+      )}
 
       <div>
         <input ref={fileInputRef} type="file" onChange={handleFile} disabled={uploading} className="hidden" id="expense-file" />

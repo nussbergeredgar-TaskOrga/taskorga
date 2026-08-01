@@ -31,7 +31,7 @@ export default async function FinanzenPage({
   // Fällige, unbezahlte Rechnungen automatisch auf "Überfällig" setzen
   await markOverdueInvoices();
 
-  const [invoices, expenses] = await Promise.all([
+  const [invoices, expenses, projects] = await Promise.all([
     prisma.invoice.findMany({
       where: { companyId: company.id },
       orderBy: { createdAt: "desc" },
@@ -40,7 +40,15 @@ export default async function FinanzenPage({
     prisma.expense.findMany({
       where: { companyId: company.id },
       orderBy: { date: "desc" },
-      include: { documents: { select: { id: true, fileName: true, fileUrl: true } } },
+      include: {
+        documents: { select: { id: true, fileName: true, fileUrl: true } },
+        project: { select: { id: true, title: true, number: true } },
+      },
+    }),
+    prisma.project.findMany({
+      where: { companyId: company.id },
+      orderBy: { createdAt: "desc" },
+      select: { id: true, title: true, number: true },
     }),
   ]);
 
@@ -75,6 +83,7 @@ export default async function FinanzenPage({
       date: e.date,
       status: e.status,
       documents: e.documents,
+      project: e.project,
     }));
 
   return (
@@ -184,7 +193,7 @@ export default async function FinanzenPage({
       <div className="rounded-card border border-ink-100 bg-surface p-6 shadow-card space-y-5">
         <div className="flex items-center justify-between">
           <h2 className="font-display font-semibold text-ink-900 text-lg">Meine Ausgaben</h2>
-          <ExpenseForm />
+          <ExpenseForm projects={projects} />
         </div>
 
         <div className="grid grid-cols-2 gap-4">
