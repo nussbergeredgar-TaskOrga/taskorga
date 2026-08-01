@@ -2,9 +2,28 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import { Eye, EyeOff, ArrowUp, ArrowDown, Maximize2, Settings2 } from "lucide-react";
+import {
+  Eye,
+  EyeOff,
+  ArrowUp,
+  ArrowDown,
+  Maximize2,
+  Settings2,
+  Pencil,
+  Check,
+  X,
+  ListTodo,
+  Wallet,
+  FileText,
+  TrendingUp,
+  Trophy,
+  XCircle,
+  CalendarClock,
+  CalendarCheck,
+} from "lucide-react";
 import { saveDashboardLayout } from "@/lib/actions/dashboard";
-import { WIDGET_LABELS, type WidgetConfig, type WidgetSize } from "@/lib/dashboard-widgets";
+import { KpiCard } from "@/components/kpi-card";
+import { WIDGET_LABELS, ACCENT_OPTIONS, type WidgetConfig, type WidgetSize } from "@/lib/dashboard-widgets";
 import { cn } from "@/lib/utils";
 
 const SIZE_CLASSES: Record<WidgetSize, string> = {
@@ -16,20 +35,44 @@ const SIZE_CLASSES: Record<WidgetSize, string> = {
 const NEXT_SIZE: Record<WidgetSize, WidgetSize> = { sm: "md", md: "lg", lg: "sm" };
 const SIZE_LABEL: Record<WidgetSize, string> = { sm: "S", md: "M", lg: "L" };
 
+// Icon-Komponenten koennen nicht vom Server an eine Client-Komponente
+// durchgereicht werden -- die feste KPI-Kachel liefert stattdessen den
+// Namen, hier wird er auf die echte Komponente gemappt.
+const ICONS: Record<string, typeof ListTodo> = {
+  ListTodo,
+  Wallet,
+  FileText,
+  TrendingUp,
+  Trophy,
+  XCircle,
+  CalendarClock,
+  CalendarCheck,
+};
+
+type WidgetNodeEntry = {
+  id: string;
+  label?: string;
+  node?: React.ReactNode;
+  kpi?: { label: string; value: string; icon?: string; accent: string; href?: string };
+};
+
 export function DashboardGrid({
   initialLayout,
   widgetNodes,
   dashboardId,
 }: {
   initialLayout: WidgetConfig[];
-  widgetNodes: { id: string; label?: string; node: React.ReactNode }[];
+  widgetNodes: WidgetNodeEntry[];
   dashboardId?: string | null;
 }) {
   const [layout, setLayout] = useState(initialLayout);
   const [editing, setEditing] = useState(false);
+  const [editingLabelId, setEditingLabelId] = useState<string | null>(null);
+  const [labelDraft, setLabelDraft] = useState("");
+  const [accentDraft, setAccentDraft] = useState("");
   const [, startTransition] = useTransition();
 
-  const nodeById = new Map(widgetNodes.map((w) => [w.id, w.node]));
+  const entryById = new Map(widgetNodes.map((w) => [w.id, w]));
   const labelById = new Map(widgetNodes.map((w) => [w.id, w.label]));
   const sorted = [...layout].sort((a, b) => a.order - b.order);
 
@@ -63,6 +106,19 @@ export function DashboardGrid({
     persist(next);
   }
 
+  function startEditLabel(w: WidgetConfig, defaultLabel: string, defaultAccent: string) {
+    setEditingLabelId(w.id);
+    setLabelDraft(w.label ?? defaultLabel);
+    setAccentDraft(w.accent ?? defaultAccent);
+  }
+
+  function saveLabel(id: string) {
+    persist(
+      layout.map((w) => (w.id === id ? { ...w, label: labelDraft.trim() || undefined, accent: accentDraft } : w))
+    );
+    setEditingLabelId(null);
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex justify-end">
@@ -82,50 +138,108 @@ export function DashboardGrid({
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {sorted
-          .filter((w) => (editing || w.visible) && nodeById.has(w.id))
-          .map((w) => (
-            <div key={w.id} className={cn(SIZE_CLASSES[w.size], !w.visible && "opacity-40")}>
-              {editing && (
-                <div className="flex items-center justify-between mb-1.5 px-1">
-                  <span className="text-xs font-medium text-ink-500 truncate">
-                    {labelById.get(w.id) ?? WIDGET_LABELS[w.id] ?? w.id}
-                  </span>
-                  <div className="flex items-center gap-0.5 shrink-0">
-                    <button
-                      onClick={() => move(w.id, "up")}
-                      className="p-1 text-ink-300 hover:text-ink-700 transition-colors"
-                      aria-label="Nach oben"
-                    >
-                      <ArrowUp size={13} />
-                    </button>
-                    <button
-                      onClick={() => move(w.id, "down")}
-                      className="p-1 text-ink-300 hover:text-ink-700 transition-colors"
-                      aria-label="Nach unten"
-                    >
-                      <ArrowDown size={13} />
-                    </button>
-                    <button
-                      onClick={() => cycleSize(w.id)}
-                      className="flex items-center gap-0.5 p-1 text-ink-300 hover:text-ink-700 transition-colors"
-                      title="Größe ändern"
-                    >
-                      <Maximize2 size={13} />
-                      <span className="text-[10px] font-mono">{SIZE_LABEL[w.size]}</span>
-                    </button>
-                    <button
-                      onClick={() => toggleVisible(w.id)}
-                      className="p-1 text-ink-300 hover:text-ink-700 transition-colors"
-                      aria-label={w.visible ? "Ausblenden" : "Einblenden"}
-                    >
-                      {w.visible ? <Eye size={13} /> : <EyeOff size={13} />}
-                    </button>
+          .filter((w) => (editing || w.visible) && entryById.has(w.id))
+          .map((w) => {
+            const entry = entryById.get(w.id)!;
+            return (
+              <div key={w.id} className={cn(SIZE_CLASSES[w.size], !w.visible && "opacity-40")}>
+                {editing && (
+                  <div className="flex items-center justify-between mb-1.5 px-1">
+                    <span className="text-xs font-medium text-ink-500 truncate">
+                      {labelById.get(w.id) ?? WIDGET_LABELS[w.id] ?? w.id}
+                    </span>
+                    <div className="flex items-center gap-0.5 shrink-0">
+                      {entry.kpi && (
+                        <button
+                          onClick={() => startEditLabel(w, entry.kpi!.label, entry.kpi!.accent)}
+                          className="p-1 text-ink-300 hover:text-ink-700 transition-colors"
+                          aria-label="Bearbeiten"
+                        >
+                          <Pencil size={13} />
+                        </button>
+                      )}
+                      <button
+                        onClick={() => move(w.id, "up")}
+                        className="p-1 text-ink-300 hover:text-ink-700 transition-colors"
+                        aria-label="Nach oben"
+                      >
+                        <ArrowUp size={13} />
+                      </button>
+                      <button
+                        onClick={() => move(w.id, "down")}
+                        className="p-1 text-ink-300 hover:text-ink-700 transition-colors"
+                        aria-label="Nach unten"
+                      >
+                        <ArrowDown size={13} />
+                      </button>
+                      <button
+                        onClick={() => cycleSize(w.id)}
+                        className="flex items-center gap-0.5 p-1 text-ink-300 hover:text-ink-700 transition-colors"
+                        title="Größe ändern"
+                      >
+                        <Maximize2 size={13} />
+                        <span className="text-[10px] font-mono">{SIZE_LABEL[w.size]}</span>
+                      </button>
+                      <button
+                        onClick={() => toggleVisible(w.id)}
+                        className="p-1 text-ink-300 hover:text-ink-700 transition-colors"
+                        aria-label={w.visible ? "Ausblenden" : "Einblenden"}
+                      >
+                        {w.visible ? <Eye size={13} /> : <EyeOff size={13} />}
+                      </button>
+                    </div>
                   </div>
-                </div>
-              )}
-              {nodeById.get(w.id)}
-            </div>
-          ))}
+                )}
+
+                {editingLabelId === w.id ? (
+                  <div className="rounded-card border border-dashed border-brand-500 bg-ink-50 p-3 space-y-2">
+                    <input
+                      autoFocus
+                      value={labelDraft}
+                      onChange={(e) => setLabelDraft(e.target.value)}
+                      className="w-full rounded-lg border border-ink-100 px-2.5 py-1.5 text-sm outline-none focus:border-brand-500 bg-surface"
+                      placeholder="Titel"
+                    />
+                    <select
+                      value={accentDraft}
+                      onChange={(e) => setAccentDraft(e.target.value)}
+                      className="w-full rounded-lg border border-ink-100 px-2.5 py-1.5 text-sm outline-none focus:border-brand-500 bg-surface"
+                    >
+                      {ACCENT_OPTIONS.map((a) => (
+                        <option key={a.value} value={a.value}>
+                          {a.label}
+                        </option>
+                      ))}
+                    </select>
+                    <div className="flex gap-1.5">
+                      <button
+                        onClick={() => saveLabel(w.id)}
+                        className="flex items-center gap-1 rounded-lg bg-brand-500 text-white text-xs font-medium px-2.5 py-1.5 hover:bg-brand-600 transition-colors"
+                      >
+                        <Check size={12} /> Speichern
+                      </button>
+                      <button
+                        onClick={() => setEditingLabelId(null)}
+                        className="flex items-center gap-1 rounded-lg border border-ink-100 text-ink-700 text-xs font-medium px-2.5 py-1.5 hover:bg-ink-50 transition-colors"
+                      >
+                        <X size={12} /> Abbrechen
+                      </button>
+                    </div>
+                  </div>
+                ) : entry.kpi ? (
+                  <KpiCard
+                    label={w.label ?? entry.kpi.label}
+                    value={entry.kpi.value}
+                    icon={entry.kpi.icon ? ICONS[entry.kpi.icon] : undefined}
+                    accent={w.accent ?? entry.kpi.accent}
+                    href={entry.kpi.href}
+                  />
+                ) : (
+                  entry.node
+                )}
+              </div>
+            );
+          })}
       </div>
 
       <p className="text-xs text-ink-300">

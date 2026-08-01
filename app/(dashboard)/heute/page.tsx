@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { ListTodo, Wallet, FileText, TrendingUp, Trophy, XCircle, CalendarClock, CalendarCheck } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { getCurrentCompany, getCurrentUser } from "@/lib/session";
 import { KpiCard } from "@/components/kpi-card";
@@ -142,138 +141,121 @@ export default async function HeutePage({
 
   const firstName = user.name?.split(" ")[0] ?? "";
 
-  const widgetNodes: { id: string; label?: string; node: React.ReactNode }[] = [
+  const widgetNodes: {
+    id: string;
+    label?: string;
+    node?: React.ReactNode;
+    kpi?: { label: string; value: string; icon: string; accent: string; href?: string };
+  }[] = [
     {
       id: "kpi-offene-aufgaben",
-      node: (
-        <KpiCard
-          label="Offene Aufgaben"
-          value={String(openTasksCount)}
-          icon={ListTodo}
-          accent="border-l-brand-500"
-          href="/aufgaben?status=open"
-        />
-      ),
+      kpi: {
+        label: "Offene Aufgaben",
+        value: String(openTasksCount),
+        icon: "ListTodo",
+        accent: "border-l-brand-500",
+        href: "/aufgaben?status=open",
+      },
     },
     {
       id: "kpi-offene-rechnungen",
-      node: (
-        <KpiCard
-          label="Offene Rechnungen"
-          value={`${Number(openInvoices._sum.totalGross ?? 0).toLocaleString("de-DE")} €`}
-          icon={FileText}
-          accent="border-l-warning"
-          href="/finanzen?status=open"
-        />
-      ),
+      kpi: {
+        label: "Offene Rechnungen",
+        value: `${Number(openInvoices._sum.totalGross ?? 0).toLocaleString("de-DE")} €`,
+        icon: "FileText",
+        accent: "border-l-warning",
+        href: "/finanzen?status=open",
+      },
     },
     {
       id: "kpi-umsatz-monat",
-      node: (
-        <KpiCard
-          label="Umsatz diesen Monat"
-          value={`${Number(paidThisMonth ?? 0).toLocaleString("de-DE")} €`}
-          icon={Wallet}
-          accent="border-l-success"
-          href="/einblicke"
-        />
-      ),
+      kpi: {
+        label: "Umsatz diesen Monat",
+        value: `${Number(paidThisMonth ?? 0).toLocaleString("de-DE")} €`,
+        icon: "Wallet",
+        accent: "border-l-success",
+        href: "/einblicke",
+      },
     },
     {
       id: "kpi-neue-anfragen",
-      node: (
-        <KpiCard
-          label="Neue Anfragen (Monat)"
-          value={String(newInquiriesThisMonth)}
-          icon={TrendingUp}
-          accent="border-l-turquoise-500"
-          href="/anfragen?range=month"
-        />
-      ),
+      kpi: {
+        label: "Neue Anfragen (Monat)",
+        value: String(newInquiriesThisMonth),
+        icon: "TrendingUp",
+        accent: "border-l-turquoise-500",
+        href: "/anfragen?range=month",
+      },
     },
     {
       id: "kpi-gewonnen-summe",
-      node: (
-        <KpiCard
-          label={`Gewonnen (${wonAgg._count})`}
-          value={`${Number(wonAgg._sum.amount ?? 0).toLocaleString("de-DE")} €`}
-          icon={Trophy}
-          accent="border-l-success"
-          href="/anfragen/gewonnen"
-        />
-      ),
+      kpi: {
+        label: `Gewonnen (${wonAgg._count})`,
+        value: `${Number(wonAgg._sum.amount ?? 0).toLocaleString("de-DE")} €`,
+        icon: "Trophy",
+        accent: "border-l-success",
+        href: "/anfragen/gewonnen",
+      },
     },
     {
       id: "kpi-verloren-summe",
-      node: (
-        <KpiCard
-          label={`Verloren (${lostAgg._count})`}
-          value={`${Number(lostAgg._sum.amount ?? 0).toLocaleString("de-DE")} €`}
-          icon={XCircle}
-          accent="border-l-danger"
-          href="/anfragen/verloren"
-        />
-      ),
+      kpi: {
+        label: `Verloren (${lostAgg._count})`,
+        value: `${Number(lostAgg._sum.amount ?? 0).toLocaleString("de-DE")} €`,
+        icon: "XCircle",
+        accent: "border-l-danger",
+        href: "/anfragen/verloren",
+      },
     },
     {
       id: "kpi-termine-heute",
-      node: (
-        <KpiCard
-          label="Heutige Termine"
-          value={String(todayAppointmentsCount)}
-          icon={CalendarClock}
-          accent="border-l-turquoise-500"
-          href="/termine?day=today"
-        />
-      ),
+      kpi: {
+        label: "Heutige Termine",
+        value: String(todayAppointmentsCount),
+        icon: "CalendarClock",
+        accent: "border-l-turquoise-500",
+        href: "/termine?day=today",
+      },
     },
     {
       id: "kpi-termine-ausgemacht",
-      node: (
-        <KpiCard
-          label="Ausgemachte Termine"
-          value={String(scheduledAppointmentsAgg._count)}
-          icon={CalendarCheck}
-          accent="border-l-brand-500"
-          href="/termine?status=SCHEDULED"
-        />
-      ),
+      kpi: {
+        label: "Ausgemachte Termine",
+        value: String(scheduledAppointmentsAgg._count),
+        icon: "CalendarCheck",
+        accent: "border-l-brand-500",
+        href: "/termine?status=SCHEDULED",
+      },
     },
     {
       id: "kpi-termine-betrag",
-      node: (
-        <KpiCard
-          label="Termine Betrag"
-          value={`${Number(scheduledAppointmentsAgg._sum.amount ?? 0).toLocaleString("de-DE")} €`}
-          icon={Wallet}
-          accent="border-l-success"
-          href="/termine?status=SCHEDULED"
-        />
-      ),
+      kpi: {
+        label: "Termine Betrag",
+        value: `${Number(scheduledAppointmentsAgg._sum.amount ?? 0).toLocaleString("de-DE")} €`,
+        icon: "Wallet",
+        accent: "border-l-success",
+        href: "/termine?status=SCHEDULED",
+      },
     },
     {
       id: "kpi-angebote-offen",
-      node: (
-        <KpiCard
-          label="Offene Angebote"
-          value={String(openQuotesCount)}
-          icon={FileText}
-          accent="border-l-warning"
-          href="/angebote?status=open"
-        />
-      ),
+      kpi: {
+        label: "Offene Angebote",
+        value: String(openQuotesCount),
+        icon: "FileText",
+        accent: "border-l-warning",
+        href: "/angebote?status=open",
+      },
     },
     {
       id: "kpi-angebote-versendet-betrag",
-      node: (
-        <KpiCard
-          label="Versendete Angebote (Betrag)"
-          value={`${Number(sentQuotesAgg._sum.totalGross ?? 0).toLocaleString("de-DE")} €`}
-          icon={Wallet}
-          accent="border-l-turquoise-500"
-          href="/angebote?status=SENT"
-        />
-      ),
+      kpi: {
+        label: "Versendete Angebote (Betrag)",
+        value: `${Number(sentQuotesAgg._sum.totalGross ?? 0).toLocaleString("de-DE")} €`,
+        icon: "Wallet",
+        accent: "border-l-turquoise-500",
+        href: "/angebote?status=SENT",
+      },
     },
     {
       id: "widget-offene-aufgaben-liste",

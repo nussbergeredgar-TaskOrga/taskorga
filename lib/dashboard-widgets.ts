@@ -1,5 +1,22 @@
 export type WidgetSize = "sm" | "md" | "lg";
-export type WidgetConfig = { id: string; visible: boolean; size: WidgetSize; order: number };
+export type WidgetConfig = {
+  id: string;
+  visible: boolean;
+  size: WidgetSize;
+  order: number;
+  // Nur für feste KPI-Kacheln (id beginnt mit "kpi-") überschreibbar: eigener
+  // Titel/eigene Akzentfarbe statt des eingebauten Standards.
+  label?: string;
+  accent?: string;
+};
+
+export const ACCENT_OPTIONS: { value: string; label: string }[] = [
+  { value: "border-l-brand-500", label: "Blau" },
+  { value: "border-l-turquoise-500", label: "Türkis" },
+  { value: "border-l-success", label: "Grün" },
+  { value: "border-l-warning", label: "Gelb" },
+  { value: "border-l-danger", label: "Rot" },
+];
 
 export const DEFAULT_WIDGETS: WidgetConfig[] = [
   { id: "kpi-offene-aufgaben", visible: true, size: "sm", order: 0 },
