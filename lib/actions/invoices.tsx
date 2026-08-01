@@ -80,6 +80,16 @@ export async function createInvoice(
   }
 
   const company = await getCurrentCompany();
+  const customer = await prisma.customer.findFirst({ where: { id: parsed.data.customerId, companyId: company.id } });
+  if (!customer) {
+    return { errors: { customerId: ["Kunde nicht gefunden."] } };
+  }
+  if (parsed.data.projectId) {
+    const project = await prisma.project.findFirst({ where: { id: parsed.data.projectId, companyId: company.id } });
+    if (!project) {
+      return { message: "Auftrag nicht gefunden." };
+    }
+  }
   const discountValue = Number(parsed.data.discountValue) || 0;
   const discountType = parsed.data.discountType === "PERCENT" ? "PERCENT" : "AMOUNT";
   const { netAfterDiscount, grossAfterDiscount, avgTaxRate } = computeInvoiceTotals(
@@ -125,6 +135,10 @@ export async function createInvoice(
 }
 
 export async function markInvoiceSent(invoiceId: string) {
+  const company = await getCurrentCompany();
+  const existing = await prisma.invoice.findFirst({ where: { id: invoiceId, companyId: company.id } });
+  if (!existing) return;
+
   const invoice = await prisma.invoice.update({
     where: { id: invoiceId },
     data: { status: "SENT", issueDate: new Date(), dueDate: new Date(Date.now() + 14 * 86400000) },
@@ -145,6 +159,10 @@ export async function markInvoiceSent(invoiceId: string) {
 }
 
 export async function markInvoicePaid(invoiceId: string) {
+  const company = await getCurrentCompany();
+  const existing = await prisma.invoice.findFirst({ where: { id: invoiceId, companyId: company.id } });
+  if (!existing) return;
+
   const invoice = await prisma.invoice.update({
     where: { id: invoiceId },
     data: { status: "PAID", paidAt: new Date() },
@@ -192,8 +210,9 @@ const FALLBACK_INTROS = [
 ];
 
 export async function sendPaymentReminder(invoiceId: string): Promise<{ error?: string; success?: boolean }> {
-  const invoice = await prisma.invoice.findUnique({
-    where: { id: invoiceId },
+  const currentCompany = await getCurrentCompany();
+  const invoice = await prisma.invoice.findFirst({
+    where: { id: invoiceId, companyId: currentCompany.id },
     include: { customer: true, company: true, items: { orderBy: { position: "asc" } } },
   });
 
@@ -305,8 +324,9 @@ export async function sendInvoiceEmail(
   invoiceId: string,
   customMessage?: string
 ): Promise<{ error?: string; success?: boolean }> {
-  const invoice = await prisma.invoice.findUnique({
-    where: { id: invoiceId },
+  const currentCompany = await getCurrentCompany();
+  const invoice = await prisma.invoice.findFirst({
+    where: { id: invoiceId, companyId: currentCompany.id },
     include: { customer: true, company: true, items: { orderBy: { position: "asc" } } },
   });
 

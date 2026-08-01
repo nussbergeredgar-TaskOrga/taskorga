@@ -26,7 +26,11 @@ export default async function FirmaSettingsPage({
     getNavLabels(),
   ]);
 
-  const scheduleUserId = searchParams.scheduleUser || users[0]?.id || admin.id;
+  const validUserIds = new Set(users.map((u) => u.id));
+  const scheduleUserId =
+    (searchParams.scheduleUser && validUserIds.has(searchParams.scheduleUser) ? searchParams.scheduleUser : null) ||
+    users[0]?.id ||
+    admin.id;
   const [workingHours, absences] = await Promise.all([
     getWorkingHours(scheduleUserId),
     getAbsences(),

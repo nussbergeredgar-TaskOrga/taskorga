@@ -28,7 +28,7 @@ const LINK_LABELS: Record<string, string> = {
 export default async function AufgabeDetailPage({ params }: { params: { id: string } }) {
   const company = await getCurrentCompany();
   const [task, users, customers, linkables, fieldConfig] = await Promise.all([
-    prisma.task.findUnique({ where: { id: params.id } }),
+    prisma.task.findFirst({ where: { id: params.id, companyId: company.id } }),
     getCompanyUsers(),
     prisma.customer.findMany({
       where: { companyId: company.id },

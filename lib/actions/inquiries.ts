@@ -66,6 +66,10 @@ export async function createInquiry(
   }
 
   const company = await getCurrentCompany();
+  const customer = await prisma.customer.findFirst({ where: { id: parsed.data.customerId, companyId: company.id } });
+  if (!customer) {
+    return { errors: { customerId: ["Kunde nicht gefunden."] } };
+  }
 
   const inquiry = await prisma.inquiry.create({
     data: {
@@ -99,6 +103,8 @@ export async function createInquiryQuick(
 ) {
   if (!data.title.trim()) return null;
   const company = await getCurrentCompany();
+  const customer = await prisma.customer.findFirst({ where: { id: customerId, companyId: company.id } });
+  if (!customer) return null;
 
   const inquiry = await prisma.inquiry.create({
     data: {
@@ -127,6 +133,10 @@ export async function createInquiryQuick(
 }
 
 export async function updateInquiryAmount(inquiryId: string, amount: string) {
+  const company = await getCurrentCompany();
+  const existing = await prisma.inquiry.findFirst({ where: { id: inquiryId, companyId: company.id } });
+  if (!existing) return;
+
   const inquiry = await prisma.inquiry.update({
     where: { id: inquiryId },
     data: { amount: parseAmount(amount) },
@@ -149,6 +159,10 @@ const STATUS_LABELS: Record<InquiryStatus, string> = {
 };
 
 export async function updateInquiryStatus(inquiryId: string, status: InquiryStatus) {
+  const company = await getCurrentCompany();
+  const existing = await prisma.inquiry.findFirst({ where: { id: inquiryId, companyId: company.id } });
+  if (!existing) return;
+
   const inquiry = await prisma.inquiry.update({
     where: { id: inquiryId },
     data: { status },

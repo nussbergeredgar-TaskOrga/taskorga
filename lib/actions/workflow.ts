@@ -28,11 +28,18 @@ export async function addWorkflowStep(label: string) {
 
 export async function renameWorkflowStep(stepId: string, label: string) {
   if (!label.trim()) return;
-  await prisma.workflowStep.update({ where: { id: stepId }, data: { label: label.trim() } });
+  const company = await getCurrentCompany();
+  await prisma.workflowStep.updateMany({
+    where: { id: stepId, companyId: company.id },
+    data: { label: label.trim() },
+  });
   revalidatePath("/einstellungen");
 }
 
 export async function deleteWorkflowStep(stepId: string) {
+  const company = await getCurrentCompany();
+  const step = await prisma.workflowStep.findFirst({ where: { id: stepId, companyId: company.id } });
+  if (!step) return;
   await prisma.inquiryStepEntry.deleteMany({ where: { stepId } });
   await prisma.workflowStep.delete({ where: { id: stepId } });
   revalidatePath("/einstellungen");
@@ -63,6 +70,13 @@ export async function moveWorkflowStep(stepId: string, direction: "up" | "down")
 // ---- Fortschritt pro Anfrage ----
 
 export async function toggleStepEntry(inquiryId: string, stepId: string, done: boolean) {
+  const company = await getCurrentCompany();
+  const [inquiry, step] = await Promise.all([
+    prisma.inquiry.findFirst({ where: { id: inquiryId, companyId: company.id } }),
+    prisma.workflowStep.findFirst({ where: { id: stepId, companyId: company.id } }),
+  ]);
+  if (!inquiry || !step) return;
+
   await prisma.inquiryStepEntry.upsert({
     where: { inquiryId_stepId: { inquiryId, stepId } },
     create: { inquiryId, stepId, completedAt: done ? new Date() : null },
@@ -77,6 +91,13 @@ export async function updateStepEntry(
   stepId: string,
   data: { note?: string; completedAt?: string | null }
 ) {
+  const company = await getCurrentCompany();
+  const [inquiry, step] = await Promise.all([
+    prisma.inquiry.findFirst({ where: { id: inquiryId, companyId: company.id } }),
+    prisma.workflowStep.findFirst({ where: { id: stepId, companyId: company.id } }),
+  ]);
+  if (!inquiry || !step) return;
+
   await prisma.inquiryStepEntry.upsert({
     where: { inquiryId_stepId: { inquiryId, stepId } },
     create: {

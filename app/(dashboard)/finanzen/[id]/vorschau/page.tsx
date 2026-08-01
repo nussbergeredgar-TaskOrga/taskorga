@@ -6,9 +6,9 @@ import { requireAdmin } from "@/lib/session";
 import { InvoiceSendFromPreview } from "@/components/invoice-send-from-preview";
 
 export default async function RechnungVorschauPage({ params }: { params: { id: string } }) {
-  await requireAdmin();
-  const invoice = await prisma.invoice.findUnique({
-    where: { id: params.id },
+  const admin = await requireAdmin();
+  const invoice = await prisma.invoice.findFirst({
+    where: { id: params.id, companyId: admin.companyId },
     include: { customer: { select: { email: true } } },
   });
   if (!invoice) notFound();

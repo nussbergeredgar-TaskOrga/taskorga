@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { getCurrentUser } from "@/lib/session";
+import { getCurrentUser, getCurrentCompany } from "@/lib/session";
 
 export async function createTimeEntry(
   projectId: string,
@@ -10,6 +10,9 @@ export async function createTimeEntry(
 ) {
   if (!data.date || !data.minutes || data.minutes <= 0) return;
   const user = await getCurrentUser();
+  const company = await getCurrentCompany();
+  const project = await prisma.project.findFirst({ where: { id: projectId, companyId: company.id } });
+  if (!project) return;
 
   await prisma.timeEntry.create({
     data: {

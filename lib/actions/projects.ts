@@ -10,6 +10,8 @@ import type { ProjectStatus } from "@prisma/client";
 export async function createProject(customerId: string, title: string) {
   if (!customerId || !title.trim()) return { error: "Bitte Kunde und Titel angeben." };
   const company = await getCurrentCompany();
+  const customer = await prisma.customer.findFirst({ where: { id: customerId, companyId: company.id } });
+  if (!customer) return { error: "Kunde nicht gefunden." };
 
   const count = await prisma.project.count({ where: { companyId: company.id } });
   const number = generateDocumentNumber(company.projectNumberFormat, count + 1);
@@ -40,6 +42,10 @@ export async function createProject(customerId: string, title: string) {
 }
 
 export async function updateProjectStatus(projectId: string, status: ProjectStatus) {
+  const company = await getCurrentCompany();
+  const existing = await prisma.project.findFirst({ where: { id: projectId, companyId: company.id } });
+  if (!existing) return;
+
   const project = await prisma.project.update({ where: { id: projectId }, data: { status } });
 
   await prisma.activity.create({
@@ -58,7 +64,9 @@ export async function updateProjectStatus(projectId: string, status: ProjectStat
 
 export async function addProjectTask(projectId: string, title: string) {
   if (!title.trim()) return;
-  const project = await prisma.project.findUniqueOrThrow({ where: { id: projectId } });
+  const company = await getCurrentCompany();
+  const project = await prisma.project.findFirst({ where: { id: projectId, companyId: company.id } });
+  if (!project) return;
 
   await prisma.task.create({
     data: {
@@ -72,6 +80,10 @@ export async function addProjectTask(projectId: string, title: string) {
 }
 
 export async function toggleTask(taskId: string, done: boolean) {
+  const company = await getCurrentCompany();
+  const existing = await prisma.task.findFirst({ where: { id: taskId, companyId: company.id } });
+  if (!existing) return;
+
   const task = await prisma.task.update({
     where: { id: taskId },
     data: { status: done ? "DONE" : "OPEN" },
@@ -82,8 +94,9 @@ export async function toggleTask(taskId: string, done: boolean) {
 // Erzeugt aus einem Auftrag (und dessen ursprünglichem Angebot, falls vorhanden)
 // eine Entwurfs-Rechnung mit denselben Positionen (inkl. MwSt.-Sätzen und Rabatt).
 export async function createInvoiceFromProject(projectId: string) {
-  const project = await prisma.project.findUniqueOrThrow({
-    where: { id: projectId },
+  const currentCompany = await getCurrentCompany();
+  const project = await prisma.project.findFirstOrThrow({
+    where: { id: projectId, companyId: currentCompany.id },
     include: { quote: { include: { items: true } }, company: true },
   });
 

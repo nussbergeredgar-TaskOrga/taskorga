@@ -157,8 +157,14 @@ export async function updateCustomer(
     return { errors: configErrors };
   }
 
+  const company = await getCurrentCompany();
+  const existing = await prisma.customer.findFirst({ where: { id: customerId, companyId: company.id } });
+  if (!existing) {
+    return { message: "Kunde nicht gefunden." };
+  }
+
   const name = resolveDisplayName(parsed.data);
-  const finalName = name || (await prisma.customer.findUnique({ where: { id: customerId }, select: { name: true } }))?.name;
+  const finalName = name || existing.name;
   if (!finalName) {
     return {
       errors:
@@ -235,6 +241,9 @@ export async function addCustomerComment(customerId: string, content: string) {
   if (!content.trim()) return;
 
   const user = await getCurrentUser();
+  const company = await getCurrentCompany();
+  const customer = await prisma.customer.findFirst({ where: { id: customerId, companyId: company.id } });
+  if (!customer) return;
 
   await prisma.comment.create({
     data: {

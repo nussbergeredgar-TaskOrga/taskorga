@@ -81,7 +81,8 @@ export async function duplicateCustomChart(id: string) {
 }
 
 export async function deleteCustomChart(id: string) {
-  await prisma.customChart.delete({ where: { id } });
+  const company = await getCurrentCompany();
+  await prisma.customChart.deleteMany({ where: { id, companyId: company.id } });
 
   // Falls das Diagramm auf dem eigenen Dashboard lag, dort ebenfalls entfernen
   const layout = await getDashboardLayout();

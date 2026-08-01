@@ -13,14 +13,14 @@ import { CustomerInsightCard } from "@/components/customer-insight-card";
 import { RecordTasks } from "@/components/record-tasks";
 import { KpiCard } from "@/components/kpi-card";
 import { getCustomerTabsConfig } from "@/lib/actions/customer-tabs";
-import { getCurrentUser } from "@/lib/session";
+import { getCurrentUser, getCurrentCompany } from "@/lib/session";
 import { computeRevenue } from "@/lib/revenue";
 import { formatDistanceToNow } from "date-fns";
 import { de } from "date-fns/locale";
 
-async function getCustomer(id: string) {
-  return prisma.customer.findUnique({
-    where: { id },
+async function getCustomer(id: string, companyId: string) {
+  return prisma.customer.findFirst({
+    where: { id, companyId },
     include: {
       inquiries: { orderBy: { createdAt: "desc" } },
       quotes: { orderBy: { createdAt: "desc" } },
@@ -49,8 +49,9 @@ export default async function KundeDetailPage({
 }: {
   params: { id: string };
 }) {
+  const company = await getCurrentCompany();
   const [customer, tabsConfig, appointmentTypes, appointmentFieldConfig, currentUser] = await Promise.all([
-    getCustomer(params.id),
+    getCustomer(params.id, company.id),
     getCustomerTabsConfig(),
     getAppointmentTypes(),
     getFieldConfig("appointment"),

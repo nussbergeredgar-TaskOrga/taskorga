@@ -3,12 +3,14 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { generateCrossSellSuggestion } from "@/lib/ai";
+import { getCurrentCompany } from "@/lib/session";
 
 export async function generateCustomerInsight(
   customerId: string
 ): Promise<{ error?: string; success?: boolean }> {
-  const customer = await prisma.customer.findUnique({
-    where: { id: customerId },
+  const company = await getCurrentCompany();
+  const customer = await prisma.customer.findFirst({
+    where: { id: customerId, companyId: company.id },
     include: {
       projects: { select: { title: true } },
       quotes: { include: { items: { select: { description: true } } } },

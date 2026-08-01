@@ -9,19 +9,17 @@ import { AppointmentStatusSelect } from "@/components/appointment-status-select"
 import { AppointmentAssigneeSelect } from "@/components/appointment-assignee-select";
 
 export default async function TerminDetailPage({ params }: { params: { id: string } }) {
-  const [appointment, company] = await Promise.all([
-    prisma.appointment.findUnique({
-      where: { id: params.id },
-      include: {
-        customer: true,
-        inquiry: { select: { id: true, title: true } },
-        assignee: { select: { id: true, name: true } },
-        comments: { orderBy: { createdAt: "desc" }, include: { user: true } },
-        tasks: { orderBy: { createdAt: "desc" } },
-      },
-    }),
-    getCurrentCompany(),
-  ]);
+  const company = await getCurrentCompany();
+  const appointment = await prisma.appointment.findFirst({
+    where: { id: params.id, companyId: company.id },
+    include: {
+      customer: true,
+      inquiry: { select: { id: true, title: true } },
+      assignee: { select: { id: true, name: true } },
+      comments: { orderBy: { createdAt: "desc" }, include: { user: true } },
+      tasks: { orderBy: { createdAt: "desc" } },
+    },
+  });
   if (!appointment) notFound();
 
   const users = await prisma.user.findMany({

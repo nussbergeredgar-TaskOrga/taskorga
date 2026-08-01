@@ -91,6 +91,19 @@ export async function createQuote(
   }
 
   const company = await getCurrentCompany();
+  const customer = await prisma.customer.findFirst({ where: { id: parsed.data.customerId, companyId: company.id } });
+  if (!customer) {
+    return { errors: { customerId: ["Kunde nicht gefunden."] } };
+  }
+  if (parsed.data.inquiryId) {
+    const inquiry = await prisma.inquiry.findFirst({ where: { id: parsed.data.inquiryId, companyId: company.id } });
+    if (!inquiry) return { message: "Anfrage nicht gefunden." };
+  }
+  if (parsed.data.projectId) {
+    const project = await prisma.project.findFirst({ where: { id: parsed.data.projectId, companyId: company.id } });
+    if (!project) return { message: "Auftrag nicht gefunden." };
+  }
+
   const discountValue = Number(parsed.data.discountValue) || 0;
   const discountType = parsed.data.discountType === "PERCENT" ? "PERCENT" : "AMOUNT";
   const { netAfterDiscount, grossAfterDiscount, avgTaxRate } = computeTotals(items, discountValue, discountType);
@@ -156,6 +169,10 @@ export async function createQuote(
 }
 
 export async function updateQuoteStatus(quoteId: string, status: QuoteStatus) {
+  const company = await getCurrentCompany();
+  const existing = await prisma.quote.findFirst({ where: { id: quoteId, companyId: company.id } });
+  if (!existing) return;
+
   const quote = await prisma.quote.update({ where: { id: quoteId }, data: { status } });
 
   await prisma.activity.create({
@@ -175,8 +192,9 @@ export async function updateQuoteStatus(quoteId: string, status: QuoteStatus) {
 // Angebot annehmen: setzt Status auf ACCEPTED und erzeugt automatisch einen Auftrag
 // (außer es ist bereits einer verknüpft, z.B. direkt bei Angebot-Erstellung gewählt)
 export async function acceptQuote(quoteId: string) {
-  const quote = await prisma.quote.findUnique({
-    where: { id: quoteId },
+  const currentCompany = await getCurrentCompany();
+  const quote = await prisma.quote.findFirst({
+    where: { id: quoteId, companyId: currentCompany.id },
     include: { project: true },
   });
   if (!quote) return;
@@ -225,8 +243,9 @@ export async function sendQuoteEmail(
   quoteId: string,
   customMessage?: string
 ): Promise<{ error?: string; success?: boolean }> {
-  const quote = await prisma.quote.findUnique({
-    where: { id: quoteId },
+  const currentCompany = await getCurrentCompany();
+  const quote = await prisma.quote.findFirst({
+    where: { id: quoteId, companyId: currentCompany.id },
     include: { customer: true, company: true, items: { orderBy: { position: "asc" } } },
   });
 
@@ -318,8 +337,9 @@ export async function sendQuoteEmail(
 // ---- Versionierung ----
 
 export async function saveQuoteVersion(quoteId: string) {
-  const quote = await prisma.quote.findUnique({
-    where: { id: quoteId },
+  const company = await getCurrentCompany();
+  const quote = await prisma.quote.findFirst({
+    where: { id: quoteId, companyId: company.id },
     include: { items: { orderBy: { position: "asc" } } },
   });
   if (!quote) return;

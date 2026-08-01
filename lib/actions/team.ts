@@ -60,6 +60,9 @@ export async function createUser(
 export async function updateUserRole(userId: string, roleName: "Admin" | "Mitarbeiter") {
   const admin = await requireAdmin();
 
+  const target = await prisma.user.findFirst({ where: { id: userId, companyId: admin.companyId } });
+  if (!target) return { error: "Nutzer nicht gefunden." };
+
   // Verhindern, dass der letzte Admin sich selbst degradiert und die Firma ohne Admin dasteht
   if (userId === admin.id && roleName !== "Admin") {
     const adminCount = await prisma.user.count({
@@ -69,26 +72,29 @@ export async function updateUserRole(userId: string, roleName: "Admin" | "Mitarb
   }
 
   const role = await prisma.role.findFirst({ where: { companyId: admin.companyId, name: roleName } });
-  await prisma.user.update({ where: { id: userId }, data: { roleId: role?.id } });
+  await prisma.user.updateMany({ where: { id: userId, companyId: admin.companyId }, data: { roleId: role?.id } });
   revalidatePath("/einstellungen");
 }
 
 export async function deleteUser(userId: string) {
   const admin = await requireAdmin();
   if (userId === admin.id) return { error: "Du kannst dich nicht selbst entfernen." };
-  await prisma.user.delete({ where: { id: userId } });
+  await prisma.user.deleteMany({ where: { id: userId, companyId: admin.companyId } });
   revalidatePath("/einstellungen");
 }
 
 export async function resetUserPassword(userId: string, newPassword: string) {
-  await requireAdmin();
+  const admin = await requireAdmin();
 
   if (newPassword.length < 8) {
     return { error: "Passwort muss mindestens 8 Zeichen haben." };
   }
 
+  const target = await prisma.user.findFirst({ where: { id: userId, companyId: admin.companyId } });
+  if (!target) return { error: "Nutzer nicht gefunden." };
+
   const passwordHash = await bcrypt.hash(newPassword, 10);
-  await prisma.user.update({ where: { id: userId }, data: { passwordHash } });
+  await prisma.user.updateMany({ where: { id: userId, companyId: admin.companyId }, data: { passwordHash } });
   revalidatePath("/einstellungen");
   return { success: true };
 }

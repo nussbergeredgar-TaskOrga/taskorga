@@ -11,8 +11,8 @@ export default async function AnfrageDetailPage({ params }: { params: { id: stri
   const company = await getCurrentCompany();
 
   const [inquiry, steps] = await Promise.all([
-    prisma.inquiry.findUnique({
-      where: { id: params.id },
+    prisma.inquiry.findFirst({
+      where: { id: params.id, companyId: company.id },
       include: { customer: true, quotes: true, stepEntries: true },
     }),
     prisma.workflowStep.findMany({

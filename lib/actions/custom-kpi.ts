@@ -88,7 +88,8 @@ export async function updateCustomKpi(id: string, data: CustomKpiInput) {
 }
 
 export async function deleteCustomKpi(id: string) {
-  await prisma.customKpi.delete({ where: { id } });
+  const company = await getCurrentCompany();
+  await prisma.customKpi.deleteMany({ where: { id, companyId: company.id } });
 
   // Falls die Kachel auf dem eigenen Dashboard lag, dort ebenfalls entfernen
   const layout = await getDashboardLayout();

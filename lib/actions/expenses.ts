@@ -42,8 +42,9 @@ export async function createExpense(data: {
 }
 
 export async function updateExpenseStatus(expenseId: string, status: ExpenseStatus) {
-  await prisma.expense.update({
-    where: { id: expenseId },
+  const company = await getCurrentCompany();
+  await prisma.expense.updateMany({
+    where: { id: expenseId, companyId: company.id },
     data: { status, paidAt: status === "PAID" ? new Date() : null },
   });
   revalidatePath("/finanzen");

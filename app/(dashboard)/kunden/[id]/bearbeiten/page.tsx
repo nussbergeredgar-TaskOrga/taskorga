@@ -4,10 +4,12 @@ import { ArrowLeft } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { CustomerForm } from "@/components/customer-form";
 import { getFieldConfig } from "@/lib/actions/field-config";
+import { getCurrentCompany } from "@/lib/session";
 
 export default async function KundeBearbeitenPage({ params }: { params: { id: string } }) {
+  const company = await getCurrentCompany();
   const [customer, fieldConfig] = await Promise.all([
-    prisma.customer.findUnique({ where: { id: params.id } }),
+    prisma.customer.findFirst({ where: { id: params.id, companyId: company.id } }),
     getFieldConfig("customer"),
   ]);
   if (!customer) notFound();

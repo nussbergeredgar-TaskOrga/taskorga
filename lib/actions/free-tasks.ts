@@ -71,6 +71,10 @@ export async function updateFreeTask(taskId: string, data: FreeTaskInput) {
   const requiredError = await checkRequiredTaskFields(data);
   if (requiredError) return { error: requiredError };
 
+  const company = await getCurrentCompany();
+  const existing = await prisma.task.findFirst({ where: { id: taskId, companyId: company.id } });
+  if (!existing) return { error: "Aufgabe nicht gefunden." };
+
   await prisma.task.update({
     where: { id: taskId },
     data: {
@@ -95,14 +99,16 @@ export async function updateFreeTask(taskId: string, data: FreeTaskInput) {
 }
 
 export async function setTaskStatus(taskId: string, status: TaskStatus) {
-  await prisma.task.update({ where: { id: taskId }, data: { status } });
+  const company = await getCurrentCompany();
+  await prisma.task.updateMany({ where: { id: taskId, companyId: company.id }, data: { status } });
   revalidatePath("/aufgaben");
   revalidatePath(`/aufgaben/${taskId}`);
   revalidatePath("/heute");
 }
 
 export async function deleteFreeTask(taskId: string) {
-  await prisma.task.delete({ where: { id: taskId } });
+  const company = await getCurrentCompany();
+  await prisma.task.deleteMany({ where: { id: taskId, companyId: company.id } });
   revalidatePath("/aufgaben");
   revalidatePath("/heute");
 }

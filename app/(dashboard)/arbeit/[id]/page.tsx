@@ -2,15 +2,16 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { prisma } from "@/lib/prisma";
-import { getCurrentUser } from "@/lib/session";
+import { getCurrentUser, getCurrentCompany } from "@/lib/session";
 import { ProjectActions } from "@/components/project-actions";
 import { TaskList } from "@/components/task-list";
 import { TimeTracking } from "@/components/time-tracking";
 
 export default async function AuftragDetailPage({ params }: { params: { id: string } }) {
   const user = await getCurrentUser();
-  const project = await prisma.project.findUnique({
-    where: { id: params.id },
+  const company = await getCurrentCompany();
+  const project = await prisma.project.findFirst({
+    where: { id: params.id, companyId: company.id },
     include: {
       customer: true,
       tasks: { orderBy: { createdAt: "asc" } },

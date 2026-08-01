@@ -30,6 +30,12 @@ export async function createAppointment(
   if (config.amount?.required && !data.amount?.trim()) return;
 
   const company = await getCurrentCompany();
+  const customer = await prisma.customer.findFirst({ where: { id: customerId, companyId: company.id } });
+  if (!customer) return;
+  if (data.inquiryId) {
+    const inquiry = await prisma.inquiry.findFirst({ where: { id: data.inquiryId, companyId: company.id } });
+    if (!inquiry) return;
+  }
 
   const appointment = await prisma.appointment.create({
     data: {
@@ -64,8 +70,9 @@ export async function createAppointment(
 }
 
 export async function updateAppointmentAssignee(appointmentId: string, assigneeId: string) {
-  await prisma.appointment.update({
-    where: { id: appointmentId },
+  const company = await getCurrentCompany();
+  await prisma.appointment.updateMany({
+    where: { id: appointmentId, companyId: company.id },
     data: { assigneeId: assigneeId || null },
   });
   revalidatePath(`/termine/${appointmentId}`);
@@ -77,7 +84,8 @@ export async function updateAppointmentStatus(
   customerId: string | null,
   status: AppointmentStatus
 ) {
-  await prisma.appointment.update({ where: { id: appointmentId }, data: { status } });
+  const company = await getCurrentCompany();
+  await prisma.appointment.updateMany({ where: { id: appointmentId, companyId: company.id }, data: { status } });
   if (customerId) revalidatePath(`/kunden/${customerId}`);
   revalidatePath(`/termine/${appointmentId}`);
   revalidatePath("/heute");

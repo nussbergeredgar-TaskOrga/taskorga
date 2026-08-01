@@ -30,7 +30,9 @@ export async function saveWorkingHours(
   userId: string,
   hours: { weekday: number; startTime: string; endTime: string; isWorkingDay: boolean }[]
 ) {
-  await requireAdmin();
+  const admin = await requireAdmin();
+  const target = await prisma.user.findFirst({ where: { id: userId, companyId: admin.companyId } });
+  if (!target) return;
 
   await Promise.all(
     hours.map((h) =>

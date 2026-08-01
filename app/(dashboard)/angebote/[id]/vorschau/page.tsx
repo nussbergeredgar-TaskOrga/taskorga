@@ -3,10 +3,12 @@ import Link from "next/link";
 import { ArrowLeft, ExternalLink } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { QuoteSendFromPreview } from "@/components/quote-send-from-preview";
+import { getCurrentCompany } from "@/lib/session";
 
 export default async function AngebotVorschauPage({ params }: { params: { id: string } }) {
-  const quote = await prisma.quote.findUnique({
-    where: { id: params.id },
+  const company = await getCurrentCompany();
+  const quote = await prisma.quote.findFirst({
+    where: { id: params.id, companyId: company.id },
     include: { customer: { select: { email: true } } },
   });
   if (!quote) notFound();

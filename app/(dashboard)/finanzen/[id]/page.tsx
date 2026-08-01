@@ -8,9 +8,9 @@ import { RecordNotes } from "@/components/record-notes";
 import { RecordTasks } from "@/components/record-tasks";
 
 export default async function RechnungDetailPage({ params }: { params: { id: string } }) {
-  await requireAdmin();
-  const invoice = await prisma.invoice.findUnique({
-    where: { id: params.id },
+  const admin = await requireAdmin();
+  const invoice = await prisma.invoice.findFirst({
+    where: { id: params.id, companyId: admin.companyId },
     include: {
       customer: true,
       items: { orderBy: { position: "asc" } },

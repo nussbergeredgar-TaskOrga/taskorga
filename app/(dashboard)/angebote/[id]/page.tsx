@@ -6,11 +6,13 @@ import { QuoteActions } from "@/components/quote-actions";
 import { QuoteVersionHistory } from "@/components/quote-version-history";
 import { RecordNotes } from "@/components/record-notes";
 import { RecordTasks } from "@/components/record-tasks";
+import { getCurrentCompany } from "@/lib/session";
 
 export default async function AngebotDetailPage({ params }: { params: { id: string } }) {
+  const company = await getCurrentCompany();
   const [quote, versions] = await Promise.all([
-    prisma.quote.findUnique({
-      where: { id: params.id },
+    prisma.quote.findFirst({
+      where: { id: params.id, companyId: company.id },
       include: {
         customer: true,
         items: { orderBy: { position: "asc" } },
