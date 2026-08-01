@@ -158,19 +158,39 @@ export async function markInvoiceSent(invoiceId: string) {
   revalidatePath("/finanzen");
 }
 
-export async function markInvoicePaid(invoiceId: string) {
+export async function recordInvoicePayment(
+  invoiceId: string,
+  amountInput?: string
+): Promise<{ error?: string; success?: boolean }> {
   const company = await getCurrentCompany();
   const existing = await prisma.invoice.findFirst({ where: { id: invoiceId, companyId: company.id } });
-  if (!existing) return;
+  if (!existing) return { error: "Rechnung nicht gefunden." };
+  if (!["SENT", "OPEN", "PARTIALLY_PAID", "OVERDUE"].includes(existing.status)) {
+    return { error: "Diese Rechnung ist nicht offen." };
+  }
+
+  const totalGross = Number(existing.totalGross);
+  const alreadyPaid = Number(existing.paidAmount);
+  const remaining = totalGross - alreadyPaid;
+  const amount = amountInput ? Number(amountInput.replace(",", ".")) : remaining;
+
+  if (!amount || amount <= 0) {
+    return { error: "Bitte einen gültigen Betrag größer als 0 eingeben." };
+  }
+  if (amount > remaining + 0.01) {
+    return { error: `Der Betrag übersteigt den Restbetrag von ${remaining.toFixed(2)} €.` };
+  }
+
+  const newPaidAmount = Math.min(totalGross, alreadyPaid + amount);
+  const newStatus = newPaidAmount >= totalGross ? "PAID" : "PARTIALLY_PAID";
 
   const invoice = await prisma.invoice.update({
     where: { id: invoiceId },
-    data: { status: "PAID", paidAt: new Date() },
-  });
-
-  await prisma.invoice.update({
-    where: { id: invoiceId },
-    data: { paidAmount: invoice.totalGross },
+    data: {
+      paidAmount: newPaidAmount,
+      status: newStatus,
+      paidAt: newStatus === "PAID" ? new Date() : existing.paidAt,
+    },
   });
 
   await prisma.activity.create({
@@ -178,13 +198,17 @@ export async function markInvoicePaid(invoiceId: string) {
       companyId: invoice.companyId,
       customerId: invoice.customerId,
       invoiceId: invoice.id,
-      type: "invoice.paid",
-      message: `Rechnung ${invoice.number} wurde als bezahlt markiert (${Number(invoice.totalGross).toFixed(2)} €).`,
+      type: newStatus === "PAID" ? "invoice.paid" : "invoice.partially_paid",
+      message:
+        newStatus === "PAID"
+          ? `Rechnung ${invoice.number} wurde vollständig bezahlt (${totalGross.toFixed(2)} €).`
+          : `Teilzahlung von ${amount.toFixed(2)} € für Rechnung ${invoice.number} erfasst (${newPaidAmount.toFixed(2)} € von ${totalGross.toFixed(2)} € bezahlt).`,
     },
   });
 
   revalidatePath(`/finanzen/${invoiceId}`);
   revalidatePath("/finanzen");
+  return { success: true };
 }
 
 // Wird bei jedem Aufruf der Finanzen-Seite ausgeführt: setzt fällige,

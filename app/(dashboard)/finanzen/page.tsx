@@ -52,14 +52,12 @@ export default async function FinanzenPage({
     }),
   ]);
 
-  const paidTotal = invoices
-    .filter((i) => i.status === "PAID")
-    .reduce((sum, i) => sum + Number(i.totalGross), 0);
+  const paidTotal = invoices.reduce((sum, i) => sum + Number(i.paidAmount), 0);
   const openTotal = invoices
     .filter((i) => ["SENT", "OPEN", "PARTIALLY_PAID", "OVERDUE"].includes(i.status))
-    .reduce((sum, i) => sum + Number(i.totalGross), 0);
+    .reduce((sum, i) => sum + Number(i.totalGross) - Number(i.paidAmount), 0);
   const overdueInvoices = invoices.filter((i) => i.status === "OVERDUE");
-  const overdueTotal = overdueInvoices.reduce((sum, i) => sum + Number(i.totalGross), 0);
+  const overdueTotal = overdueInvoices.reduce((sum, i) => sum + Number(i.totalGross) - Number(i.paidAmount), 0);
 
   const statusFilter = searchParams.status;
   const displayedInvoices = statusFilter

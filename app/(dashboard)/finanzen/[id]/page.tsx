@@ -76,6 +76,8 @@ export default async function RechnungDetailPage({ params }: { params: { id: str
             reminderLevel={invoice.reminderLevel}
             lastReminderSentAt={invoice.lastReminderSentAt}
             hasCustomerEmail={!!invoice.customer.email}
+            totalGross={Number(invoice.totalGross)}
+            paidAmount={Number(invoice.paidAmount)}
           />
         </div>
       </div>
@@ -119,6 +121,11 @@ export default async function RechnungDetailPage({ params }: { params: { id: str
           <span className="font-medium text-ink-900">
             Brutto: {Number(invoice.totalGross).toLocaleString("de-DE")} €
           </span>
+          {Number(invoice.paidAmount) > 0 && (
+            <span className="text-success">
+              Bezahlt: {Number(invoice.paidAmount).toLocaleString("de-DE")} €
+            </span>
+          )}
         </div>
       </div>
 
