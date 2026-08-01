@@ -4,7 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentCompany, getCurrentUser } from "@/lib/session";
 import { KpiCard } from "@/components/kpi-card";
 import { DashboardGrid } from "@/components/dashboard-grid";
-import { getDashboardLayout } from "@/lib/actions/dashboard";
+import { DashboardSwitcher } from "@/components/dashboard-switcher";
+import { getDashboardLayout, getDashboards } from "@/lib/actions/dashboard";
 import { getCustomKpiValues } from "@/lib/actions/custom-kpi";
 import { getCustomChartsWithData } from "@/lib/actions/custom-chart";
 import { CustomChart } from "@/components/charts/custom-chart";
@@ -15,9 +16,15 @@ import { formatDistanceToNow, format, isSameDay, startOfDay, endOfDay } from "da
 import { de } from "date-fns/locale";
 import { computeRevenue } from "@/lib/revenue";
 
-export default async function HeutePage() {
+export default async function HeutePage({
+  searchParams,
+}: {
+  searchParams: { dashboard?: string };
+}) {
   const company = await getCurrentCompany();
   const user = await getCurrentUser();
+  const dashboards = await getDashboards();
+  const activeDashboardId = searchParams.dashboard ?? dashboards[0]?.id ?? null;
 
   const startOfMonth = new Date();
   startOfMonth.setDate(1);
@@ -102,7 +109,7 @@ export default async function HeutePage() {
       _sum: { totalGross: true },
       _count: true,
     }),
-    getDashboardLayout(),
+    getDashboardLayout(activeDashboardId),
     getCustomKpiValues(),
     getCustomChartsWithData(),
   ]);
@@ -428,10 +435,13 @@ export default async function HeutePage() {
         </p>
       </div>
 
+      <DashboardSwitcher dashboards={dashboards} activeId={activeDashboardId} />
+
       <DashboardGrid
-        key={layout.map((w) => w.id).sort().join(",")}
+        key={`${activeDashboardId ?? "default"}:${layout.map((w) => w.id).sort().join(",")}`}
         initialLayout={layout}
         widgetNodes={widgetNodes}
+        dashboardId={activeDashboardId}
       />
     </div>
   );

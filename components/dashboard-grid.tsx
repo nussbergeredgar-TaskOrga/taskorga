@@ -19,9 +19,11 @@ const SIZE_LABEL: Record<WidgetSize, string> = { sm: "S", md: "M", lg: "L" };
 export function DashboardGrid({
   initialLayout,
   widgetNodes,
+  dashboardId,
 }: {
   initialLayout: WidgetConfig[];
   widgetNodes: { id: string; label?: string; node: React.ReactNode }[];
+  dashboardId?: string | null;
 }) {
   const [layout, setLayout] = useState(initialLayout);
   const [editing, setEditing] = useState(false);
@@ -33,7 +35,7 @@ export function DashboardGrid({
 
   function persist(next: WidgetConfig[]) {
     setLayout(next);
-    startTransition(() => saveDashboardLayout(next));
+    startTransition(() => saveDashboardLayout(next, dashboardId));
   }
 
   function toggleVisible(id: string) {
