@@ -27,7 +27,7 @@ function LoginForm() {
     setLoading(false);
 
     if (result?.error) {
-      setError("E-Mail oder Passwort ist falsch.");
+      setError(result.error === "CredentialsSignin" ? "E-Mail oder Passwort ist falsch." : result.error);
       return;
     }
 
