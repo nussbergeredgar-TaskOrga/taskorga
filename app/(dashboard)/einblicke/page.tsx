@@ -3,6 +3,7 @@ import { requireAdmin } from "@/lib/session";
 import { getCustomKpiValues } from "@/lib/actions/custom-kpi";
 import { getCustomChartsWithData } from "@/lib/actions/custom-chart";
 import { getDashboardLayout } from "@/lib/actions/dashboard";
+import { computeRevenue } from "@/lib/revenue";
 import { KpiManager } from "@/components/kpi-manager";
 import { ChartManager } from "@/components/chart-manager";
 import { RevenueChart } from "@/components/charts/revenue-chart";
@@ -27,19 +28,22 @@ export default async function EinblickePage() {
   const admin = await requireAdmin();
   const companyId = admin.companyId;
 
-  const sixMonthsAgo = new Date();
-  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5);
-  sixMonthsAgo.setDate(1);
-  sixMonthsAgo.setHours(0, 0, 0, 0);
+  const monthRanges: { label: string; gte: Date; lte: Date }[] = [];
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date();
+    d.setMonth(d.getMonth() - i);
+    monthRanges.push({
+      label: monthLabel(d),
+      gte: new Date(d.getFullYear(), d.getMonth(), 1),
+      lte: new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59, 999),
+    });
+  }
 
-  const [kpis, customCharts, layout, paidInvoices, inquiryCounts, invoiceSums] = await Promise.all([
+  const [kpis, customCharts, layout, monthlyRevenue, inquiryCounts, invoiceSums] = await Promise.all([
     getCustomKpiValues(),
     getCustomChartsWithData(),
     getDashboardLayout(),
-    prisma.invoice.findMany({
-      where: { companyId, status: "PAID", paidAt: { gte: sixMonthsAgo } },
-      select: { paidAt: true, totalGross: true },
-    }),
+    Promise.all(monthRanges.map((r) => computeRevenue(companyId, { gte: r.gte, lte: r.lte }))),
     prisma.inquiry.groupBy({
       by: ["status"],
       where: { companyId },
@@ -57,19 +61,8 @@ export default async function EinblickePage() {
 
   const onDashboardIds = new Set((layout ?? []).filter((w) => w.visible).map((w) => w.id));
 
-  // Umsatz pro Monat (letzte 6 Monate, auch Monate mit 0 € anzeigen)
-  const monthBuckets: { month: string; umsatz: number }[] = [];
-  for (let i = 5; i >= 0; i--) {
-    const d = new Date();
-    d.setMonth(d.getMonth() - i);
-    monthBuckets.push({ month: monthLabel(d), umsatz: 0 });
-  }
-  for (const inv of paidInvoices) {
-    if (!inv.paidAt) continue;
-    const label = monthLabel(inv.paidAt);
-    const bucket = monthBuckets.find((b) => b.month === label);
-    if (bucket) bucket.umsatz += Number(inv.totalGross);
-  }
+  // Umsatz pro Monat (letzte 6 Monate) aus der konfigurierbaren Umsatz-Zusammensetzung
+  const monthBuckets = monthRanges.map((r, i) => ({ month: r.label, umsatz: monthlyRevenue[i] }));
 
   // Pipeline: feste Reihenfolge, auch Status mit 0 Anfragen anzeigen
   const countByStatus = new Map(inquiryCounts.map((c) => [c.status, c._count]));
