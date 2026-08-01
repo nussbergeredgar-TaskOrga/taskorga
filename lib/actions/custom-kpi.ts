@@ -39,6 +39,32 @@ export async function createCustomKpi(data: CustomKpiInput) {
   revalidatePath("/heute");
 }
 
+// Dupliziert eine Kennzahl als Ausgangspunkt fuer eine kleine Variante
+// (z.B. gleiche Auswertung mit anderem Status-Filter).
+export async function duplicateCustomKpi(id: string) {
+  const company = await getCurrentCompany();
+  const original = await prisma.customKpi.findFirst({ where: { id, companyId: company.id } });
+  if (!original) return;
+
+  await prisma.customKpi.create({
+    data: {
+      companyId: company.id,
+      label: `${original.label} (Kopie)`,
+      entity: original.entity,
+      aggregation: original.aggregation,
+      sumField: original.sumField,
+      statusValue: original.statusValue,
+      accent: original.accent,
+      dateRangeType: original.dateRangeType,
+      dateFrom: original.dateFrom,
+      dateTo: original.dateTo,
+    },
+  });
+
+  revalidatePath("/heute");
+  revalidatePath("/einblicke");
+}
+
 export async function updateCustomKpi(id: string, data: CustomKpiInput) {
   if (!data.label.trim()) return;
   const company = await getCurrentCompany();

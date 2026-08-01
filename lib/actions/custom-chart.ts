@@ -57,6 +57,29 @@ export async function updateCustomChart(id: string, data: CustomChartInput) {
   revalidatePath("/heute");
 }
 
+// Dupliziert ein Diagramm als Ausgangspunkt fuer eine kleine Variante
+// (z.B. gleiche Auswertung mit anderem Diagrammtyp oder Gruppierung).
+export async function duplicateCustomChart(id: string) {
+  const company = await getCurrentCompany();
+  const original = await prisma.customChart.findFirst({ where: { id, companyId: company.id } });
+  if (!original) return;
+
+  await prisma.customChart.create({
+    data: {
+      companyId: company.id,
+      label: `${original.label} (Kopie)`,
+      entity: original.entity,
+      chartType: original.chartType,
+      groupBy: original.groupBy,
+      aggregation: original.aggregation,
+      sumField: original.sumField,
+    },
+  });
+
+  revalidatePath("/einblicke");
+  revalidatePath("/heute");
+}
+
 export async function deleteCustomChart(id: string) {
   await prisma.customChart.delete({ where: { id } });
 

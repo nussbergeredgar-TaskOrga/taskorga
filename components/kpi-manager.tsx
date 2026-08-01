@@ -2,8 +2,14 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Trash2, Plus, LayoutGrid, Pencil } from "lucide-react";
-import { createCustomKpi, updateCustomKpi, deleteCustomKpi, toggleKpiOnDashboard } from "@/lib/actions/custom-kpi";
+import { Trash2, Plus, LayoutGrid, Pencil, Copy } from "lucide-react";
+import {
+  createCustomKpi,
+  updateCustomKpi,
+  deleteCustomKpi,
+  duplicateCustomKpi,
+  toggleKpiOnDashboard,
+} from "@/lib/actions/custom-kpi";
 import { ENTITY_META, ENTITY_KEYS, DATE_RANGE_OPTIONS, type EntityKey } from "@/lib/custom-kpi";
 
 type Kpi = {
@@ -223,6 +229,20 @@ function KpiRow({ kpi, onEdit }: { kpi: Kpi; onEdit: () => void }) {
           aria-label="Bearbeiten"
         >
           <Pencil size={15} />
+        </button>
+        <button
+          disabled={pending}
+          onClick={() =>
+            startTransition(async () => {
+              await duplicateCustomKpi(kpi.id);
+              router.refresh();
+            })
+          }
+          className="p-1.5 text-ink-300 hover:text-brand-700 transition-colors"
+          aria-label="Duplizieren"
+          title="Duplizieren"
+        >
+          <Copy size={15} />
         </button>
         <button
           disabled={pending}

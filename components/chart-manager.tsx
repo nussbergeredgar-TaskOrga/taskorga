@@ -2,11 +2,12 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Trash2, Plus, LayoutGrid, Pencil } from "lucide-react";
+import { Trash2, Plus, LayoutGrid, Pencil, Copy } from "lucide-react";
 import {
   createCustomChart,
   updateCustomChart,
   deleteCustomChart,
+  duplicateCustomChart,
   toggleChartOnDashboard,
 } from "@/lib/actions/custom-chart";
 import { CustomChart } from "@/components/charts/custom-chart";
@@ -170,6 +171,20 @@ function ChartCard({ chart, onEdit }: { chart: Chart; onEdit: () => void }) {
           </button>
           <button onClick={onEdit} className="p-1.5 text-ink-300 hover:text-brand-700 transition-colors" aria-label="Bearbeiten">
             <Pencil size={15} />
+          </button>
+          <button
+            disabled={pending}
+            onClick={() =>
+              startTransition(async () => {
+                await duplicateCustomChart(chart.id);
+                router.refresh();
+              })
+            }
+            className="p-1.5 text-ink-300 hover:text-brand-700 transition-colors"
+            aria-label="Duplizieren"
+            title="Duplizieren"
+          >
+            <Copy size={15} />
           </button>
           <button
             disabled={pending}
