@@ -211,6 +211,37 @@ export async function recordInvoicePayment(
   return { success: true };
 }
 
+export async function cancelInvoice(invoiceId: string): Promise<{ error?: string; success?: boolean }> {
+  const company = await getCurrentCompany();
+  const existing = await prisma.invoice.findFirst({ where: { id: invoiceId, companyId: company.id } });
+  if (!existing) return { error: "Rechnung nicht gefunden." };
+  if (existing.status === "PAID") {
+    return { error: "Eine bereits vollständig bezahlte Rechnung kann nicht storniert werden." };
+  }
+  if (existing.status === "CANCELLED") {
+    return { error: "Diese Rechnung ist bereits storniert." };
+  }
+
+  const invoice = await prisma.invoice.update({
+    where: { id: invoiceId },
+    data: { status: "CANCELLED" },
+  });
+
+  await prisma.activity.create({
+    data: {
+      companyId: invoice.companyId,
+      customerId: invoice.customerId,
+      invoiceId: invoice.id,
+      type: "invoice.cancelled",
+      message: `Rechnung ${invoice.number} wurde storniert.`,
+    },
+  });
+
+  revalidatePath(`/finanzen/${invoiceId}`);
+  revalidatePath("/finanzen");
+  return { success: true };
+}
+
 // Wird bei jedem Aufruf der Finanzen-Seite ausgeführt: setzt fällige,
 // unbezahlte Rechnungen automatisch auf "Überfällig".
 export async function markOverdueInvoices() {

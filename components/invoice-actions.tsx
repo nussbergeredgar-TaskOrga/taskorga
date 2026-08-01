@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Mail } from "lucide-react";
-import { markInvoiceSent, recordInvoicePayment, sendPaymentReminder, sendInvoiceEmail } from "@/lib/actions/invoices";
+import { markInvoiceSent, recordInvoicePayment, cancelInvoice, sendPaymentReminder, sendInvoiceEmail } from "@/lib/actions/invoices";
 import { ConfirmSendDialog } from "@/components/confirm-send-dialog";
 import type { InvoiceStatus } from "@prisma/client";
 
@@ -59,6 +59,15 @@ export function InvoiceActions({
     });
   }
 
+  function cancel() {
+    if (!confirm(`Rechnung wirklich stornieren? Dies kann nicht rückgängig gemacht werden.`)) return;
+    setError("");
+    startTransition(async () => {
+      const result = await cancelInvoice(invoiceId);
+      if (result?.error) setError(result.error);
+    });
+  }
+
   function sendReminder() {
     const nextLevel = Math.min(reminderLevel + 1, 3);
     const label = REMINDER_LABELS[nextLevel] || "Erinnerung";
@@ -85,6 +94,9 @@ export function InvoiceActions({
 
   if (status === "PAID") {
     return <p className="text-sm text-success font-medium">Bezahlt</p>;
+  }
+  if (status === "CANCELLED") {
+    return <p className="text-sm text-danger font-medium">Storniert</p>;
   }
 
   const isOverdueOrSent = status === "OVERDUE" || status === "SENT" || status === "OPEN" || status === "PARTIALLY_PAID";
@@ -140,6 +152,13 @@ export function InvoiceActions({
             </button>
           </>
         )}
+        <button
+          disabled={pending}
+          onClick={cancel}
+          className="rounded-lg border border-danger text-danger px-3 py-2 text-sm font-medium hover:bg-danger/5 transition-colors disabled:opacity-60"
+        >
+          Stornieren
+        </button>
       </div>
       {status === "PARTIALLY_PAID" && (
         <p className="text-xs text-ink-500">
