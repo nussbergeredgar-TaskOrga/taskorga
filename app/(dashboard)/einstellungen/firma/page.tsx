@@ -6,6 +6,7 @@ import { NavLabelManager } from "@/components/nav-label-manager";
 import { EmailSignatureForm } from "@/components/email-signature-form";
 import { ScheduleManager } from "@/components/schedule-manager";
 import { SettingsSection } from "@/components/settings-section";
+import { DataPrivacySection } from "@/components/data-privacy-section";
 import { getNavLabels } from "@/lib/actions/nav";
 import { getWorkingHours, getAbsences } from "@/lib/actions/schedule";
 
@@ -93,6 +94,13 @@ export default async function FirmaSettingsPage({
           }))}
           absences={absences}
         />
+      </SettingsSection>
+
+      <SettingsSection
+        title="Datenschutz (DSGVO)"
+        description="Alle Firmendaten exportieren oder das Konto endgültig löschen."
+      >
+        <DataPrivacySection companyName={company.name} />
       </SettingsSection>
     </div>
   );

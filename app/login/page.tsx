@@ -87,6 +87,12 @@ function LoginForm() {
             </p>
           )}
 
+          {searchParams.get("deleted") && (
+            <p className="text-sm text-ink-700 bg-ink-50 rounded-lg px-3 py-2">
+              Das Konto wurde gelöscht. Alle Daten wurden entfernt.
+            </p>
+          )}
+
           {error && <p className="text-sm text-danger">{error}</p>}
 
           <button
