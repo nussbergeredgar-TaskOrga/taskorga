@@ -9,11 +9,12 @@ import { getDashboardLayout, getDashboards } from "@/lib/actions/dashboard";
 import { getCustomKpiValues } from "@/lib/actions/custom-kpi";
 import { getCustomChartsWithData } from "@/lib/actions/custom-chart";
 import { CustomChart } from "@/components/charts/custom-chart";
+import { getActivities } from "@/lib/actions/activity-feed";
+import { ActivityFeed } from "@/components/activity-feed";
 import { entityStatusHref } from "@/lib/entity-links";
 import type { EntityKey } from "@/lib/custom-kpi";
 import { DEFAULT_WIDGETS } from "@/lib/dashboard-widgets";
-import { formatDistanceToNow, format, isSameDay, startOfDay, endOfDay } from "date-fns";
-import { de } from "date-fns/locale";
+import { format, isSameDay, startOfDay, endOfDay } from "date-fns";
 import { computeRevenue } from "@/lib/revenue";
 
 export default async function HeutePage({
@@ -72,11 +73,7 @@ export default async function HeutePage({
         invoice: { select: { number: true, id: true } },
       },
     }),
-    prisma.activity.findMany({
-      where: { companyId: company.id },
-      orderBy: { createdAt: "desc" },
-      take: 8,
-    }),
+    getActivities({ take: 7 }),
     prisma.appointment.findMany({
       where: { companyId: company.id, scheduledAt: { gte: new Date() } },
       orderBy: { scheduledAt: "asc" },
@@ -376,20 +373,7 @@ export default async function HeutePage({
       node: (
         <div className="rounded-card border border-ink-100 bg-surface p-5 shadow-card h-full">
           <h2 className="font-display font-semibold text-ink-900 mb-3">Letzte Aktivitäten</h2>
-          {recentActivities.length === 0 ? (
-            <p className="text-sm text-ink-500">Noch keine Aktivitäten.</p>
-          ) : (
-            <ul className="space-y-2">
-              {recentActivities.map((a) => (
-                <li key={a.id} className="text-sm border-l-2 border-ink-100 pl-3">
-                  <p className="text-ink-900">{a.message}</p>
-                  <p className="text-xs text-ink-300">
-                    {formatDistanceToNow(a.createdAt, { addSuffix: true, locale: de })}
-                  </p>
-                </li>
-              ))}
-            </ul>
-          )}
+          <ActivityFeed initialItems={recentActivities.items} initialHasMore={recentActivities.hasMore} />
         </div>
       ),
     },
