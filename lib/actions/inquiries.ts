@@ -219,11 +219,21 @@ export async function reopenInquiry(inquiryId: string) {
 export async function createInquiryQuick(
   customerId: string,
   data: { title: string; source?: string; amount?: string }
-) {
-  if (!data.title.trim()) return null;
+): Promise<{ error?: string; inquiry?: { id: string } }> {
+  if (!data.title.trim()) return { error: "Bitte einen Titel eingeben." };
   const company = await getCurrentCompany();
   const customer = await prisma.customer.findFirst({ where: { id: customerId, companyId: company.id } });
-  if (!customer) return null;
+  if (!customer) return { error: "Kunde nicht gefunden." };
+
+  const configErrors = await checkConfiguredRequiredFields("inquiry", {
+    title: data.title,
+    source: data.source,
+    amount: data.amount,
+  });
+  if (configErrors) {
+    const firstError = Object.values(configErrors)[0][0];
+    return { error: `${firstError} Bitte das vollständige Formular unter „Neue Anfrage" nutzen.` };
+  }
 
   const inquiry = await prisma.inquiry.create({
     data: {
@@ -248,7 +258,7 @@ export async function createInquiryQuick(
   revalidatePath(`/kunden/${customerId}`);
   revalidatePath("/anfragen");
 
-  return inquiry;
+  return { inquiry };
 }
 
 export async function updateInquiryAmount(inquiryId: string, amount: string) {

@@ -123,7 +123,7 @@ export function AppointmentQuickForm({
 
       if (inquiryMode === "new") {
         const created = await createInquiryQuick(customerId, { title: newInquiryTitle });
-        finalInquiryId = created?.id ?? "";
+        finalInquiryId = created.inquiry?.id ?? "";
       }
 
       const result = await createAppointment(customerId, {

@@ -99,7 +99,7 @@ export function AppointmentTab({
 
       if (showNewInquiry && newTitle.trim()) {
         const created = await createInquiryQuick(customerId, { title: newTitle });
-        finalInquiryId = created?.id ?? "";
+        finalInquiryId = created.inquiry?.id ?? "";
       }
 
       const result = await createAppointment(customerId, {
