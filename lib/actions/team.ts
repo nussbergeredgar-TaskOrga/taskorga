@@ -43,13 +43,22 @@ export async function createUser(
 
   const passwordHash = await bcrypt.hash(parsed.data.password, 10);
 
-  await prisma.user.create({
+  const newUser = await prisma.user.create({
     data: {
       companyId: admin.companyId,
       name: parsed.data.name,
       email: parsed.data.email,
       passwordHash,
       roleId: role?.id,
+    },
+  });
+
+  await prisma.activity.create({
+    data: {
+      companyId: admin.companyId,
+      userId: admin.id,
+      type: "team.user_created",
+      message: `Teammitglied „${newUser.name}“ (${newUser.email}) wurde als ${parsed.data.roleName} angelegt.`,
     },
   });
 
@@ -73,13 +82,37 @@ export async function updateUserRole(userId: string, roleName: "Admin" | "Mitarb
 
   const role = await prisma.role.findFirst({ where: { companyId: admin.companyId, name: roleName } });
   await prisma.user.updateMany({ where: { id: userId, companyId: admin.companyId }, data: { roleId: role?.id } });
+
+  await prisma.activity.create({
+    data: {
+      companyId: admin.companyId,
+      userId: admin.id,
+      type: "team.role_changed",
+      message: `Rolle von „${target.name}“ wurde auf ${roleName} geändert.`,
+    },
+  });
+
   revalidatePath("/einstellungen");
 }
 
 export async function deleteUser(userId: string) {
   const admin = await requireAdmin();
   if (userId === admin.id) return { error: "Du kannst dich nicht selbst entfernen." };
+
+  const target = await prisma.user.findFirst({ where: { id: userId, companyId: admin.companyId } });
+  if (!target) return { error: "Nutzer nicht gefunden." };
+
   await prisma.user.deleteMany({ where: { id: userId, companyId: admin.companyId } });
+
+  await prisma.activity.create({
+    data: {
+      companyId: admin.companyId,
+      userId: admin.id,
+      type: "team.user_deleted",
+      message: `Teammitglied „${target.name}“ (${target.email}) wurde entfernt.`,
+    },
+  });
+
   revalidatePath("/einstellungen");
 }
 
@@ -95,6 +128,16 @@ export async function resetUserPassword(userId: string, newPassword: string) {
 
   const passwordHash = await bcrypt.hash(newPassword, 10);
   await prisma.user.updateMany({ where: { id: userId, companyId: admin.companyId }, data: { passwordHash } });
+
+  await prisma.activity.create({
+    data: {
+      companyId: admin.companyId,
+      userId: admin.id,
+      type: "team.password_reset",
+      message: `Passwort von „${target.name}“ wurde zurückgesetzt.`,
+    },
+  });
+
   revalidatePath("/einstellungen");
   return { success: true };
 }
