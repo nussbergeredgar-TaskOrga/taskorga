@@ -23,6 +23,11 @@ export default async function KundenRadarPage() {
   const now = new Date();
   const currentYear = now.getFullYear();
   const lastYear = currentYear - 1;
+  // Für einen fairen Vergleich zählen wir im Vorjahr nur den Zeitraum bis zum
+  // heutigen Kalendertag — sonst wirkt unterjährig (z. B. im März) fast jeder
+  // Kunde fälschlich rückläufig, weil ein volles Vorjahr mit einem erst
+  // angefangenen aktuellen Jahr verglichen wird.
+  const lastYearComparableEnd = new Date(lastYear, now.getMonth(), now.getDate(), 23, 59, 59, 999);
 
   const inactive: { id: string; name: string; daysSince: number }[] = [];
   const decliningFrequency: { id: string; name: string; thisYear: number; lastYear: number }[] = [];
@@ -56,8 +61,11 @@ export default async function KundenRadarPage() {
     const lastYearCount = c.appointments.filter(
       (a) => a.scheduledAt && a.scheduledAt.getFullYear() === lastYear
     ).length;
+    const lastYearCountComparable = c.appointments.filter(
+      (a) => a.scheduledAt && a.scheduledAt.getFullYear() === lastYear && a.scheduledAt <= lastYearComparableEnd
+    ).length;
 
-    if (lastYearCount >= 2 && thisYearCount < lastYearCount) {
+    if (lastYearCountComparable >= 2 && thisYearCount < lastYearCountComparable) {
       decliningFrequency.push({ id: c.id, name: c.name, thisYear: thisYearCount, lastYear: lastYearCount });
     }
   }
