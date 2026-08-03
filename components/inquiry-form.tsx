@@ -1,13 +1,13 @@
 "use client";
 
 import { useFormState, useFormStatus } from "react-dom";
-import { createInquiry, type InquiryFormState } from "@/lib/actions/inquiries";
+import { createInquiry, updateInquiry, type InquiryFormState } from "@/lib/actions/inquiries";
 import { CustomerAutocomplete } from "@/components/customer-autocomplete";
 import type { FieldConfigMap } from "@/lib/actions/field-config";
 
 const initialState: InquiryFormState = {};
 
-function SubmitButton() {
+function SubmitButton({ editing }: { editing: boolean }) {
   const { pending } = useFormStatus();
   return (
     <button
@@ -15,7 +15,7 @@ function SubmitButton() {
       disabled={pending}
       className="rounded-lg bg-brand-500 text-white text-sm font-medium px-4 py-2.5 hover:bg-brand-600 disabled:opacity-60 transition-colors"
     >
-      {pending ? "Wird gespeichert …" : "Anfrage anlegen"}
+      {pending ? "Wird gespeichert …" : editing ? "Änderungen speichern" : "Anfrage anlegen"}
     </button>
   );
 }
@@ -25,11 +25,25 @@ const DEFAULT_FIELD_STATE = { visible: true, required: false };
 export function InquiryForm({
   customers,
   fieldConfig,
+  editInquiryId,
+  defaultCustomerId,
+  defaultTitle,
+  defaultAmount,
+  defaultSource,
+  defaultDescription,
 }: {
   customers: { id: string; name: string }[];
   fieldConfig?: FieldConfigMap;
+  editInquiryId?: string;
+  defaultCustomerId?: string;
+  defaultTitle?: string;
+  defaultAmount?: string;
+  defaultSource?: string;
+  defaultDescription?: string;
 }) {
-  const [state, formAction] = useFormState(createInquiry, initialState);
+  const editing = Boolean(editInquiryId);
+  const action = editing ? updateInquiry.bind(null, editInquiryId!) : createInquiry;
+  const [state, formAction] = useFormState(action, initialState);
   const fc = (key: string) => fieldConfig?.[key] ?? DEFAULT_FIELD_STATE;
 
   return (
@@ -38,7 +52,7 @@ export function InquiryForm({
         <label htmlFor="customerId" className="block text-sm font-medium text-ink-700 mb-1.5">
           Kunde <span className="text-danger">*</span>
         </label>
-        <CustomerAutocomplete customers={customers} name="customerId" allowCreate />
+        <CustomerAutocomplete customers={customers} name="customerId" allowCreate defaultCustomerId={defaultCustomerId} />
         {state.errors?.customerId && (
           <p className="text-xs text-danger mt-1">{state.errors.customerId[0]}</p>
         )}
@@ -57,6 +71,7 @@ export function InquiryForm({
           id="title"
           name="title"
           type="text"
+          defaultValue={defaultTitle}
           placeholder="z. B. Wallbox-Installation"
           className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 transition-colors"
         />
@@ -77,6 +92,7 @@ export function InquiryForm({
             type="number"
             step="0.01"
             required={fc("amount").required}
+            defaultValue={defaultAmount}
             placeholder="z. B. 2500"
             className="w-full max-w-xs rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 transition-colors font-mono"
           />
@@ -95,6 +111,7 @@ export function InquiryForm({
             name="source"
             type="text"
             required={fc("source").required}
+            defaultValue={defaultSource}
             placeholder="z. B. Telefon, Website, Empfehlung"
             className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 transition-colors"
           />
@@ -112,6 +129,7 @@ export function InquiryForm({
             id="description"
             name="description"
             required={fc("description").required}
+            defaultValue={defaultDescription}
             rows={3}
             className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 transition-colors"
           />
@@ -119,7 +137,7 @@ export function InquiryForm({
         </div>
       )}
 
-      <SubmitButton />
+      <SubmitButton editing={editing} />
     </form>
   );
 }

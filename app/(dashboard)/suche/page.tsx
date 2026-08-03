@@ -112,7 +112,7 @@ export default async function SuchePage({
 
           <ResultGroup title="Anfragen" icon={Inbox} count={inquiries.length}>
             {inquiries.map((i) => (
-              <ResultRow key={i.id} href={`/kunden/${i.customerId}`} title={i.title} subtitle={i.customer.name} />
+              <ResultRow key={i.id} href={`/anfragen/${i.id}`} title={i.title} subtitle={i.customer.name} />
             ))}
           </ResultGroup>
 

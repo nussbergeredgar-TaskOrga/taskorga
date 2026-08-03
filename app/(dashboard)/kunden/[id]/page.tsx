@@ -10,6 +10,7 @@ import { getFieldConfig } from "@/lib/actions/field-config";
 import { DocumentTab } from "@/components/document-tab";
 import { InlineInquiryForm } from "@/components/inline-inquiry-form";
 import { CustomerInsightCard } from "@/components/customer-insight-card";
+import { ContactsList } from "@/components/contacts-list";
 import { RecordTasks } from "@/components/record-tasks";
 import { KpiCard } from "@/components/kpi-card";
 import { getCustomerTabsConfig } from "@/lib/actions/customer-tabs";
@@ -32,6 +33,7 @@ async function getCustomer(id: string, companyId: string) {
       activities: { orderBy: { createdAt: "desc" }, include: { user: true } },
       comments: { orderBy: { createdAt: "desc" }, include: { user: true } },
       insight: true,
+      contacts: { orderBy: { name: "asc" } },
     },
   });
 }
@@ -88,6 +90,9 @@ export default async function KundeDetailPage({
             </span>
           </div>
           <CustomerInsightCard customerId={customer.id} insight={customer.insight} />
+          {customer.type === "BUSINESS" && (
+            <ContactsList customerId={customer.id} contacts={customer.contacts} />
+          )}
         </div>
       ),
     },

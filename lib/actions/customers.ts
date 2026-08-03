@@ -237,6 +237,37 @@ export async function createCustomerQuick(data: {
   return customer;
 }
 
+export async function createContact(
+  customerId: string,
+  data: { name: string; role?: string; email?: string; phone?: string }
+) {
+  if (!data.name.trim()) return;
+  const company = await getCurrentCompany();
+  const customer = await prisma.customer.findFirst({ where: { id: customerId, companyId: company.id } });
+  if (!customer) return;
+
+  await prisma.contact.create({
+    data: {
+      customerId,
+      name: data.name.trim(),
+      role: data.role?.trim() || null,
+      email: data.email?.trim() || null,
+      phone: data.phone?.trim() || null,
+    },
+  });
+
+  revalidatePath(`/kunden/${customerId}`);
+}
+
+export async function deleteContact(contactId: string, customerId: string) {
+  const company = await getCurrentCompany();
+  const customer = await prisma.customer.findFirst({ where: { id: customerId, companyId: company.id } });
+  if (!customer) return;
+
+  await prisma.contact.deleteMany({ where: { id: contactId, customerId } });
+  revalidatePath(`/kunden/${customerId}`);
+}
+
 export async function addCustomerComment(customerId: string, content: string) {
   if (!content.trim()) return;
 

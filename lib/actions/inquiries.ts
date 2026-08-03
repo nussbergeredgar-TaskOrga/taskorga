@@ -97,6 +97,66 @@ export async function createInquiry(
   redirect("/anfragen");
 }
 
+export async function updateInquiry(
+  inquiryId: string,
+  _prevState: InquiryFormState,
+  formData: FormData
+): Promise<InquiryFormState> {
+  const parsed = inquirySchema.safeParse({
+    customerId: formData.get("customerId"),
+    title: formData.get("title"),
+    description: formData.get("description"),
+    source: formData.get("source"),
+    amount: formData.get("amount"),
+  });
+
+  if (!parsed.success) {
+    return { errors: parsed.error.flatten().fieldErrors };
+  }
+
+  const configErrors = await checkConfiguredRequiredFields("inquiry", parsed.data);
+  if (configErrors) {
+    return { errors: configErrors };
+  }
+
+  const company = await getCurrentCompany();
+  const existing = await prisma.inquiry.findFirst({ where: { id: inquiryId, companyId: company.id } });
+  if (!existing) {
+    return { errors: { customerId: ["Anfrage nicht gefunden."] } };
+  }
+  const customer = await prisma.customer.findFirst({ where: { id: parsed.data.customerId, companyId: company.id } });
+  if (!customer) {
+    return { errors: { customerId: ["Kunde nicht gefunden."] } };
+  }
+
+  const inquiry = await prisma.inquiry.update({
+    where: { id: inquiryId },
+    data: {
+      customerId: parsed.data.customerId,
+      title: parsed.data.title,
+      description: parsed.data.description || null,
+      source: parsed.data.source || null,
+      amount: parseAmount(parsed.data.amount),
+    },
+  });
+
+  await prisma.activity.create({
+    data: {
+      companyId: company.id,
+      customerId: inquiry.customerId,
+      inquiryId: inquiry.id,
+      type: "inquiry.updated",
+      message: `Anfrage „${inquiry.title}“ wurde bearbeitet.`,
+    },
+  });
+
+  revalidatePath("/anfragen");
+  revalidatePath(`/anfragen/${inquiryId}`);
+  revalidatePath(`/kunden/${inquiry.customerId}`);
+  if (existing.customerId !== inquiry.customerId) revalidatePath(`/kunden/${existing.customerId}`);
+  redirect(`/anfragen/${inquiryId}`);
+}
+
 export async function createInquiryQuick(
   customerId: string,
   data: { title: string; source?: string; amount?: string }
