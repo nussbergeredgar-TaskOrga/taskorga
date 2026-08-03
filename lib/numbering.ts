@@ -13,7 +13,7 @@ export function generateDocumentNumber(format: string, sequence: number): string
     .replace("{NN}", String(sequence).padStart(2, "0"));
 }
 
-function isUniqueConstraintError(err: unknown): boolean {
+export function isUniqueConstraintError(err: unknown): boolean {
   return err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002";
 }
 

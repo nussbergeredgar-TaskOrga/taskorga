@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
 import { DEFAULT_WIDGETS, type WidgetConfig } from "@/lib/dashboard-widgets";
+import { isUniqueConstraintError } from "@/lib/numbering";
 
 export type DashboardSummary = { id: string | null; name: string };
 
@@ -27,6 +28,11 @@ async function resolveDashboard(userId: string, dashboardId?: string | null) {
   if (dashboardId) {
     return prisma.dashboard.findFirst({ where: { id: dashboardId, userId } });
   }
+  // defaultSlot: 1 markiert das materialisierte Standard-Dashboard (siehe
+  // saveDashboardLayout). Ältere, vor dieser Markierung angelegte Zeilen haben
+  // noch kein defaultSlot gesetzt -- als Fallback zählt dann die älteste Zeile.
+  const bySlot = await prisma.dashboard.findFirst({ where: { userId, defaultSlot: 1 } });
+  if (bySlot) return bySlot;
   return prisma.dashboard.findFirst({ where: { userId }, orderBy: { id: "asc" } });
 }
 
@@ -47,10 +53,30 @@ export async function saveDashboardLayout(widgets: WidgetConfig[], dashboardId?:
       where: { id: existing.id },
       data: { layout: { widgets } },
     });
-  } else {
+    revalidatePath("/heute");
+    return;
+  }
+
+  // Kein Dashboard vorhanden -- Standard-Dashboard wird jetzt materialisiert.
+  // defaultSlot: 1 markiert es als "das" Standard-Dashboard des Nutzers; der
+  // @@unique([userId, defaultSlot])-Index in schema.prisma lässt nur eine
+  // solche Zeile pro Nutzer zu. Speichern zwei Tabs gleichzeitig zum ersten
+  // Mal, verliert die zweite Anfrage hier den create()-Wettlauf und fällt
+  // stattdessen auf ein Update der gerade angelegten Zeile zurück -- statt
+  // ein doppeltes "Mein Dashboard" zu erzeugen.
+  try {
     await prisma.dashboard.create({
-      data: { userId: user.id, layout: { widgets } },
+      data: { userId: user.id, layout: { widgets }, defaultSlot: dashboardId ? undefined : 1 },
     });
+  } catch (err) {
+    if (!dashboardId && isUniqueConstraintError(err)) {
+      const winner = await prisma.dashboard.findFirst({ where: { userId: user.id, defaultSlot: 1 } });
+      if (winner) {
+        await prisma.dashboard.update({ where: { id: winner.id }, data: { layout: { widgets } } });
+      }
+    } else {
+      throw err;
+    }
   }
 
   revalidatePath("/heute");
@@ -65,9 +91,19 @@ export async function createDashboard(name: string): Promise<string> {
 
   if (existingCount === 0) {
     const currentLayout = await getDashboardLayout(null);
-    await prisma.dashboard.create({
-      data: { userId: user.id, name: "Mein Dashboard", layout: { widgets: currentLayout ?? DEFAULT_WIDGETS } },
-    });
+    try {
+      await prisma.dashboard.create({
+        data: {
+          userId: user.id,
+          name: "Mein Dashboard",
+          layout: { widgets: currentLayout ?? DEFAULT_WIDGETS },
+          defaultSlot: 1,
+        },
+      });
+    } catch (err) {
+      // Ein anderer Tab hat das Standard-Dashboard im selben Moment materialisiert -- schon vorhanden, kein Fehler.
+      if (!isUniqueConstraintError(err)) throw err;
+    }
   }
 
   const created = await prisma.dashboard.create({

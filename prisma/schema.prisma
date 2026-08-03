@@ -900,4 +900,12 @@ model Dashboard {
 
   name    String  @default("Mein Dashboard")
   layout  Json    // Widget-Positionen, -Größen, -Typen
+
+  // Immer 1 fuer das erste/Standard-Dashboard je Nutzer, sonst null. Postgres
+  // erlaubt beliebig viele NULLs bei einem unique Index, aber nur eine "1" pro
+  // Nutzer -- verhindert doppelte Standard-Dashboards, wenn zwei Tabs
+  // gleichzeitig zum ersten Mal speichern.
+  defaultSlot Int?
+
+  @@unique([userId, defaultSlot])
 }
