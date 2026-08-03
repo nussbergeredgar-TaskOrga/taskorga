@@ -11,7 +11,7 @@ import { getSalutationShort } from "@/lib/customer-salutation";
 import { DocumentPdf } from "@/lib/pdf/document-pdf";
 import { buildPlaceholderContext } from "@/lib/pdf/build-context";
 import { resolvePlaceholders } from "@/lib/document-placeholders";
-import { generateDocumentNumber } from "@/lib/numbering";
+import { createWithUniqueNumber } from "@/lib/numbering";
 
 const invoiceSchema = z.object({
   customerId: z.string().min(1, "Bitte einen Kunden auswählen"),
@@ -98,26 +98,25 @@ export async function createInvoice(
     discountType
   );
 
-  const count = await prisma.invoice.count({ where: { companyId: company.id } });
-  const number = generateDocumentNumber(company.invoiceNumberFormat, count + 1);
-
-  const invoice = await prisma.invoice.create({
-    data: {
-      companyId: company.id,
-      customerId: parsed.data.customerId,
-      projectId: parsed.data.projectId || null,
-      number,
-      status: "DRAFT",
-      totalNet: netAfterDiscount,
-      totalGross: grossAfterDiscount,
-      taxRate: avgTaxRate,
-      discountValue: discountValue > 0 ? discountValue : null,
-      discountType,
-      items: {
-        create: items.map((item, i) => ({ ...item, position: i + 1 })),
+  const invoice = await createWithUniqueNumber("invoice", company.id, company.invoiceNumberFormat, (number) =>
+    prisma.invoice.create({
+      data: {
+        companyId: company.id,
+        customerId: parsed.data.customerId,
+        projectId: parsed.data.projectId || null,
+        number,
+        status: "DRAFT",
+        totalNet: netAfterDiscount,
+        totalGross: grossAfterDiscount,
+        taxRate: avgTaxRate,
+        discountValue: discountValue > 0 ? discountValue : null,
+        discountType,
+        items: {
+          create: items.map((item, i) => ({ ...item, position: i + 1 })),
+        },
       },
-    },
-  });
+    })
+  );
 
   await prisma.activity.create({
     data: {

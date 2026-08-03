@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentCompany } from "@/lib/session";
-import { generateDocumentNumber } from "@/lib/numbering";
+import { createWithUniqueNumber } from "@/lib/numbering";
 import type { ProjectStatus } from "@prisma/client";
 
 export async function createProject(customerId: string, title: string) {
@@ -13,18 +13,17 @@ export async function createProject(customerId: string, title: string) {
   const customer = await prisma.customer.findFirst({ where: { id: customerId, companyId: company.id } });
   if (!customer) return { error: "Kunde nicht gefunden." };
 
-  const count = await prisma.project.count({ where: { companyId: company.id } });
-  const number = generateDocumentNumber(company.projectNumberFormat, count + 1);
-
-  const project = await prisma.project.create({
-    data: {
-      companyId: company.id,
-      customerId,
-      number,
-      title: title.trim(),
-      status: "PLANNED",
-    },
-  });
+  const project = await createWithUniqueNumber("project", company.id, company.projectNumberFormat, (number) =>
+    prisma.project.create({
+      data: {
+        companyId: company.id,
+        customerId,
+        number,
+        title: title.trim(),
+        status: "PLANNED",
+      },
+    })
+  );
 
   await prisma.activity.create({
     data: {
@@ -130,9 +129,6 @@ export async function createInvoiceFromProject(projectId: string) {
     include: { quote: { include: { items: true } }, company: true },
   });
 
-  const count = await prisma.invoice.count({ where: { companyId: project.companyId } });
-  const number = generateDocumentNumber(project.company.invoiceNumberFormat, count + 1);
-
   const items = project.quote?.items ?? [];
   const discountValue = project.quote?.discountValue ?? null;
   const discountType = project.quote?.discountType ?? "AMOUNT";
@@ -152,30 +148,36 @@ export async function createInvoiceFromProject(projectId: string) {
   const totalGross = grossBeforeDiscount * factor;
   const avgTaxRate = totalNet > 0 ? ((totalGross - totalNet) / totalNet) * 100 : 19;
 
-  const invoice = await prisma.invoice.create({
-    data: {
-      companyId: project.companyId,
-      customerId: project.customerId,
-      projectId: project.id,
-      number,
-      status: "DRAFT",
-      totalNet,
-      totalGross,
-      taxRate: avgTaxRate,
-      discountValue,
-      discountType,
-      items: {
-        create: items.map((item, i) => ({
-          position: i + 1,
-          description: item.description,
-          quantity: item.quantity,
-          unit: item.unit,
-          unitPrice: item.unitPrice,
-          taxRate: item.taxRate,
-        })),
-      },
-    },
-  });
+  const invoice = await createWithUniqueNumber(
+    "invoice",
+    project.companyId,
+    project.company.invoiceNumberFormat,
+    (number) =>
+      prisma.invoice.create({
+        data: {
+          companyId: project.companyId,
+          customerId: project.customerId,
+          projectId: project.id,
+          number,
+          status: "DRAFT",
+          totalNet,
+          totalGross,
+          taxRate: avgTaxRate,
+          discountValue,
+          discountType,
+          items: {
+            create: items.map((item, i) => ({
+              position: i + 1,
+              description: item.description,
+              quantity: item.quantity,
+              unit: item.unit,
+              unitPrice: item.unitPrice,
+              taxRate: item.taxRate,
+            })),
+          },
+        },
+      })
+  );
 
   await prisma.activity.create({
     data: {

@@ -11,7 +11,7 @@ import { buildPlaceholderContext } from "@/lib/pdf/build-context";
 import { resolvePlaceholders } from "@/lib/document-placeholders";
 import { sendDocumentEmail } from "@/lib/email";
 import { getSalutationShort } from "@/lib/customer-salutation";
-import { generateDocumentNumber } from "@/lib/numbering";
+import { createWithUniqueNumber } from "@/lib/numbering";
 import type { QuoteStatus } from "@prisma/client";
 
 const quoteSchema = z.object({
@@ -28,11 +28,6 @@ export type QuoteFormState = {
   errors?: Record<string, string[]>;
   message?: string;
 };
-
-async function nextNumber(companyId: string, format: string, model: "quote" | "invoice" | "project") {
-  const count = await (prisma[model] as any).count({ where: { companyId } });
-  return generateDocumentNumber(format, count + 1);
-}
 
 function computeTotals(
   items: { quantity: number; unitPrice: number; taxRate: number }[],
@@ -108,26 +103,26 @@ export async function createQuote(
   const discountType = parsed.data.discountType === "PERCENT" ? "PERCENT" : "AMOUNT";
   const { netAfterDiscount, grossAfterDiscount, avgTaxRate } = computeTotals(items, discountValue, discountType);
 
-  const number = await nextNumber(company.id, company.quoteNumberFormat, "quote");
-
-  const quote = await prisma.quote.create({
-    data: {
-      companyId: company.id,
-      customerId: parsed.data.customerId,
-      inquiryId: parsed.data.inquiryId || null,
-      number,
-      title: parsed.data.title,
-      validUntil: parsed.data.validUntil ? new Date(parsed.data.validUntil) : null,
-      totalNet: netAfterDiscount,
-      totalGross: grossAfterDiscount,
-      taxRate: avgTaxRate,
-      discountValue: discountValue > 0 ? discountValue : null,
-      discountType,
-      items: {
-        create: items.map((item, i) => ({ ...item, position: i + 1 })),
+  const quote = await createWithUniqueNumber("quote", company.id, company.quoteNumberFormat, (number) =>
+    prisma.quote.create({
+      data: {
+        companyId: company.id,
+        customerId: parsed.data.customerId,
+        inquiryId: parsed.data.inquiryId || null,
+        number,
+        title: parsed.data.title,
+        validUntil: parsed.data.validUntil ? new Date(parsed.data.validUntil) : null,
+        totalNet: netAfterDiscount,
+        totalGross: grossAfterDiscount,
+        taxRate: avgTaxRate,
+        discountValue: discountValue > 0 ? discountValue : null,
+        discountType,
+        items: {
+          create: items.map((item, i) => ({ ...item, position: i + 1 })),
+        },
       },
-    },
-  });
+    })
+  );
 
   await prisma.activity.create({
     data: {
@@ -271,33 +266,33 @@ export async function duplicateQuote(quoteId: string) {
   });
   if (!original) return;
 
-  const number = await nextNumber(company.id, company.quoteNumberFormat, "quote");
-
-  const quote = await prisma.quote.create({
-    data: {
-      companyId: company.id,
-      customerId: original.customerId,
-      number,
-      title: `${original.title} (Kopie)`,
-      status: "DRAFT",
-      validUntil: original.validUntil,
-      totalNet: original.totalNet,
-      totalGross: original.totalGross,
-      taxRate: original.taxRate,
-      discountValue: original.discountValue,
-      discountType: original.discountType,
-      items: {
-        create: original.items.map((item) => ({
-          position: item.position,
-          description: item.description,
-          quantity: item.quantity,
-          unit: item.unit,
-          unitPrice: item.unitPrice,
-          taxRate: item.taxRate,
-        })),
+  const quote = await createWithUniqueNumber("quote", company.id, company.quoteNumberFormat, (number) =>
+    prisma.quote.create({
+      data: {
+        companyId: company.id,
+        customerId: original.customerId,
+        number,
+        title: `${original.title} (Kopie)`,
+        status: "DRAFT",
+        validUntil: original.validUntil,
+        totalNet: original.totalNet,
+        totalGross: original.totalGross,
+        taxRate: original.taxRate,
+        discountValue: original.discountValue,
+        discountType: original.discountType,
+        items: {
+          create: original.items.map((item) => ({
+            position: item.position,
+            description: item.description,
+            quantity: item.quantity,
+            unit: item.unit,
+            unitPrice: item.unitPrice,
+            taxRate: item.taxRate,
+          })),
+        },
       },
-    },
-  });
+    })
+  );
 
   await prisma.activity.create({
     data: {
@@ -357,42 +352,48 @@ export async function acceptQuote(quoteId: string) {
   if (!quote) return;
 
   let project = quote.project;
-  const projectNumber = project ? null : await nextNumber(quote.companyId, "AUF-{YYYY}-{NNNN}", "project");
 
-  project = await prisma.$transaction(async (tx) => {
-    let currentProject = quote.project;
+  if (!project) {
+    project = await createWithUniqueNumber("project", quote.companyId, "AUF-{YYYY}-{NNNN}", (projectNumber) =>
+      prisma.$transaction(async (tx) => {
+        const currentProject = await tx.project.create({
+          data: {
+            companyId: quote.companyId,
+            customerId: quote.customerId,
+            quoteId: quote.id,
+            number: projectNumber,
+            title: quote.title,
+            status: "PLANNED",
+          },
+        });
 
-    if (!currentProject && projectNumber) {
-      currentProject = await tx.project.create({
-        data: {
-          companyId: quote.companyId,
-          customerId: quote.customerId,
-          quoteId: quote.id,
-          number: projectNumber,
-          title: quote.title,
-          status: "PLANNED",
-        },
-      });
+        await tx.activity.create({
+          data: {
+            companyId: quote.companyId,
+            customerId: quote.customerId,
+            projectId: currentProject.id,
+            type: "project.created",
+            message: `Auftrag ${currentProject.number} aus Angebot ${quote.number} erstellt.`,
+          },
+        });
 
-      await tx.activity.create({
-        data: {
-          companyId: quote.companyId,
-          customerId: quote.customerId,
-          projectId: currentProject.id,
-          type: "project.created",
-          message: `Auftrag ${currentProject.number} aus Angebot ${quote.number} erstellt.`,
-        },
-      });
-    }
+        await tx.quote.update({ where: { id: quoteId }, data: { status: "ACCEPTED" } });
 
-    await tx.quote.update({ where: { id: quoteId }, data: { status: "ACCEPTED" } });
+        if (quote.inquiryId) {
+          await tx.inquiry.update({ where: { id: quote.inquiryId }, data: { status: "WON" } });
+        }
 
-    if (quote.inquiryId) {
-      await tx.inquiry.update({ where: { id: quote.inquiryId }, data: { status: "WON" } });
-    }
-
-    return currentProject;
-  });
+        return currentProject;
+      })
+    );
+  } else {
+    await prisma.$transaction(async (tx) => {
+      await tx.quote.update({ where: { id: quoteId }, data: { status: "ACCEPTED" } });
+      if (quote.inquiryId) {
+        await tx.inquiry.update({ where: { id: quote.inquiryId }, data: { status: "WON" } });
+      }
+    });
+  }
 
   if (!project) return;
 
