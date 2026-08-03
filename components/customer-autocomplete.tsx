@@ -54,18 +54,33 @@ export function CustomerAutocomplete({
     onSelect?.(c.id);
   }
 
-  function submitCreate() {
+  function submitCreate(force = false) {
     if (!query.trim()) return;
     startTransition(async () => {
-      const created = await createCustomerQuick({
+      const result = await createCustomerQuick({
         name: query.trim(),
         type: newType,
         email: newEmail,
         phone: newPhone,
+        force,
       });
-      if (created) {
-        setLocalCustomers((prev) => [...prev, { id: created.id, name: created.name }]);
-        selectCustomer({ id: created.id, name: created.name });
+      if (result?.duplicate) {
+        const proceed = confirm(
+          `Ein Kunde mit dieser E-Mail/Telefonnummer existiert bereits: „${result.duplicate.name}“. Trotzdem einen neuen Kunden anlegen?`
+        );
+        if (proceed) {
+          submitCreate(true);
+        } else {
+          selectCustomer(result.duplicate);
+          setCreating(false);
+          setNewEmail("");
+          setNewPhone("");
+        }
+        return;
+      }
+      if (result?.customer) {
+        setLocalCustomers((prev) => [...prev, result.customer!]);
+        selectCustomer(result.customer);
       }
       setCreating(false);
       setNewEmail("");
@@ -166,7 +181,7 @@ export function CustomerAutocomplete({
             <div className="flex gap-2 pt-2">
               <button
                 disabled={pending || !query.trim()}
-                onClick={submitCreate}
+                onClick={() => submitCreate()}
                 className="flex-1 rounded-lg bg-brand-500 text-white text-sm font-medium px-4 py-2 hover:bg-brand-600 disabled:opacity-60 transition-colors"
               >
                 {pending ? "Wird angelegt …" : "Anlegen & übernehmen"}

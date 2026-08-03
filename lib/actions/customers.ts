@@ -210,17 +210,37 @@ export async function createCustomerQuick(data: {
   type: "PRIVATE" | "BUSINESS";
   email?: string;
   phone?: string;
-}) {
+  force?: boolean;
+}): Promise<{ customer?: { id: string; name: string }; duplicate?: { id: string; name: string } } | null> {
   if (!data.name.trim()) return null;
   const company = await getCurrentCompany();
+
+  const email = data.email?.trim() || null;
+  const phone = data.phone?.trim() || null;
+
+  // Warnt statt zu blockieren -- verhindert versehentliche Dubletten (z.B.
+  // wenn derselbe Kunde ueber die Schnell-Anlage in einem anderen
+  // Zusammenhang nochmal eingetippt wird), erlaubt aber bewusstes Anlegen
+  // trotzdem (z.B. zwei Personen mit gemeinsamer Telefonnummer).
+  if (!data.force && (email || phone)) {
+    const existing = await prisma.customer.findFirst({
+      where: {
+        companyId: company.id,
+        OR: [...(email ? [{ email }] : []), ...(phone ? [{ phone }] : [])],
+      },
+    });
+    if (existing) {
+      return { duplicate: { id: existing.id, name: existing.name } };
+    }
+  }
 
   const customer = await prisma.customer.create({
     data: {
       companyId: company.id,
       name: data.name.trim(),
       type: data.type,
-      email: data.email?.trim() || null,
-      phone: data.phone?.trim() || null,
+      email,
+      phone,
     },
   });
 
@@ -234,7 +254,7 @@ export async function createCustomerQuick(data: {
   });
 
   revalidatePath("/kunden");
-  return customer;
+  return { customer: { id: customer.id, name: customer.name } };
 }
 
 export async function archiveCustomer(customerId: string) {
