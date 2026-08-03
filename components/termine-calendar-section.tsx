@@ -238,10 +238,10 @@ export function TermineCalendarSection({
       {view === "monat" && (
         <>
           <p className="text-xs text-ink-300">Tipp: Doppelklick auf einen Kalendertag legt direkt einen Termin an diesem Tag an.</p>
-          <div className="rounded-card border border-ink-100 bg-surface p-4 shadow-card overflow-x-auto">
-            <div className="grid grid-cols-7 min-w-[640px] gap-px bg-ink-100 rounded-lg overflow-hidden">
+          <div className="rounded-card border border-ink-100 bg-surface p-2 sm:p-4 shadow-card overflow-x-auto">
+            <div className="grid grid-cols-7 sm:min-w-[640px] gap-px bg-ink-100 rounded-lg overflow-hidden">
               {WEEKDAY_LABELS.map((d) => (
-                <div key={d} className="bg-ink-50 px-2 py-1.5 text-xs font-medium text-ink-500 text-center">
+                <div key={d} className="bg-ink-50 px-1 sm:px-2 py-1.5 text-xs font-medium text-ink-500 text-center">
                   {d}
                 </div>
               ))}
@@ -254,7 +254,7 @@ export function TermineCalendarSection({
                     onDoubleClick={() => openForDay(day.key)}
                     title="Doppelklick: neuer Termin an diesem Tag"
                     className={cn(
-                      "bg-surface min-h-[92px] p-1.5 align-top cursor-pointer hover:bg-brand-50/50 transition-colors",
+                      "bg-surface min-h-[64px] sm:min-h-[92px] p-1 sm:p-1.5 align-top cursor-pointer hover:bg-brand-50/50 transition-colors",
                       !day.inMonth && "bg-ink-50"
                     )}
                   >
@@ -305,9 +305,9 @@ export function TermineCalendarSection({
               Nächste Woche →
             </button>
           </div>
-          <div className="rounded-card border border-ink-100 bg-surface p-4 shadow-card overflow-x-auto">
-            <div className="flex min-w-[880px]">
-              <div className="w-14 shrink-0">
+          <div className="rounded-card border border-ink-100 bg-surface p-2 sm:p-4 shadow-card overflow-x-auto">
+            <div className="flex sm:min-w-[880px]">
+              <div className="w-10 sm:w-14 shrink-0">
                 <div className="h-8" />
                 {hourMarks.slice(0, -1).map((h) => (
                   <div key={h} style={{ height: HOUR_HEIGHT }} className="text-[10px] text-ink-300 font-mono -mt-2">
