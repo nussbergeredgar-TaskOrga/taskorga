@@ -180,7 +180,11 @@ export default async function FinanzenPage({
                 <p className="font-mono text-sm font-medium text-ink-900">
                   {Number(inv.totalGross).toLocaleString("de-DE")} €
                 </p>
-                <p className="text-xs text-ink-500">{STATUS_LABELS[inv.status]}</p>
+                <p className="text-xs text-ink-500">
+                  {STATUS_LABELS[inv.status]}
+                  {inv.dueDate && OPEN_INVOICE_STATUSES.includes(inv.status) &&
+                    ` · fällig ${inv.dueDate.toLocaleDateString("de-DE")}`}
+                </p>
               </div>
             </Link>
           ))}

@@ -65,6 +65,7 @@ export async function updateDocumentDefaults(formData: FormData) {
     where: { id: admin.companyId },
     data: {
       defaultQuoteValidityDays: Number(formData.get("defaultQuoteValidityDays")) || 30,
+      defaultInvoicePaymentDays: Number(formData.get("defaultInvoicePaymentDays")) || 14,
       defaultDiscountType: (formData.get("defaultDiscountType") as string) || "AMOUNT",
       quoteNumberFormat: (formData.get("quoteNumberFormat") as string)?.trim() || "ANG-{YYYY}-{NNNN}",
       invoiceNumberFormat: (formData.get("invoiceNumberFormat") as string)?.trim() || "RE-{YYYY}-{NNNN}",

@@ -140,7 +140,11 @@ export async function markInvoiceSent(invoiceId: string) {
 
   const invoice = await prisma.invoice.update({
     where: { id: invoiceId },
-    data: { status: "SENT", issueDate: new Date(), dueDate: new Date(Date.now() + 14 * 86400000) },
+    data: {
+      status: "SENT",
+      issueDate: new Date(),
+      dueDate: new Date(Date.now() + company.defaultInvoicePaymentDays * 86400000),
+    },
   });
 
   await prisma.activity.create({
@@ -376,7 +380,7 @@ export async function sendPaymentReminder(invoiceId: string): Promise<{ error?: 
 }
 
 // Rechnung per E-Mail an den Kunden senden (mit PDF im Anhang), markiert sie
-// gleichzeitig als "Versendet" inkl. Fälligkeitsdatum (14 Tage).
+// gleichzeitig als "Versendet" inkl. Fälligkeitsdatum (Firmeneinstellung).
 export async function sendInvoiceEmail(
   invoiceId: string,
   customMessage?: string
@@ -398,7 +402,7 @@ export async function sendInvoiceEmail(
 
   const wasDraft = invoice.status === "DRAFT";
   const issueDate = invoice.issueDate ?? new Date();
-  const dueDate = invoice.dueDate ?? new Date(Date.now() + 14 * 86400000);
+  const dueDate = invoice.dueDate ?? new Date(Date.now() + invoice.company.defaultInvoicePaymentDays * 86400000);
 
   const createdAtStr = issueDate.toLocaleDateString("de-DE");
   const dueDateStr = dueDate.toLocaleDateString("de-DE");

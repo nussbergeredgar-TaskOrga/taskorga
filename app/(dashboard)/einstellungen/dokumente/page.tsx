@@ -42,6 +42,7 @@ export default async function DokumenteSettingsPage() {
       >
         <DocumentDefaultsForm
           defaultQuoteValidityDays={company.defaultQuoteValidityDays}
+          defaultInvoicePaymentDays={company.defaultInvoicePaymentDays}
           defaultDiscountType={company.defaultDiscountType}
           quoteNumberFormat={company.quoteNumberFormat}
           invoiceNumberFormat={company.invoiceNumberFormat}

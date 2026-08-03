@@ -5,11 +5,13 @@ import { updateDocumentDefaults } from "@/lib/actions/company";
 
 export function DocumentDefaultsForm({
   defaultQuoteValidityDays,
+  defaultInvoicePaymentDays,
   defaultDiscountType,
   quoteNumberFormat,
   invoiceNumberFormat,
 }: {
   defaultQuoteValidityDays: number;
+  defaultInvoicePaymentDays: number;
   defaultDiscountType: string;
   quoteNumberFormat: string;
   invoiceNumberFormat: string;
@@ -37,6 +39,18 @@ export function DocumentDefaultsForm({
             type="number"
             name="defaultQuoteValidityDays"
             defaultValue={defaultQuoteValidityDays}
+            min={1}
+            className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface font-mono"
+          />
+        </div>
+        <div>
+          <label className="block text-xs text-ink-500 mb-1">
+            Zahlungsziel für Rechnungen (Tage)
+          </label>
+          <input
+            type="number"
+            name="defaultInvoicePaymentDays"
+            defaultValue={defaultInvoicePaymentDays}
             min={1}
             className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface font-mono"
           />

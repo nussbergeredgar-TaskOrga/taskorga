@@ -48,6 +48,7 @@ model Company {
 
   // Angebots-/Rechnungs-Grundeinstellungen
   defaultQuoteValidityDays Int    @default(30)
+  defaultInvoicePaymentDays Int   @default(14)
   defaultDiscountType      String @default("AMOUNT") // AMOUNT | PERCENT
   quoteNumberFormat        String @default("ANG-{YYYY}-{NNNN}")
   invoiceNumberFormat      String @default("RE-{YYYY}-{NNNN}")
