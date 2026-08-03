@@ -130,6 +130,16 @@ model InviteCode {
   createdAt DateTime  @default(now())
 }
 
+// Protokolliert fehlgeschlagene Master-Passwort-Versuche fuer /plattform-admin.
+// Da dieser Zugang ohne Login-Account funktioniert, gibt es keinen Nutzer, an
+// den ein Lockout gebunden werden koennte -- daher global statt pro Nutzer.
+model PlatformAdminAttempt {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
+
 model User {
   id        String   @id @default(cuid())
   companyId String

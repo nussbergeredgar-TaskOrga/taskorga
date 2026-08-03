@@ -27,9 +27,9 @@ export default function PlattformAdminPage() {
 
   async function unlock() {
     setError("");
-    const ok = await verifyPlatformSecret(secret);
-    if (!ok) {
-      setError("Falsches Master-Passwort.");
+    const result = await verifyPlatformSecret(secret);
+    if (!result.ok) {
+      setError(result.error || "Falsches Master-Passwort.");
       return;
     }
     setUnlocked(true);
@@ -40,8 +40,8 @@ export default function PlattformAdminPage() {
     try {
       const list = await listInviteCodes(secret);
       setCodes(list);
-    } catch {
-      setError("Sitzung abgelaufen, bitte Master-Passwort erneut eingeben.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Sitzung abgelaufen, bitte Master-Passwort erneut eingeben.");
       setUnlocked(false);
     }
   }
@@ -53,8 +53,8 @@ export default function PlattformAdminPage() {
         setNote("");
         setMaxUses("1");
         await refresh();
-      } catch {
-        setError("Fehler beim Erstellen.");
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Fehler beim Erstellen.");
       }
     });
   }
