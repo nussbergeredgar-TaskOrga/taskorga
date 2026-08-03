@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AlertTriangle, Plus } from "lucide-react";
+import { AlertTriangle, Plus, Download } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/session";
 import { statusColor } from "@/lib/utils";
@@ -91,13 +91,22 @@ export default async function FinanzenPage({
           <h1 className="text-2xl font-semibold text-ink-900">Finanzen</h1>
           <p className="text-sm text-ink-500 mt-1">{invoices.length} Rechnungen insgesamt</p>
         </div>
-        <Link
-          href="/finanzen/neu"
-          className="flex items-center gap-1.5 rounded-lg bg-brand-500 text-white text-sm font-medium px-4 py-2.5 hover:bg-brand-600 transition-colors"
-        >
-          <Plus size={16} />
-          Neue Rechnung
-        </Link>
+        <div className="flex items-center gap-2">
+          <a
+            href="/api/finanzen/export?type=invoices"
+            className="flex items-center gap-1.5 rounded-lg border border-ink-100 text-ink-700 text-sm font-medium px-3 py-2.5 hover:bg-ink-50 transition-colors"
+          >
+            <Download size={15} />
+            Rechnungen als CSV
+          </a>
+          <Link
+            href="/finanzen/neu"
+            className="flex items-center gap-1.5 rounded-lg bg-brand-500 text-white text-sm font-medium px-4 py-2.5 hover:bg-brand-600 transition-colors"
+          >
+            <Plus size={16} />
+            Neue Rechnung
+          </Link>
+        </div>
       </div>
 
       <div className="grid grid-cols-3 gap-4">
@@ -195,7 +204,16 @@ export default async function FinanzenPage({
       <div className="rounded-card border border-ink-100 bg-surface p-6 shadow-card space-y-5">
         <div className="flex items-center justify-between">
           <h2 className="font-display font-semibold text-ink-900 text-lg">Meine Ausgaben</h2>
-          <ExpenseForm projects={projects} />
+          <div className="flex items-center gap-2">
+            <a
+              href="/api/finanzen/export?type=expenses"
+              className="flex items-center gap-1.5 rounded-lg border border-ink-100 text-ink-700 text-sm font-medium px-3 py-2 hover:bg-ink-50 transition-colors"
+            >
+              <Download size={14} />
+              CSV
+            </a>
+            <ExpenseForm projects={projects} />
+          </div>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
