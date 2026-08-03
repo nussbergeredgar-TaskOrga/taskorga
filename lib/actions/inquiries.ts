@@ -182,6 +182,40 @@ export async function deleteInquiry(inquiryId: string): Promise<{ error?: string
   return { success: true };
 }
 
+export async function reopenInquiry(inquiryId: string) {
+  const company = await getCurrentCompany();
+  const existing = await prisma.inquiry.findFirst({
+    where: { id: inquiryId, companyId: company.id },
+    include: { _count: { select: { quotes: true } } },
+  });
+  if (!existing) return;
+  if (existing.status !== "WON" && existing.status !== "LOST") return;
+
+  const newStatus: InquiryStatus = existing._count.quotes > 0 ? "QUOTE_CREATED" : "CALL_DONE";
+
+  const inquiry = await prisma.inquiry.update({
+    where: { id: inquiryId },
+    data: { status: newStatus, lostReason: null },
+  });
+
+  await prisma.activity.create({
+    data: {
+      companyId: inquiry.companyId,
+      customerId: inquiry.customerId,
+      inquiryId: inquiry.id,
+      type: "inquiry.status_changed",
+      message: `Anfrage „${inquiry.title}“ wurde erneut geöffnet (zurückgesetzt von ${existing.status === "WON" ? "Gewonnen" : "Verloren"}).`,
+    },
+  });
+
+  revalidatePath("/anfragen");
+  revalidatePath("/anfragen/gewonnen");
+  revalidatePath("/anfragen/verloren");
+  revalidatePath(`/anfragen/${inquiryId}`);
+  revalidatePath(`/kunden/${inquiry.customerId}`);
+  revalidatePath("/heute");
+}
+
 export async function createInquiryQuick(
   customerId: string,
   data: { title: string; source?: string; amount?: string }
@@ -243,14 +277,17 @@ const STATUS_LABELS: Record<InquiryStatus, string> = {
   LOST: "Verloren",
 };
 
-export async function updateInquiryStatus(inquiryId: string, status: InquiryStatus) {
+export async function updateInquiryStatus(inquiryId: string, status: InquiryStatus, lostReason?: string) {
   const company = await getCurrentCompany();
   const existing = await prisma.inquiry.findFirst({ where: { id: inquiryId, companyId: company.id } });
   if (!existing) return;
 
   const inquiry = await prisma.inquiry.update({
     where: { id: inquiryId },
-    data: { status },
+    data: {
+      status,
+      lostReason: status === "LOST" ? lostReason?.trim() || null : null,
+    },
   });
 
   await prisma.activity.create({

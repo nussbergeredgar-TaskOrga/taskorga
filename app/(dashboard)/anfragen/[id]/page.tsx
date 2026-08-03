@@ -66,6 +66,7 @@ export default async function AnfrageDetailPage({ params }: { params: { id: stri
           status={inquiry.status}
           allStepsCompleted={allStepsCompleted}
           totalSteps={steps.length}
+          lostReason={inquiry.lostReason}
         />
         {inquiry.status !== "LOST" && inquiry.quotes.length === 0 && (
           <Link

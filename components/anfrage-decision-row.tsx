@@ -17,6 +17,12 @@ export function AnfrageDecisionRow({
 }) {
   const [pending, startTransition] = useTransition();
 
+  function markLost() {
+    const reason = prompt("Anfrage als verloren markieren. Grund (optional):");
+    if (reason === null) return;
+    startTransition(() => updateInquiryStatus(inquiryId, "LOST", reason));
+  }
+
   return (
     <div className="flex items-center justify-between gap-3 rounded-lg border-l-4 border-l-success bg-ink-50 px-3 py-2.5">
       <Link href={`/anfragen/${inquiryId}`} className="text-sm min-w-0 hover:underline">
@@ -36,7 +42,7 @@ export function AnfrageDecisionRow({
         </button>
         <button
           disabled={pending}
-          onClick={() => startTransition(() => updateInquiryStatus(inquiryId, "LOST"))}
+          onClick={markLost}
           className="rounded-lg border border-danger text-danger text-xs font-medium px-2.5 py-1.5 hover:bg-danger/5 transition-colors disabled:opacity-60"
         >
           Verloren

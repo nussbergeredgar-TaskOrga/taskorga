@@ -1,7 +1,7 @@
 "use client";
 
 import { useTransition } from "react";
-import { updateInquiryStatus } from "@/lib/actions/inquiries";
+import { updateInquiryStatus, reopenInquiry } from "@/lib/actions/inquiries";
 import type { InquiryStatus } from "@prisma/client";
 
 export function InquiryStatusActions({
@@ -9,19 +9,57 @@ export function InquiryStatusActions({
   status,
   allStepsCompleted,
   totalSteps,
+  lostReason,
 }: {
   inquiryId: string;
   status: InquiryStatus;
   allStepsCompleted: boolean;
   totalSteps: number;
+  lostReason?: string | null;
 }) {
   const [pending, startTransition] = useTransition();
 
+  function markLost() {
+    const reason = prompt("Anfrage als verloren markieren. Grund (optional):");
+    if (reason === null) return;
+    startTransition(() => updateInquiryStatus(inquiryId, "LOST", reason));
+  }
+
+  function reopen() {
+    if (!confirm("Diese Entscheidung zurücksetzen und die Anfrage wieder öffnen?")) return;
+    startTransition(() => reopenInquiry(inquiryId));
+  }
+
   if (status === "WON") {
-    return <p className="text-sm text-success font-medium">Gewonnen ✓</p>;
+    return (
+      <div className="flex items-center gap-3">
+        <p className="text-sm text-success font-medium">Gewonnen ✓</p>
+        <button
+          disabled={pending}
+          onClick={reopen}
+          className="text-xs text-ink-500 hover:underline disabled:opacity-60"
+        >
+          Zurücksetzen
+        </button>
+      </div>
+    );
   }
   if (status === "LOST") {
-    return <p className="text-sm text-danger font-medium">Verloren</p>;
+    return (
+      <div>
+        <div className="flex items-center gap-3">
+          <p className="text-sm text-danger font-medium">Verloren</p>
+          <button
+            disabled={pending}
+            onClick={reopen}
+            className="text-xs text-ink-500 hover:underline disabled:opacity-60"
+          >
+            Zurücksetzen
+          </button>
+        </div>
+        {lostReason && <p className="text-sm text-ink-500 mt-0.5">Grund: {lostReason}</p>}
+      </div>
+    );
   }
 
   if (totalSteps > 0 && allStepsCompleted) {
@@ -40,7 +78,7 @@ export function InquiryStatusActions({
           </button>
           <button
             disabled={pending}
-            onClick={() => startTransition(() => updateInquiryStatus(inquiryId, "LOST"))}
+            onClick={markLost}
             className="rounded-lg border border-danger text-danger px-4 py-2 text-sm font-medium hover:bg-danger/5 transition-colors disabled:opacity-60"
           >
             Verloren
@@ -55,7 +93,7 @@ export function InquiryStatusActions({
       <span className="text-sm text-ink-500">In Bearbeitung</span>
       <button
         disabled={pending}
-        onClick={() => startTransition(() => updateInquiryStatus(inquiryId, "LOST"))}
+        onClick={markLost}
         className="text-xs text-danger hover:underline disabled:opacity-60"
       >
         Als verloren markieren

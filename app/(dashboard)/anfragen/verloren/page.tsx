@@ -44,7 +44,10 @@ export default async function VerlorenPage() {
             >
               <div>
                 <p className="font-medium text-ink-900">{inquiry.title}</p>
-                <p className="text-sm text-ink-500">{inquiry.customer.name}</p>
+                <p className="text-sm text-ink-500">
+                  {inquiry.customer.name}
+                  {inquiry.lostReason && ` · ${inquiry.lostReason}`}
+                </p>
               </div>
               {inquiry.amount != null && (
                 <span className="font-mono text-sm font-medium text-ink-900">
