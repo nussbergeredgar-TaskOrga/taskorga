@@ -149,6 +149,7 @@ export default async function AngebotDetailPage({ params }: { params: { id: stri
 
       <QuoteVersionHistory
         quoteId={quote.id}
+        quoteStatus={quote.status}
         versions={versions.map((v) => ({
           id: v.id,
           versionNumber: v.versionNumber,

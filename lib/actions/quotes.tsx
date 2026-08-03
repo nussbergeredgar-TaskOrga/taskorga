@@ -540,3 +540,69 @@ export async function saveQuoteVersion(quoteId: string) {
 
   revalidatePath(`/angebote/${quoteId}`);
 }
+
+// Setzt ein Angebot auf einen frueheren gespeicherten Stand zurueck. Der
+// aktuelle Stand wird davor selbst als Version gesichert, damit auch das
+// Wiederherstellen rueckgaengig gemacht werden kann.
+export async function restoreQuoteVersion(
+  quoteId: string,
+  versionId: string
+): Promise<{ error?: string; success?: boolean }> {
+  const company = await getCurrentCompany();
+  const quote = await prisma.quote.findFirst({ where: { id: quoteId, companyId: company.id } });
+  if (!quote) return { error: "Angebot nicht gefunden." };
+  if (quote.status !== "DRAFT") {
+    return { error: "Nur Angebote im Entwurf können wiederhergestellt werden." };
+  }
+
+  const version = await prisma.quoteVersion.findFirst({ where: { id: versionId, quoteId } });
+  if (!version) return { error: "Version nicht gefunden." };
+
+  const snapshot = version.snapshot as {
+    title: string;
+    discountValue: number | null;
+    discountType: string;
+    validUntil: string | null;
+    items: { description: string; quantity: number; unit: string; unitPrice: number; taxRate: number }[];
+  };
+
+  await saveQuoteVersion(quoteId);
+
+  const discountValue = snapshot.discountValue ?? 0;
+  const discountType = snapshot.discountType === "PERCENT" ? "PERCENT" : "AMOUNT";
+  const { netAfterDiscount, grossAfterDiscount, avgTaxRate } = computeTotals(
+    snapshot.items,
+    discountValue,
+    discountType
+  );
+
+  await prisma.$transaction(async (tx) => {
+    await tx.quoteItem.deleteMany({ where: { quoteId } });
+    await tx.quote.update({
+      where: { id: quoteId },
+      data: {
+        title: snapshot.title,
+        validUntil: snapshot.validUntil ? new Date(snapshot.validUntil) : null,
+        totalNet: netAfterDiscount,
+        totalGross: grossAfterDiscount,
+        taxRate: avgTaxRate,
+        discountValue: discountValue > 0 ? discountValue : null,
+        discountType,
+        items: { create: snapshot.items.map((item, i) => ({ ...item, position: i + 1 })) },
+      },
+    });
+  });
+
+  await prisma.activity.create({
+    data: {
+      companyId: company.id,
+      customerId: quote.customerId,
+      quoteId,
+      type: "quote.version_restored",
+      message: `Angebot ${quote.number} wurde auf Version ${version.versionNumber} zurückgesetzt.`,
+    },
+  });
+
+  revalidatePath(`/angebote/${quoteId}`);
+  return { success: true };
+}
