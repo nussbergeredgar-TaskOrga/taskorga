@@ -67,11 +67,11 @@ export function TopBar() {
       <div ref={newMenuRef} className="relative">
         <button
           onClick={() => setNewMenuOpen((o) => !o)}
-          className="hidden sm:flex items-center gap-1.5 rounded-lg bg-brand-500 text-white text-sm font-medium px-3.5 py-2 hover:bg-brand-600 transition-colors"
+          className="flex items-center gap-1.5 rounded-lg bg-brand-500 text-white text-sm font-medium px-3 sm:px-3.5 py-2 hover:bg-brand-600 transition-colors shrink-0"
           aria-label="Neu anlegen"
         >
           <Plus size={16} />
-          Neu
+          <span className="hidden sm:inline">Neu</span>
         </button>
 
         {newMenuOpen && (
