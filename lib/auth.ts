@@ -9,7 +9,10 @@ const LOCK_DURATION_MS = 15 * 60 * 1000;
 // je nach next-auth-Version/TypeScript-Konfiguration Build-Fehler auf Vercel
 // verursacht hat. TypeScript leitet den Typ hier automatisch korrekt ab.
 export const authOptions = {
-  session: { strategy: "jwt" as const },
+  // Ohne maxAge greift der NextAuth-Standard von 30 Tagen Inaktivität, was fuer
+  // eine Anwendung mit Finanzdaten zu grosszuegig ist. Session laeuft nach
+  // 7 Tagen Inaktivitaet ab; jede Anfrage verlaengert sie erneut (Rolling Session).
+  session: { strategy: "jwt" as const, maxAge: 7 * 24 * 60 * 60 },
   pages: {
     signIn: "/login",
   },

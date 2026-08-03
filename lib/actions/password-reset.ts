@@ -5,12 +5,22 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { sendPasswordResetEmail } from "@/lib/email";
 
+const MAX_RESET_REQUESTS_PER_HOUR = 3;
+
 export async function requestPasswordReset(email: string): Promise<{ success: boolean; error?: string }> {
   const user = await prisma.user.findUnique({ where: { email } });
 
   // Immer dieselbe Rückmeldung, egal ob die E-Mail existiert (kein Hinweis für Angreifer,
   // welche E-Mail-Adressen bei uns registriert sind).
   if (!user) return { success: true };
+
+  // Rate-Limiting: verhindert E-Mail-Bombing und unnoetigen Verbrauch des
+  // Resend-Kontingents. Da nichtexistente Adressen ohnehin still "success"
+  // zurueckgeben, verraet auch dieser stille Abbruch nichts an Angreifer.
+  const recentRequests = await prisma.passwordResetToken.count({
+    where: { userId: user.id, createdAt: { gte: new Date(Date.now() - 60 * 60 * 1000) } },
+  });
+  if (recentRequests >= MAX_RESET_REQUESTS_PER_HOUR) return { success: true };
 
   const token = crypto.randomBytes(32).toString("hex");
   const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 Stunde gültig
