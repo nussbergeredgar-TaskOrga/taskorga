@@ -5,6 +5,7 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/session";
+import type { Permissions } from "@/lib/permissions";
 
 export type CreateUserState = { error?: string; success?: boolean };
 
@@ -114,6 +115,31 @@ export async function deleteUser(userId: string) {
   });
 
   revalidatePath("/einstellungen");
+}
+
+// Steuert, welche sonst nur für Admins sichtbaren Bereiche (Finanzen,
+// Einblicke) eine Nicht-Admin-Rolle (z.B. "Mitarbeiter") einsehen darf.
+// Die Admin-Rolle selbst hat immer vollen Zugriff und ist hier ausgenommen.
+export async function updateRolePermissions(roleId: string, permissions: Permissions) {
+  const admin = await requireAdmin();
+
+  const role = await prisma.role.findFirst({ where: { id: roleId, companyId: admin.companyId } });
+  if (!role) return { error: "Rolle nicht gefunden." };
+  if (role.name === "Admin") return { error: "Die Admin-Rolle hat immer vollen Zugriff." };
+
+  await prisma.role.update({ where: { id: role.id }, data: { permissions } });
+
+  await prisma.activity.create({
+    data: {
+      companyId: admin.companyId,
+      userId: admin.id,
+      type: "team.permissions_changed",
+      message: `Rechte der Rolle „${role.name}“ wurden angepasst.`,
+    },
+  });
+
+  revalidatePath("/einstellungen/firma");
+  return { success: true };
 }
 
 export async function resetUserPassword(userId: string, newPassword: string) {

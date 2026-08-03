@@ -3,6 +3,7 @@ import type { Session } from "next-auth";
 import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { hasPermission, type PermissionKey } from "@/lib/permissions";
 
 /**
  * Liefert die Firma des eingeloggten Nutzers. Leitet zu /login um,
@@ -49,6 +50,19 @@ export async function getCurrentUserWithRole() {
 export async function requireAdmin() {
   const dbUser = await getCurrentUserWithRole();
   if (dbUser.role?.name !== "Admin") {
+    redirect("/heute");
+  }
+  return dbUser;
+}
+
+/**
+ * Nur für Nutzer mit der jeweiligen Berechtigung zugänglich (Admins immer,
+ * andere Rollen je nach in Role.permissions konfiguriertem Zugriff).
+ * Leitet ohne Berechtigung zu /heute um.
+ */
+export async function requirePermission(key: PermissionKey) {
+  const dbUser = await getCurrentUserWithRole();
+  if (!hasPermission(dbUser.role, key)) {
     redirect("/heute");
   }
   return dbUser;

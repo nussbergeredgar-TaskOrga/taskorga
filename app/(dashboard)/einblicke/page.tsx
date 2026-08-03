@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/session";
+import { requirePermission } from "@/lib/session";
 import { getCustomKpiValues } from "@/lib/actions/custom-kpi";
 import { getCustomChartsWithData } from "@/lib/actions/custom-chart";
 import { getDashboardLayout } from "@/lib/actions/dashboard";
@@ -25,7 +25,7 @@ function monthLabel(date: Date) {
 }
 
 export default async function EinblickePage() {
-  const admin = await requireAdmin();
+  const admin = await requirePermission("einblicke");
   const companyId = admin.companyId;
 
   const monthRanges: { label: string; gte: Date; lte: Date }[] = [];

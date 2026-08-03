@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { hasPermission } from "@/lib/permissions";
 
 const STATUS_LABELS: Record<string, string> = {
   DRAFT: "Entwurf",
@@ -36,6 +37,11 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Nicht eingeloggt." }, { status: 401 });
   }
   const companyId = session.user.companyId;
+
+  const dbUser = await prisma.user.findUnique({ where: { id: session.user.id }, include: { role: true } });
+  if (!hasPermission(dbUser?.role, "finanzen")) {
+    return NextResponse.json({ error: "Keine Berechtigung." }, { status: 403 });
+  }
 
   const { searchParams } = new URL(request.url);
   const type = searchParams.get("type") === "expenses" ? "expenses" : "invoices";

@@ -2,6 +2,7 @@ import { requireAdmin } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { CompanyProfileForm } from "@/components/company-profile-form";
 import { TeamManager } from "@/components/team-manager";
+import { RolePermissionsManager } from "@/components/role-permissions-manager";
 import { NavLabelManager } from "@/components/nav-label-manager";
 import { EmailSignatureForm } from "@/components/email-signature-form";
 import { ScheduleManager } from "@/components/schedule-manager";
@@ -17,7 +18,7 @@ export default async function FirmaSettingsPage({
 }) {
   const admin = await requireAdmin();
 
-  const [company, users, navLabels] = await Promise.all([
+  const [company, users, navLabels, nonAdminRoles] = await Promise.all([
     prisma.company.findUniqueOrThrow({ where: { id: admin.companyId } }),
     prisma.user.findMany({
       where: { companyId: admin.companyId },
@@ -25,6 +26,10 @@ export default async function FirmaSettingsPage({
       orderBy: { createdAt: "asc" },
     }),
     getNavLabels(),
+    prisma.role.findMany({
+      where: { companyId: admin.companyId, name: { not: "Admin" } },
+      orderBy: { name: "asc" },
+    }),
   ]);
 
   const validUserIds = new Set(users.map((u) => u.id));
@@ -48,7 +53,7 @@ export default async function FirmaSettingsPage({
 
       <SettingsSection
         title="Benutzerverwaltung"
-        description="Admins sehen Finanzen & Einblicke, Mitarbeiter nicht."
+        description="Admins haben immer vollen Zugriff. Rechte anderer Rollen legst du unten fest."
       >
         <TeamManager
           currentUserId={admin.id}
@@ -57,6 +62,19 @@ export default async function FirmaSettingsPage({
             name: u.name,
             email: u.email,
             roleName: u.role?.name ?? "Mitarbeiter",
+          }))}
+        />
+      </SettingsSection>
+
+      <SettingsSection
+        title="Rollen & Rechte"
+        description="Lege fest, welche sonst nur für Admins sichtbaren Bereiche eine Rolle zusätzlich einsehen darf."
+      >
+        <RolePermissionsManager
+          roles={nonAdminRoles.map((r) => ({
+            id: r.id,
+            name: r.name,
+            permissions: (r.permissions ?? {}) as { finanzen?: boolean; einblicke?: boolean },
           }))}
         />
       </SettingsSection>

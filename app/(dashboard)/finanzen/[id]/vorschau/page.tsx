@@ -2,11 +2,11 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, ExternalLink } from "lucide-react";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/session";
+import { requirePermission } from "@/lib/session";
 import { InvoiceSendFromPreview } from "@/components/invoice-send-from-preview";
 
 export default async function RechnungVorschauPage({ params }: { params: { id: string } }) {
-  const admin = await requireAdmin();
+  const admin = await requirePermission("finanzen");
   const invoice = await prisma.invoice.findFirst({
     where: { id: params.id, companyId: admin.companyId },
     include: { customer: { select: { email: true } } },

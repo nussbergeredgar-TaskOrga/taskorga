@@ -2,13 +2,13 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, FileDown, Eye } from "lucide-react";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/session";
+import { requirePermission } from "@/lib/session";
 import { InvoiceActions } from "@/components/invoice-actions";
 import { RecordNotes } from "@/components/record-notes";
 import { RecordTasks } from "@/components/record-tasks";
 
 export default async function RechnungDetailPage({ params }: { params: { id: string } }) {
-  const admin = await requireAdmin();
+  const admin = await requirePermission("finanzen");
   const invoice = await prisma.invoice.findFirst({
     where: { id: params.id, companyId: admin.companyId },
     include: {

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { AlertTriangle, Plus, Download } from "lucide-react";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/session";
+import { requirePermission } from "@/lib/session";
 import { KpiCard } from "@/components/kpi-card";
 import { ExpenseForm } from "@/components/expense-form";
 import { ExpensesList } from "@/components/expenses-list";
@@ -25,7 +25,7 @@ export default async function FinanzenPage({
 }: {
   searchParams: { status?: string };
 }) {
-  const admin = await requireAdmin();
+  const admin = await requirePermission("finanzen");
   const company = { id: admin.companyId };
 
   // Fällige, unbezahlte Rechnungen automatisch auf "Überfällig" setzen
