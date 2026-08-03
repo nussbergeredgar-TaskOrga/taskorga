@@ -5,6 +5,16 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
 
+// Erlaubt nur relative Pfade innerhalb der App als Redirect-Ziel nach dem Login.
+// callbackUrl kommt aus einem Query-Parameter und ist damit von aussen frei
+// waehlbar -- ohne diese Pruefung koennte ein Link wie /login?callbackUrl=
+// https://phishing-seite.de nach erfolgreichem Login auf eine fremde Seite
+// weiterleiten (Open Redirect).
+function safeCallbackUrl(url: string | null): string {
+  if (!url || !url.startsWith("/") || url.startsWith("//")) return "/heute";
+  return url;
+}
+
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -31,7 +41,7 @@ function LoginForm() {
       return;
     }
 
-    router.push(searchParams.get("callbackUrl") || "/heute");
+    router.push(safeCallbackUrl(searchParams.get("callbackUrl")));
     router.refresh();
   }
 
