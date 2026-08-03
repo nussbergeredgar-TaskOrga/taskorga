@@ -53,6 +53,8 @@ export function AppointmentQuickForm({
   const amountRef = useRef<HTMLInputElement>(null);
   const newInquiryTitleRef = useRef<HTMLInputElement>(null);
   const [type, setType] = useState(appointmentTypes[0]?.label ?? "");
+  const [recurrence, setRecurrence] = useState<"NONE" | "WEEKLY" | "BIWEEKLY" | "MONTHLY">("NONE");
+  const [recurrenceCount, setRecurrenceCount] = useState("4");
   const [error, setError] = useState("");
   const [pending, startTransition] = useTransition();
 
@@ -70,6 +72,8 @@ export function AppointmentQuickForm({
     setInquiryId("");
     setInquiryMode("none");
     setAssigneeId(currentUserId);
+    setRecurrence("NONE");
+    setRecurrenceCount("4");
     if (titleRef.current) titleRef.current.value = "";
     if (startDateRef.current) startDateRef.current.value = "";
     if (startTimeRef.current) startTimeRef.current.value = "";
@@ -134,6 +138,10 @@ export function AppointmentQuickForm({
         inquiryId: finalInquiryId || undefined,
         amount: amountRef.current?.value,
         assigneeId: assigneeId || undefined,
+        recurrence:
+          recurrence !== "NONE"
+            ? { frequency: recurrence, count: Number(recurrenceCount) || 1 }
+            : undefined,
       });
       if (result?.error) {
         setError(result.error);
@@ -342,6 +350,35 @@ export function AppointmentQuickForm({
             />
           </div>
         )}
+
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-xs text-ink-500 mb-1">Wiederholung</label>
+            <select
+              value={recurrence}
+              onChange={(e) => setRecurrence(e.target.value as typeof recurrence)}
+              className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface"
+            >
+              <option value="NONE">Keine</option>
+              <option value="WEEKLY">Wöchentlich</option>
+              <option value="BIWEEKLY">Alle 2 Wochen</option>
+              <option value="MONTHLY">Monatlich</option>
+            </select>
+          </div>
+          {recurrence !== "NONE" && (
+            <div>
+              <label className="block text-xs text-ink-500 mb-1">Anzahl Termine</label>
+              <input
+                type="number"
+                min={2}
+                max={26}
+                value={recurrenceCount}
+                onChange={(e) => setRecurrenceCount(e.target.value)}
+                className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 font-mono"
+              />
+            </div>
+          )}
+        </div>
 
         {error && <p className="text-xs text-danger">{error}</p>}
 

@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { randomUUID } from "crypto";
 import { prisma } from "@/lib/prisma";
 import { getCurrentCompany } from "@/lib/session";
 import { getFieldConfig } from "@/lib/actions/field-config";
@@ -12,6 +13,13 @@ function parseAmount(raw?: string | null) {
   return Number.isFinite(n) ? n : null;
 }
 
+const RECURRENCE_DAY_OFFSETS: Record<"WEEKLY" | "BIWEEKLY" | "MONTHLY", number> = {
+  WEEKLY: 7,
+  BIWEEKLY: 14,
+  MONTHLY: 30,
+};
+const MAX_RECURRENCES = 26;
+
 export async function createAppointment(
   customerId: string,
   data: {
@@ -22,8 +30,9 @@ export async function createAppointment(
     inquiryId?: string;
     amount?: string;
     assigneeId?: string;
+    recurrence?: { frequency: "WEEKLY" | "BIWEEKLY" | "MONTHLY"; count: number };
   }
-): Promise<{ error?: string; success?: boolean }> {
+): Promise<{ error?: string; success?: boolean; created?: number; skipped?: number }> {
   if (!data.title.trim() || !data.startAt || !data.endAt) {
     return { error: "Bitte Titel, Von- und Bis-Zeit angeben." };
   }
@@ -41,56 +50,85 @@ export async function createAppointment(
     if (!inquiry) return { error: "Anfrage nicht gefunden." };
   }
 
-  const scheduledAt = new Date(data.startAt);
-  const endAt = new Date(data.endAt);
+  const baseScheduledAt = new Date(data.startAt);
+  const baseEndAt = new Date(data.endAt);
 
-  if (data.assigneeId) {
-    const overlapping = await prisma.appointment.findFirst({
-      where: {
-        companyId: company.id,
-        assigneeId: data.assigneeId,
-        status: { not: "CANCELLED" },
-        scheduledAt: { lt: endAt },
-        endAt: { gt: scheduledAt },
-      },
-      select: { title: true },
-    });
-    if (overlapping) {
-      return { error: `Zeitüberschneidung: „${overlapping.title}“ ist zu dieser Zeit bereits geplant.` };
+  const occurrenceCount = data.recurrence
+    ? Math.min(Math.max(data.recurrence.count, 1), MAX_RECURRENCES)
+    : 1;
+  const dayOffset = data.recurrence ? RECURRENCE_DAY_OFFSETS[data.recurrence.frequency] : 0;
+
+  const recurrenceGroupId = occurrenceCount > 1 ? randomUUID() : null;
+  let firstAppointment: Awaited<ReturnType<typeof prisma.appointment.create>> | null = null;
+  let created = 0;
+  let skipped = 0;
+
+  for (let i = 0; i < occurrenceCount; i++) {
+    const scheduledAt = new Date(baseScheduledAt.getTime() + i * dayOffset * 86400000);
+    const endAt = new Date(baseEndAt.getTime() + i * dayOffset * 86400000);
+
+    if (data.assigneeId) {
+      const overlapping = await prisma.appointment.findFirst({
+        where: {
+          companyId: company.id,
+          assigneeId: data.assigneeId,
+          status: { not: "CANCELLED" },
+          scheduledAt: { lt: endAt },
+          endAt: { gt: scheduledAt },
+        },
+        select: { title: true },
+      });
+      if (overlapping) {
+        if (i === 0) {
+          return { error: `Zeitüberschneidung: „${overlapping.title}“ ist zu dieser Zeit bereits geplant.` };
+        }
+        skipped++;
+        continue;
+      }
     }
+
+    const appointment = await prisma.appointment.create({
+      data: {
+        companyId: company.id,
+        customerId,
+        inquiryId: data.inquiryId || null,
+        assigneeId: data.assigneeId || null,
+        title: data.title,
+        type: data.type,
+        scheduledAt,
+        endAt,
+        status: "SCHEDULED",
+        amount: parseAmount(data.amount),
+        recurrenceGroupId,
+      },
+    });
+    if (!firstAppointment) firstAppointment = appointment;
+    created++;
+
+    await prisma.activity.create({
+      data: {
+        companyId: company.id,
+        customerId,
+        appointmentId: appointment.id,
+        type: "appointment.created",
+        message:
+          occurrenceCount > 1
+            ? `Termin „${appointment.title}“ wurde angelegt (Serie, Termin ${i + 1}/${occurrenceCount}).`
+            : `Termin „${appointment.title}“ wurde angelegt.`,
+      },
+    });
   }
 
-  const appointment = await prisma.appointment.create({
-    data: {
-      companyId: company.id,
-      customerId,
-      inquiryId: data.inquiryId || null,
-      assigneeId: data.assigneeId || null,
-      title: data.title,
-      type: data.type,
-      scheduledAt,
-      endAt,
-      status: "SCHEDULED",
-      amount: parseAmount(data.amount),
-    },
-  });
-
-  await prisma.activity.create({
-    data: {
-      companyId: company.id,
-      customerId,
-      appointmentId: appointment.id,
-      type: "appointment.created",
-      message: `Termin „${appointment.title}“ wurde angelegt.`,
-    },
-  });
+  if (!firstAppointment) {
+    return { error: "Es konnte kein Termin angelegt werden — alle Termine der Serie überschneiden sich." };
+  }
 
   revalidatePath(`/kunden/${customerId}`);
   revalidatePath("/heute");
   revalidatePath("/termine");
   revalidatePath("/anfragen");
   if (data.inquiryId) revalidatePath(`/anfragen/${data.inquiryId}`);
-  return { success: true };
+  return { success: true, created, skipped };
 }
 
 export async function updateAppointmentAssignee(appointmentId: string, assigneeId: string) {

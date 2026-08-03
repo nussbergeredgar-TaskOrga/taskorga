@@ -345,6 +345,7 @@ model Appointment {
   status      AppointmentStatus @default(REQUESTED)
   notes       String?
   amount      Decimal? @db.Decimal(12, 2)
+  recurrenceGroupId String? // verknüpft alle Termine derselben Serie (= id des ersten Termins)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
