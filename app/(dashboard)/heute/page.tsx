@@ -4,6 +4,7 @@ import { getCurrentCompany, getCurrentUser } from "@/lib/session";
 import { KpiCard } from "@/components/kpi-card";
 import { DashboardGrid } from "@/components/dashboard-grid";
 import { DashboardSwitcher } from "@/components/dashboard-switcher";
+import { OnboardingWelcome } from "@/components/onboarding-welcome";
 import { getDashboardLayout, getDashboards } from "@/lib/actions/dashboard";
 import { getCustomKpiValues } from "@/lib/actions/custom-kpi";
 import { getCustomChartsWithData } from "@/lib/actions/custom-chart";
@@ -47,6 +48,7 @@ export default async function HeutePage({
     savedLayout,
     customKpis,
     customCharts,
+    customerCount,
   ] = await Promise.all([
     prisma.task.count({
       where: { companyId: company.id, status: { in: ["OPEN", "IN_PROGRESS"] } },
@@ -108,6 +110,7 @@ export default async function HeutePage({
     getDashboardLayout(activeDashboardId),
     getCustomKpiValues(),
     getCustomChartsWithData(),
+    prisma.customer.count({ where: { companyId: company.id } }),
   ]);
 
   const customKpiWidgetIds = customKpis.map((k) => `custom:${k.id}`);
@@ -400,6 +403,8 @@ export default async function HeutePage({
           Guten Morgen{firstName ? `, ${firstName}` : ""}. Hier ist dein Überblick.
         </p>
       </div>
+
+      {customerCount === 0 && <OnboardingWelcome />}
 
       <DashboardSwitcher dashboards={dashboards} activeId={activeDashboardId} />
 
