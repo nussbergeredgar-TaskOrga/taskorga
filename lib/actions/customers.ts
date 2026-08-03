@@ -237,6 +237,46 @@ export async function createCustomerQuick(data: {
   return customer;
 }
 
+export async function archiveCustomer(customerId: string) {
+  const company = await getCurrentCompany();
+  const customer = await prisma.customer.findFirst({ where: { id: customerId, companyId: company.id } });
+  if (!customer) return;
+
+  await prisma.customer.update({ where: { id: customerId }, data: { archivedAt: new Date() } });
+
+  await prisma.activity.create({
+    data: {
+      companyId: company.id,
+      customerId,
+      type: "customer.archived",
+      message: `Kunde „${customer.name}“ wurde archiviert.`,
+    },
+  });
+
+  revalidatePath("/kunden");
+  revalidatePath(`/kunden/${customerId}`);
+}
+
+export async function unarchiveCustomer(customerId: string) {
+  const company = await getCurrentCompany();
+  const customer = await prisma.customer.findFirst({ where: { id: customerId, companyId: company.id } });
+  if (!customer) return;
+
+  await prisma.customer.update({ where: { id: customerId }, data: { archivedAt: null } });
+
+  await prisma.activity.create({
+    data: {
+      companyId: company.id,
+      customerId,
+      type: "customer.unarchived",
+      message: `Kunde „${customer.name}“ wurde wieder aktiviert.`,
+    },
+  });
+
+  revalidatePath("/kunden");
+  revalidatePath(`/kunden/${customerId}`);
+}
+
 export async function createContact(
   customerId: string,
   data: { name: string; role?: string; email?: string; phone?: string }

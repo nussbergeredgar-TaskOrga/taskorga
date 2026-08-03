@@ -11,6 +11,7 @@ import { DocumentTab } from "@/components/document-tab";
 import { InlineInquiryForm } from "@/components/inline-inquiry-form";
 import { CustomerInsightCard } from "@/components/customer-insight-card";
 import { ContactsList } from "@/components/contacts-list";
+import { ArchiveCustomerButton } from "@/components/archive-customer-button";
 import { RecordTasks } from "@/components/record-tasks";
 import { KpiCard } from "@/components/kpi-card";
 import { getCustomerTabsConfig } from "@/lib/actions/customer-tabs";
@@ -302,14 +303,23 @@ export default async function KundeDetailPage({
             </div>
           </div>
         </div>
-        <Link
-          href={`/kunden/${customer.id}/bearbeiten`}
-          className="flex items-center gap-1.5 rounded-lg border border-ink-100 text-ink-700 text-sm font-medium px-3 py-2 hover:bg-ink-50 transition-colors shrink-0"
-        >
-          <Pencil size={15} />
-          Bearbeiten
-        </Link>
+        <div className="flex items-center gap-2 shrink-0">
+          <Link
+            href={`/kunden/${customer.id}/bearbeiten`}
+            className="flex items-center gap-1.5 rounded-lg border border-ink-100 text-ink-700 text-sm font-medium px-3 py-2 hover:bg-ink-50 transition-colors"
+          >
+            <Pencil size={15} />
+            Bearbeiten
+          </Link>
+          <ArchiveCustomerButton customerId={customer.id} archived={!!customer.archivedAt} />
+        </div>
       </div>
+
+      {customer.archivedAt && (
+        <div className="rounded-lg border border-warning/30 bg-warning/5 px-4 py-2.5 text-sm text-warning">
+          Dieser Kunde ist archiviert und erscheint nicht in der aktiven Kundenliste.
+        </div>
+      )}
 
       {/* KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

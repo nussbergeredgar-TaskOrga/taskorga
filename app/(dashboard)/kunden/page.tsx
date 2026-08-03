@@ -1,13 +1,18 @@
 import Link from "next/link";
-import { Plus, Building2, User as UserIcon } from "lucide-react";
+import { Plus, Building2, User as UserIcon, Archive } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { getCurrentCompany } from "@/lib/session";
 
-export default async function KundenPage() {
+export default async function KundenPage({
+  searchParams,
+}: {
+  searchParams: { archiviert?: string };
+}) {
   const company = await getCurrentCompany();
+  const showArchived = searchParams.archiviert === "1";
 
   const customers = await prisma.customer.findMany({
-    where: { companyId: company.id },
+    where: { companyId: company.id, archivedAt: showArchived ? { not: null } : null },
     orderBy: { createdAt: "desc" },
     include: {
       _count: { select: { projects: true, invoices: true } },
@@ -20,16 +25,25 @@ export default async function KundenPage() {
         <div>
           <h1 className="text-2xl font-semibold text-ink-900">Kunden</h1>
           <p className="text-sm text-ink-500 mt-1">
-            {customers.length} Kunde{customers.length !== 1 ? "n" : ""}
+            {customers.length} {showArchived ? "archivierte " : ""}Kunde{customers.length !== 1 ? "n" : ""}
           </p>
         </div>
-        <Link
-          href="/kunden/neu"
-          className="flex items-center gap-1.5 rounded-lg bg-brand-500 text-white text-sm font-medium px-4 py-2.5 hover:bg-brand-600 transition-colors"
-        >
-          <Plus size={16} />
-          Neuer Kunde
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link
+            href={showArchived ? "/kunden" : "/kunden?archiviert=1"}
+            className="flex items-center gap-1.5 rounded-lg border border-ink-100 text-ink-700 text-sm font-medium px-3 py-2.5 hover:bg-ink-50 transition-colors"
+          >
+            <Archive size={15} />
+            {showArchived ? "Aktive anzeigen" : "Archivierte anzeigen"}
+          </Link>
+          <Link
+            href="/kunden/neu"
+            className="flex items-center gap-1.5 rounded-lg bg-brand-500 text-white text-sm font-medium px-4 py-2.5 hover:bg-brand-600 transition-colors"
+          >
+            <Plus size={16} />
+            Neuer Kunde
+          </Link>
+        </div>
       </div>
 
       {customers.length === 0 ? (

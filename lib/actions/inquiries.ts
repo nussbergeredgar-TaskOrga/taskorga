@@ -157,6 +157,31 @@ export async function updateInquiry(
   redirect(`/anfragen/${inquiryId}`);
 }
 
+export async function deleteInquiry(inquiryId: string): Promise<{ error?: string; success?: boolean }> {
+  const company = await getCurrentCompany();
+  const inquiry = await prisma.inquiry.findFirst({
+    where: { id: inquiryId, companyId: company.id },
+    include: { _count: { select: { quotes: true } } },
+  });
+  if (!inquiry) return { error: "Anfrage nicht gefunden." };
+  if (inquiry._count.quotes > 0) {
+    return { error: "Diese Anfrage hat bereits ein verknüpftes Angebot und kann nicht gelöscht werden." };
+  }
+
+  await prisma.$transaction([
+    prisma.inquiryStepEntry.deleteMany({ where: { inquiryId } }),
+    prisma.activity.deleteMany({ where: { inquiryId } }),
+    prisma.task.updateMany({ where: { inquiryId }, data: { inquiryId: null } }),
+    prisma.appointment.updateMany({ where: { inquiryId }, data: { inquiryId: null } }),
+    prisma.document.deleteMany({ where: { inquiryId } }),
+    prisma.inquiry.delete({ where: { id: inquiryId } }),
+  ]);
+
+  revalidatePath("/anfragen");
+  revalidatePath(`/kunden/${inquiry.customerId}`);
+  return { success: true };
+}
+
 export async function createInquiryQuick(
   customerId: string,
   data: { title: string; source?: string; amount?: string }

@@ -6,6 +6,7 @@ import { getCurrentCompany } from "@/lib/session";
 import { InquiryStatusActions } from "@/components/inquiry-status-actions";
 import { InquiryWorkflow } from "@/components/inquiry-workflow";
 import { InquiryAmount } from "@/components/inquiry-amount";
+import { DeleteInquiryButton } from "@/components/delete-inquiry-button";
 
 export default async function AnfrageDetailPage({ params }: { params: { id: string } }) {
   const company = await getCurrentCompany();
@@ -47,13 +48,16 @@ export default async function AnfrageDetailPage({ params }: { params: { id: stri
             <InquiryAmount inquiryId={inquiry.id} amount={inquiry.amount != null ? Number(inquiry.amount) : null} />
           </div>
         </div>
-        <Link
-          href={`/anfragen/${inquiry.id}/bearbeiten`}
-          className="flex items-center gap-1.5 rounded-lg border border-ink-100 text-ink-700 text-sm font-medium px-3 py-2 hover:bg-ink-50 transition-colors shrink-0"
-        >
-          <Pencil size={15} />
-          Bearbeiten
-        </Link>
+        <div className="flex items-center gap-2 shrink-0">
+          <Link
+            href={`/anfragen/${inquiry.id}/bearbeiten`}
+            className="flex items-center gap-1.5 rounded-lg border border-ink-100 text-ink-700 text-sm font-medium px-3 py-2 hover:bg-ink-50 transition-colors"
+          >
+            <Pencil size={15} />
+            Bearbeiten
+          </Link>
+          {inquiry.quotes.length === 0 && <DeleteInquiryButton inquiryId={inquiry.id} />}
+        </div>
       </div>
 
       <div className="rounded-card border border-ink-100 bg-surface p-6 shadow-card space-y-4">
