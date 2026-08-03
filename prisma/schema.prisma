@@ -346,6 +346,8 @@ model Appointment {
   notes       String?
   amount      Decimal? @db.Decimal(12, 2)
   recurrenceGroupId String? // verknüpft alle Termine derselben Serie (= id des ersten Termins)
+  cancelReason String? // Grund bei Status CANCELLED
+  cancelledBy  String? // wer abgesagt hat, z.B. "Kunde" oder "Wir"
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

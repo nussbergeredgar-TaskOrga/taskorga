@@ -144,10 +144,18 @@ export async function updateAppointmentAssignee(appointmentId: string, assigneeI
 export async function updateAppointmentStatus(
   appointmentId: string,
   customerId: string | null,
-  status: AppointmentStatus
+  status: AppointmentStatus,
+  cancelInfo?: { cancelledBy?: string; cancelReason?: string }
 ) {
   const company = await getCurrentCompany();
-  await prisma.appointment.updateMany({ where: { id: appointmentId, companyId: company.id }, data: { status } });
+  await prisma.appointment.updateMany({
+    where: { id: appointmentId, companyId: company.id },
+    data: {
+      status,
+      cancelledBy: status === "CANCELLED" ? cancelInfo?.cancelledBy?.trim() || null : null,
+      cancelReason: status === "CANCELLED" ? cancelInfo?.cancelReason?.trim() || null : null,
+    },
+  });
   if (customerId) revalidatePath(`/kunden/${customerId}`);
   revalidatePath(`/termine/${appointmentId}`);
   revalidatePath("/heute");

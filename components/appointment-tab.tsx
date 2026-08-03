@@ -15,6 +15,8 @@ type Appointment = {
   scheduledAt: Date | null;
   endAt: Date | null;
   amount: number | null;
+  cancelledBy?: string | null;
+  cancelReason?: string | null;
 };
 
 const STATUS_LABELS: Record<AppointmentStatus, string> = {
@@ -312,15 +314,30 @@ export function AppointmentTab({
                 {a.type} · {formatRange(a.scheduledAt, a.endAt)}
                 {a.amount != null && ` · ${a.amount.toLocaleString("de-DE")} €`}
               </p>
+              {a.status === "CANCELLED" && (a.cancelledBy || a.cancelReason) && (
+                <p className="text-xs text-danger">
+                  Abgesagt{a.cancelledBy ? ` von ${a.cancelledBy}` : ""}
+                  {a.cancelReason ? ` — ${a.cancelReason}` : ""}
+                </p>
+              )}
             </div>
             <select
               value={a.status}
               disabled={pending}
-              onChange={(e) =>
-                startTransition(() =>
-                  updateAppointmentStatus(a.id, customerId, e.target.value as AppointmentStatus)
-                )
-              }
+              onChange={(e) => {
+                const value = e.target.value as AppointmentStatus;
+                if (value === "CANCELLED") {
+                  const cancelledBy = prompt("Wer hat den Termin abgesagt? (z. B. Kunde, Wir)");
+                  if (cancelledBy === null) return;
+                  const cancelReason = prompt("Grund der Absage (optional):");
+                  if (cancelReason === null) return;
+                  startTransition(() =>
+                    updateAppointmentStatus(a.id, customerId, value, { cancelledBy, cancelReason })
+                  );
+                  return;
+                }
+                startTransition(() => updateAppointmentStatus(a.id, customerId, value));
+              }}
               className="text-xs rounded-lg border border-ink-100 px-2 py-1 bg-surface outline-none"
             >
               {Object.entries(STATUS_LABELS).map(([value, label]) => (

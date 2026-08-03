@@ -67,6 +67,12 @@ export default async function TerminDetailPage({ params }: { params: { id: strin
           <p className="text-sm text-ink-500 mt-1">
             Zuständig: {appointment.assignee?.name ?? "Niemand"}
           </p>
+          {appointment.status === "CANCELLED" && (appointment.cancelledBy || appointment.cancelReason) && (
+            <p className="text-sm text-danger mt-1">
+              Abgesagt{appointment.cancelledBy ? ` von ${appointment.cancelledBy}` : ""}
+              {appointment.cancelReason ? ` — ${appointment.cancelReason}` : ""}
+            </p>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <AppointmentAssigneeSelect
