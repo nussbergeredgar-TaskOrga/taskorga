@@ -2,10 +2,10 @@ import Link from "next/link";
 import { AlertTriangle, Plus, Download } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/session";
-import { statusColor } from "@/lib/utils";
 import { KpiCard } from "@/components/kpi-card";
 import { ExpenseForm } from "@/components/expense-form";
 import { ExpensesList } from "@/components/expenses-list";
+import { InvoicesListView } from "@/components/invoices-list-view";
 import { markOverdueInvoices } from "@/lib/actions/invoices";
 
 const STATUS_LABELS: Record<string, string> = {
@@ -174,30 +174,17 @@ export default async function FinanzenPage({
           <p className="text-ink-500 text-sm">Keine Rechnungen mit diesem Filter.</p>
         </div>
       ) : (
-        <div className="space-y-2">
-          {displayedInvoices.map((inv) => (
-            <Link
-              key={inv.id}
-              href={`/finanzen/${inv.id}`}
-              className={`flex items-center justify-between rounded-lg border-l-4 bg-surface p-4 shadow-card hover:shadow-cardHover transition-shadow ${statusColor[inv.status]}`}
-            >
-              <div>
-                <p className="font-medium text-ink-900">{inv.number}</p>
-                <p className="text-sm text-ink-500">{inv.customer.name}</p>
-              </div>
-              <div className="text-right">
-                <p className="font-mono text-sm font-medium text-ink-900">
-                  {Number(inv.totalGross).toLocaleString("de-DE")} €
-                </p>
-                <p className="text-xs text-ink-500">
-                  {STATUS_LABELS[inv.status]}
-                  {inv.dueDate && OPEN_INVOICE_STATUSES.includes(inv.status) &&
-                    ` · fällig ${inv.dueDate.toLocaleDateString("de-DE")}`}
-                </p>
-              </div>
-            </Link>
-          ))}
-        </div>
+        <InvoicesListView
+          invoices={displayedInvoices.map((inv) => ({
+            id: inv.id,
+            number: inv.number,
+            customerName: inv.customer.name,
+            totalGross: Number(inv.totalGross),
+            status: inv.status,
+            dueDate: inv.dueDate ? inv.dueDate.toISOString() : null,
+            createdAt: inv.createdAt.toISOString(),
+          }))}
+        />
       )}
 
       {/* Meine Ausgaben */}
