@@ -239,7 +239,7 @@ export default async function KundeDetailPage({
     },
     dokumente: {
       label: "Dokumente",
-      content: <DocumentTab customerId={customer.id} documents={customer.documents} />,
+      content: <DocumentTab link={{ customerId: customer.id }} documents={customer.documents} />,
     },
     aufgaben: {
       label: "Aufgaben",

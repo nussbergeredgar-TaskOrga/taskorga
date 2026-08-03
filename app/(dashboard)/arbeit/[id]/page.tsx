@@ -8,6 +8,7 @@ import { TaskList } from "@/components/task-list";
 import { TimeTracking } from "@/components/time-tracking";
 import { ExpenseForm } from "@/components/expense-form";
 import { ExpensesList } from "@/components/expenses-list";
+import { DocumentTab } from "@/components/document-tab";
 
 export default async function AuftragDetailPage({ params }: { params: { id: string } }) {
   const user = await getCurrentUser();
@@ -24,6 +25,7 @@ export default async function AuftragDetailPage({ params }: { params: { id: stri
         orderBy: { date: "desc" },
         include: { documents: { select: { id: true, fileName: true, fileUrl: true } } },
       },
+      documents: { orderBy: { createdAt: "desc" } },
     },
   });
   if (!project) notFound();
@@ -103,6 +105,11 @@ export default async function AuftragDetailPage({ params }: { params: { id: stri
           <ExpenseForm defaultProjectId={project.id} />
         </div>
         <ExpensesList title="Materialkosten & Ausgaben" expenses={mappedExpenses} />
+      </div>
+
+      <div className="rounded-card border border-ink-100 bg-surface p-5 shadow-card">
+        <h2 className="font-display font-semibold text-ink-900 mb-3">Dokumente</h2>
+        <DocumentTab link={{ projectId: project.id }} documents={project.documents} />
       </div>
     </div>
   );

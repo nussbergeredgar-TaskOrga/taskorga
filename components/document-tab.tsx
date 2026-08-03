@@ -4,6 +4,7 @@ import { useRef, useState, useTransition } from "react";
 import { upload } from "@vercel/blob/client";
 import { FileText, ExternalLink, Upload, Camera } from "lucide-react";
 import { addDocument } from "@/lib/actions/documents";
+import type { RecordLink } from "@/lib/record-link";
 
 type Doc = { id: string; fileName: string; fileUrl: string; fileSize: number; createdAt: Date };
 
@@ -13,7 +14,7 @@ function formatSize(bytes: number) {
   return mb >= 1 ? `${mb.toFixed(1)} MB` : `${(bytes / 1024).toFixed(0)} KB`;
 }
 
-export function DocumentTab({ customerId, documents }: { customerId: string; documents: Doc[] }) {
+export function DocumentTab({ link, documents }: { link: RecordLink; documents: Doc[] }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -35,7 +36,7 @@ export function DocumentTab({ customerId, documents }: { customerId: string; doc
       });
 
       startTransition(() =>
-        addDocument(customerId, {
+        addDocument(link, {
           fileName: file.name,
           fileUrl: blob.url,
           mimeType: file.type || "application/octet-stream",

@@ -6,6 +6,7 @@ import { QuoteActions } from "@/components/quote-actions";
 import { QuoteVersionHistory } from "@/components/quote-version-history";
 import { RecordNotes } from "@/components/record-notes";
 import { RecordTasks } from "@/components/record-tasks";
+import { DocumentTab } from "@/components/document-tab";
 import { getCurrentCompany } from "@/lib/session";
 
 export default async function AngebotDetailPage({ params }: { params: { id: string } }) {
@@ -19,6 +20,7 @@ export default async function AngebotDetailPage({ params }: { params: { id: stri
         project: true,
         comments: { orderBy: { createdAt: "desc" }, include: { user: true } },
         tasks: { orderBy: { createdAt: "desc" } },
+        documents: { orderBy: { createdAt: "desc" } },
       },
     }),
     prisma.quoteVersion.findMany({
@@ -138,6 +140,11 @@ export default async function AngebotDetailPage({ params }: { params: { id: stri
           link={link}
           tasks={quote.tasks.map((t) => ({ id: t.id, title: t.title, status: t.status, dueDate: t.dueDate }))}
         />
+      </div>
+
+      <div className="rounded-card border border-ink-100 bg-surface p-6 shadow-card">
+        <h2 className="font-display font-semibold text-ink-900 mb-3">Dokumente</h2>
+        <DocumentTab link={link} documents={quote.documents} />
       </div>
 
       <QuoteVersionHistory
