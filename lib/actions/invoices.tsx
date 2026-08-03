@@ -289,7 +289,11 @@ export async function sendPaymentReminder(invoiceId: string): Promise<{ error?: 
   });
 
   const levelIndex = invoice.reminderLevel; // 0 = noch keine gesendet -> erste Stufe
-  const nextLevelNumber = Math.min(invoice.reminderLevel + 1, Math.max(configuredLevels.length, 3));
+  // Firmen ohne eigene Konfiguration bekommen die 3 eingebauten Standardstufen;
+  // eine bewusst konfigurierte, kürzere Stufenliste wird respektiert statt auf
+  // mindestens 3 Stufen aufgefüllt zu werden.
+  const maxLevel = configuredLevels.length > 0 ? configuredLevels.length : 3;
+  const nextLevelNumber = Math.min(invoice.reminderLevel + 1, maxLevel);
 
   const template = await prisma.documentTemplate.findFirst({
     where: { companyId: invoice.companyId, type: "INVOICE", isDefault: true },
@@ -310,7 +314,13 @@ export async function sendPaymentReminder(invoiceId: string): Promise<{ error?: 
     totalGross: Number(invoice.totalGross),
   });
 
-  const configuredLevel = configuredLevels[levelIndex];
+  // Bei konfigurierten Stufen wird immer eine davon verwendet (bei Ueberschreiten
+  // aller Stufen die letzte erneut) -- der eingebaute Fallback-Text kommt nur zum
+  // Einsatz, wenn die Firma ueberhaupt keine eigenen Stufen konfiguriert hat.
+  const configuredLevel =
+    configuredLevels.length > 0
+      ? configuredLevels[Math.min(levelIndex, configuredLevels.length - 1)]
+      : undefined;
   const levelLabel = configuredLevel?.label || FALLBACK_LABELS[Math.min(nextLevelNumber, 3)] || "Zahlungserinnerung";
   const rawIntro = configuredLevel?.introText || FALLBACK_INTROS[Math.min(nextLevelNumber, 3)];
   const resolvedIntro = resolvePlaceholders(rawIntro, context);
