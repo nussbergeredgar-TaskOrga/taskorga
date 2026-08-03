@@ -64,7 +64,7 @@ export default async function AuftragDetailPage({ params }: { params: { id: stri
             )}
           </p>
         </div>
-        <ProjectActions projectId={project.id} status={project.status} />
+        <ProjectActions projectId={project.id} status={project.status} cancelReason={project.cancelReason} />
       </div>
 
       <div className="grid md:grid-cols-2 gap-4">

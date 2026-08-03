@@ -62,6 +62,36 @@ export async function updateProjectStatus(projectId: string, status: ProjectStat
   revalidatePath("/arbeit");
 }
 
+export async function cancelProject(
+  projectId: string,
+  reason?: string
+): Promise<{ error?: string; success?: boolean }> {
+  const company = await getCurrentCompany();
+  const existing = await prisma.project.findFirst({ where: { id: projectId, companyId: company.id } });
+  if (!existing) return { error: "Auftrag nicht gefunden." };
+  if (existing.status === "CANCELLED") return { error: "Dieser Auftrag ist bereits storniert." };
+  if (existing.status === "DONE") return { error: "Ein bereits abgeschlossener Auftrag kann nicht storniert werden." };
+
+  const project = await prisma.project.update({
+    where: { id: projectId },
+    data: { status: "CANCELLED", cancelReason: reason?.trim() || null },
+  });
+
+  await prisma.activity.create({
+    data: {
+      companyId: project.companyId,
+      customerId: project.customerId,
+      projectId: project.id,
+      type: "project.status_changed",
+      message: `Auftrag ${project.number} wurde storniert.${reason?.trim() ? ` Grund: ${reason.trim()}` : ""}`,
+    },
+  });
+
+  revalidatePath(`/arbeit/${projectId}`);
+  revalidatePath("/arbeit");
+  return { success: true };
+}
+
 export async function addProjectTask(projectId: string, title: string) {
   if (!title.trim()) return;
   const company = await getCurrentCompany();

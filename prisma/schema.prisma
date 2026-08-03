@@ -435,6 +435,7 @@ model Project {
   number String
   title  String
   status ProjectStatus @default(PLANNED)
+  cancelReason String? // Grund bei Status CANCELLED
 
   startDate DateTime?
   endDate   DateTime?
