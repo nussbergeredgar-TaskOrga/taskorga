@@ -52,6 +52,14 @@ export default async function AuftragDetailPage({ params }: { params: { id: stri
             <Link href={`/kunden/${project.customer.id}`} className="hover:underline">
               {project.customer.name}
             </Link>
+            {project.quote && (
+              <>
+                {" · "}
+                <Link href={`/angebote/${project.quote.id}`} className="hover:underline">
+                  Angebot {project.quote.number}
+                </Link>
+              </>
+            )}
           </p>
         </div>
         <ProjectActions projectId={project.id} status={project.status} />
