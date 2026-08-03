@@ -156,23 +156,35 @@ export function CustomerForm({
         />
       )}
       {fc("phone").visible && (
-        <Field label="Telefon" name="phone" required={fc("phone").required} defaultValue={customer?.phone} />
+        <Field
+          label="Telefon"
+          name="phone"
+          required={fc("phone").required}
+          defaultValue={customer?.phone}
+          errors={state.errors?.phone}
+        />
       )}
 
       {(fc("address").visible || fc("zip").visible) && (
         <div className="grid grid-cols-3 gap-4">
           {fc("address").visible && (
             <div className="col-span-2">
-              <Field label="Adresse" name="address" required={fc("address").required} defaultValue={customer?.address} />
+              <Field
+                label="Adresse"
+                name="address"
+                required={fc("address").required}
+                defaultValue={customer?.address}
+                errors={state.errors?.address}
+              />
             </div>
           )}
           {fc("zip").visible && (
-            <Field label="PLZ" name="zip" required={fc("zip").required} defaultValue={customer?.zip} />
+            <Field label="PLZ" name="zip" required={fc("zip").required} defaultValue={customer?.zip} errors={state.errors?.zip} />
           )}
         </div>
       )}
       {fc("city").visible && (
-        <Field label="Ort" name="city" required={fc("city").required} defaultValue={customer?.city} />
+        <Field label="Ort" name="city" required={fc("city").required} defaultValue={customer?.city} errors={state.errors?.city} />
       )}
 
       {fc("notes").visible && (
@@ -189,6 +201,7 @@ export function CustomerForm({
             defaultValue={customer?.notes ?? ""}
             className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 transition-colors"
           />
+          {state.errors?.notes && <p className="text-xs text-danger mt-1">{state.errors.notes[0]}</p>}
         </div>
       )}
 
