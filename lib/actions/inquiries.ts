@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentCompany } from "@/lib/session";
 import { getFieldConfig } from "@/lib/actions/field-config";
 import { FIELD_CATALOGS } from "@/lib/field-config-catalog";
+import { INQUIRY_STATUS_LABELS as STATUS_LABELS } from "@/lib/status-labels";
 import type { InquiryStatus } from "@prisma/client";
 
 const inquirySchema = z.object({
@@ -277,15 +278,6 @@ export async function updateInquiryAmount(inquiryId: string, amount: string) {
   revalidatePath("/heute");
   return inquiry;
 }
-
-const STATUS_LABELS: Record<InquiryStatus, string> = {
-  NEW: "Neu",
-  CALLBACK_SCHEDULED: "Rückruf geplant",
-  CALL_DONE: "Telefonat erfolgt",
-  QUOTE_CREATED: "Angebot erstellt",
-  WON: "Gewonnen",
-  LOST: "Verloren",
-};
 
 export async function updateInquiryStatus(inquiryId: string, status: InquiryStatus, lostReason?: string) {
   const company = await getCurrentCompany();

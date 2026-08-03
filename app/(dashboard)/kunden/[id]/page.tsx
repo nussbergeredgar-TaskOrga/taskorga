@@ -17,6 +17,7 @@ import { KpiCard } from "@/components/kpi-card";
 import { getCustomerTabsConfig } from "@/lib/actions/customer-tabs";
 import { getCurrentUser, getCurrentCompany } from "@/lib/session";
 import { computeRevenue } from "@/lib/revenue";
+import { INQUIRY_STATUS_LABELS } from "@/lib/status-labels";
 import { formatDistanceToNow } from "date-fns";
 import { de } from "date-fns/locale";
 
@@ -141,7 +142,7 @@ export default async function KundeDetailPage({
                   >
                     <span className="font-medium">{i.title}</span>
                     <span className="text-ink-500 ml-2">
-                      {i.status}
+                      {INQUIRY_STATUS_LABELS[i.status]}
                       {i.amount != null && ` · ${Number(i.amount).toLocaleString("de-DE")} €`}
                     </span>
                   </Link>
