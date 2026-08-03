@@ -40,7 +40,8 @@ export function ItemTemplatesManager({ templates }: { templates: Template[] }) {
     });
   }
 
-  function remove(id: string) {
+  function remove(id: string, description: string) {
+    if (!confirm(`Position „${description}“ wirklich löschen?`)) return;
     startTransition(async () => {
       await deleteItemTemplate(id);
       router.refresh();
@@ -59,7 +60,7 @@ export function ItemTemplatesManager({ templates }: { templates: Template[] }) {
           </div>
           <button
             disabled={pending}
-            onClick={() => remove(t.id)}
+            onClick={() => remove(t.id, t.description)}
             className="p-1.5 text-ink-300 hover:text-danger transition-colors shrink-0"
             aria-label="Löschen"
           >

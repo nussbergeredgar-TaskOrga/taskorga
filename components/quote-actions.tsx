@@ -109,7 +109,10 @@ export function QuoteActions({
         </button>
         <button
           disabled={pending}
-          onClick={() => startTransition(() => updateQuoteStatus(quoteId, "REJECTED"))}
+          onClick={() => {
+            if (!confirm("Angebot wirklich als abgelehnt markieren?")) return;
+            startTransition(() => updateQuoteStatus(quoteId, "REJECTED"));
+          }}
           className="rounded-lg border border-danger text-danger px-3 py-2 text-sm font-medium hover:bg-danger/5 transition-colors"
         >
           Ablehnen
