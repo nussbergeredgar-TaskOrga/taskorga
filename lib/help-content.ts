@@ -12,6 +12,7 @@ export const HELP_CHAPTERS: HelpChapter[] = [
     description: "Registrierung, Login, Navigation.",
     paragraphs: [
       "Ein neues Firmenkonto legst du unter „Jetzt kostenlos registrieren\" auf der Login-Seite an. Du brauchst dafür einen Einladungscode (den bekommst du von deinem Admin). Dein Konto ist danach komplett von allen anderen Firmen getrennt — niemand sonst sieht deine Daten.",
+      "**Was tue ich als Erstes?** Direkt nach der Registrierung ist die Firma noch komplett leer. Am schnellsten kommst du so los: (1) unter **Kunden → Neuer Kunde** den ersten Kunden anlegen, (2) unter **Einstellungen → Firma → Firmenprofil** Adresse, Steuernummer und Bankdaten eintragen (erscheinen automatisch auf Angeboten/Rechnungen), (3) unter **Anfragen → Neue Anfrage** den ersten Kontakt erfassen. Solange noch kein Kunde angelegt ist, zeigt „Heute\" dafür eine eigene Willkommens-Kachel mit denselben drei Schritten.",
       "Unter **Einstellungen → Mein Konto → Meine Navigation** kannst du festlegen, welche Menüpunkte bei dir angezeigt werden und in welcher Reihenfolge — das ist eine persönliche Einstellung, jeder Nutzer kann sie individuell anpassen.",
       "Passwort vergessen? Auf der Login-Seite auf „Passwort vergessen?\" klicken. Falls der E-Mail-Versand noch nicht eingerichtet ist, kann ein Admin dein Passwort auch direkt unter Einstellungen → Firma → Benutzerverwaltung zurücksetzen.",
     ],
