@@ -67,16 +67,19 @@ export const HELP_CHAPTERS: HelpChapter[] = [
     description: "Direkt anlegen, aus Angebot, Zeiterfassung.",
     paragraphs: [
       "Ein Auftrag entsteht entweder automatisch, wenn ein Angebot angenommen wird, oder du legst ihn direkt an (Button „Neuer Auftrag\").",
-      "Auf der Auftrags-Detailseite kannst du Aufgaben verwalten, die Zeit erfassen (Stunden/Minuten je Eintrag) und eine Rechnung mit denselben Positionen wie im Angebot erstellen.",
+      "Auf der Auftrags-Detailseite kannst du Aufgaben verwalten, die Zeit erfassen (Stunden/Minuten je Eintrag) und eine Rechnung erstellen — wahlweise mit allen, einzelnen oder noch keinen Angebotspositionen sowie optional den erfassten Arbeitsstunden.",
     ],
   },
   {
     id: "rechnungen",
     title: "Rechnungen & Mahnwesen",
-    description: "Erstellen, Versand, Erinnerungsstufen.",
+    description: "Erstellen, Versand, Teilzahlungen, Erinnerungsstufen.",
     paragraphs: [
-      "Rechnungen entstehen aus einem Auftrag. Auf der Detailseite kannst du sie per E-Mail versenden (inkl. Vorschau/Bestätigung wie bei Angeboten), als bezahlt markieren oder eine Zahlungserinnerung/Mahnung anstoßen.",
-      "Überfällige Rechnungen werden automatisch markiert und erscheinen im roten „Mahnwesen\"-Bereich auf der Finanzen-Seite. Welche Mahnstufen es gibt, ab wann sie sinnvoll sind und welcher Text verschickt wird, legst du unter **Einstellungen → Dokumente & Finanzen → Mahnwesen** fest.",
+      "Rechnungen entstehen aus einem Auftrag. Beim Erstellen wählst du aus, welche Angebotspositionen übernommen werden — du musst also nicht immer den gesamten Auftrag auf einmal abrechnen. Hat ein Auftrag bereits eine Rechnung, warnt dich die App vor einer versehentlichen Doppelabrechnung.",
+      "Ist unter **Einstellungen → Dokumente & Finanzen** ein Stundensatz hinterlegt, kannst du beim Erstellen zusätzlich noch nicht abgerechnete Zeiterfassungseinträge des Auftrags mit auf die Rechnung nehmen.",
+      "Auf der Rechnungs-Detailseite kannst du die Rechnung per E-Mail versenden (inkl. Vorschau/Bestätigung wie bei Angeboten), **Teilzahlungen erfassen** (z. B. bei Anzahlungen), komplett als bezahlt markieren oder eine Zahlungserinnerung/Mahnung anstoßen. Von dort aus gelangst du auch direkt zum zugehörigen Auftrag und zum ursprünglichen Angebot. Eine noch nicht bezahlte Rechnung kannst du außerdem **stornieren**.",
+      "Wie viele Tage nach Rechnungsstellung eine Zahlung fällig ist (Zahlungsziel), legst du unter **Einstellungen → Dokumente & Finanzen** fest.",
+      "Überfällige Rechnungen werden automatisch markiert und erscheinen im roten „Mahnwesen\"-Bereich auf der Finanzen-Seite, inklusive Datum der zuletzt versendeten Mahnstufe. Welche Mahnstufen es gibt, ab wann sie sinnvoll sind und welcher Text verschickt wird, legst du unter **Einstellungen → Dokumente & Finanzen → Mahnwesen** fest.",
     ],
   },
   {
