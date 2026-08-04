@@ -158,9 +158,10 @@ export function TeamManager({ users, currentUserId }: { users: TeamUser[]; curre
             </select>
           </div>
           <p className="text-xs text-ink-300">
-            Es wird noch keine Einladungs-E-Mail verschickt — bitte E-Mail und Startpasswort selbst
-            an die Person weitergeben. Passwort kann sich die Person später selbst ändern, oder du
-            setzt es über das Schlüssel-Symbol jederzeit neu.
+            Die Person erhält automatisch eine Willkommens-E-Mail mit Login-Hinweis. Das Startpasswort
+            wird darin aus Sicherheitsgründen nicht mitgeschickt — bitte selbst weitergeben, oder die
+            Person nutzt „Passwort vergessen?“. Passwort kann sich die Person später selbst ändern,
+            oder du setzt es über das Schlüssel-Symbol jederzeit neu.
           </p>
           {state.error && <p className="text-xs text-danger">{state.error}</p>}
           {state.success && <p className="text-xs text-success">Nutzer wurde angelegt.</p>}

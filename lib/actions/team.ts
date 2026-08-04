@@ -5,6 +5,7 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/session";
+import { sendTeamInviteEmail } from "@/lib/email";
 import type { Permissions } from "@/lib/permissions";
 
 export type CreateUserState = { error?: string; success?: boolean };
@@ -65,6 +66,20 @@ export async function createUser(
       message: `Teammitglied „${newUser.name}“ (${newUser.email}) wurde als ${parsed.data.roleName} angelegt.`,
     },
   });
+
+  try {
+    const company = await prisma.company.findUniqueOrThrow({ where: { id: admin.companyId } });
+    const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
+    await sendTeamInviteEmail({
+      to: newUser.email,
+      name: newUser.name,
+      companyName: company.name,
+      loginUrl: `${baseUrl}/login`,
+    });
+  } catch {
+    // Anlegen des Nutzers soll nicht scheitern, nur weil der E-Mail-Versand
+    // (noch) nicht eingerichtet ist -- Admin teilt Zugangsdaten dann manuell mit.
+  }
 
   revalidatePath("/einstellungen");
   return { success: true };

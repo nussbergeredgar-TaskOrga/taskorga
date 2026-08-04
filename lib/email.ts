@@ -43,6 +43,39 @@ export async function sendEmailVerificationEmail(to: string, verifyUrl: string) 
   });
 }
 
+export async function sendTeamInviteEmail({
+  to,
+  name,
+  companyName,
+  loginUrl,
+}: {
+  to: string;
+  name: string;
+  companyName: string;
+  loginUrl: string;
+}) {
+  if (!resend) {
+    throw new Error(
+      "E-Mail-Versand ist noch nicht eingerichtet. Bitte der Person Login-Daten manuell mitteilen."
+    );
+  }
+
+  await resend.emails.send({
+    from: process.env.EMAIL_FROM || "TaskOrga <onboarding@resend.dev>",
+    to,
+    subject: `Dein TaskOrga-Zugang für ${companyName}`,
+    html: `
+      <p>Hallo ${name},</p>
+      <p>für dich wurde ein TaskOrga-Konto für <strong>${companyName}</strong> angelegt.</p>
+      <p>Melde dich mit dieser E-Mail-Adresse und dem Startpasswort an, das dir von deinem Admin
+      mitgeteilt wurde:</p>
+      <p><a href="${loginUrl}">${loginUrl}</a></p>
+      <p>Falls du kein Startpasswort erhalten hast, kannst du auf der Login-Seite über
+      „Passwort vergessen?“ selbst eines vergeben.</p>
+    `,
+  });
+}
+
 export async function sendPaymentReminderEmail({
   to,
   greeting,
