@@ -20,6 +20,8 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [twoFactorCode, setTwoFactorCode] = useState("");
+  const [needsTwoFactor, setNeedsTwoFactor] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -31,13 +33,29 @@ function LoginForm() {
     const result = await signIn("credentials", {
       email,
       password,
+      // Nicht "twoFactorCode: undefined" uebergeben -- next-auth serialisiert
+      // die credentials clientseitig ueber URLSearchParams, und dabei wird
+      // "undefined" zum literalen String "undefined", was serverseitig als
+      // (falscher) Code ankaeme statt als fehlender Code erkannt zu werden.
+      ...(needsTwoFactor ? { twoFactorCode } : {}),
       redirect: false,
     });
 
     setLoading(false);
 
     if (result?.error) {
-      setError(result.error === "CredentialsSignin" ? "E-Mail oder Passwort ist falsch." : result.error);
+      if (result.error === "2FA_REQUIRED") {
+        setNeedsTwoFactor(true);
+        setError("");
+        return;
+      }
+      setError(
+        result.error === "CredentialsSignin"
+          ? needsTwoFactor
+            ? "E-Mail, Passwort oder Code ist falsch."
+            : "E-Mail oder Passwort ist falsch."
+          : result.error
+      );
       return;
     }
 
@@ -57,39 +75,74 @@ function LoginForm() {
           onSubmit={handleSubmit}
           className="bg-surface rounded-card border border-ink-100 shadow-card p-6 space-y-4"
         >
-          <div>
-            <label htmlFor="email" className="block text-sm font-medium text-ink-700 mb-1.5">
-              E-Mail
-            </label>
-            <input
-              id="email"
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500"
-              placeholder="name@firma.de"
-            />
-          </div>
-
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label htmlFor="password" className="block text-sm font-medium text-ink-700">
-                Passwort
+          {needsTwoFactor ? (
+            <div>
+              <label htmlFor="twoFactorCode" className="block text-sm font-medium text-ink-700 mb-1.5">
+                Zwei-Faktor-Code
               </label>
-              <Link href="/passwort-vergessen" className="text-xs text-brand-700 hover:underline">
-                Passwort vergessen?
-              </Link>
+              <input
+                id="twoFactorCode"
+                type="text"
+                inputMode="numeric"
+                autoFocus
+                required
+                value={twoFactorCode}
+                onChange={(e) => setTwoFactorCode(e.target.value)}
+                className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 font-mono tracking-widest"
+                placeholder="123456"
+              />
+              <p className="text-xs text-ink-300 mt-1.5">
+                Code aus deiner Authenticator-App, oder einer deiner Backup-Codes.
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setNeedsTwoFactor(false);
+                  setTwoFactorCode("");
+                  setError("");
+                }}
+                className="text-xs text-ink-500 hover:underline mt-2"
+              >
+                Zurück
+              </button>
             </div>
-            <input
-              id="password"
-              type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500"
-            />
-          </div>
+          ) : (
+            <>
+              <div>
+                <label htmlFor="email" className="block text-sm font-medium text-ink-700 mb-1.5">
+                  E-Mail
+                </label>
+                <input
+                  id="email"
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500"
+                  placeholder="name@firma.de"
+                />
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label htmlFor="password" className="block text-sm font-medium text-ink-700">
+                    Passwort
+                  </label>
+                  <Link href="/passwort-vergessen" className="text-xs text-brand-700 hover:underline">
+                    Passwort vergessen?
+                  </Link>
+                </div>
+                <input
+                  id="password"
+                  type="password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500"
+                />
+              </div>
+            </>
+          )}
 
           {searchParams.get("registered") && (
             <p className="text-sm text-success bg-success/10 rounded-lg px-3 py-2">
@@ -110,7 +163,7 @@ function LoginForm() {
             disabled={loading}
             className="w-full rounded-lg bg-brand-500 text-white text-sm font-medium py-2.5 hover:bg-brand-600 disabled:opacity-60 transition-colors"
           >
-            {loading ? "Wird geprüft …" : "Anmelden"}
+            {loading ? "Wird geprüft …" : needsTwoFactor ? "Bestätigen" : "Anmelden"}
           </button>
         </form>
 

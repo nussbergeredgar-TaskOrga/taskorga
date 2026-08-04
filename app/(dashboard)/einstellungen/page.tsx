@@ -1,6 +1,7 @@
 import { getCurrentUserWithRole } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { ProfileForm } from "@/components/profile-form";
+import { TwoFactorSettings } from "@/components/two-factor-settings";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { FontSizeToggle } from "@/components/font-size-toggle";
 import { AppColorForm } from "@/components/app-color-form";
@@ -21,6 +22,13 @@ export default async function MeinKontoPage() {
     <div className="space-y-4">
       <SettingsSection title="Mein Profil" description="Name und Passwort ändern.">
         <ProfileForm name={user.name} email={user.email} />
+      </SettingsSection>
+
+      <SettingsSection
+        title="Zwei-Faktor-Authentifizierung"
+        description="Zusätzlicher Code aus einer Authenticator-App beim Login (z. B. Google Authenticator, Authy)."
+      >
+        <TwoFactorSettings initialEnabled={user.twoFactorEnabled} />
       </SettingsSection>
 
       <SettingsSection

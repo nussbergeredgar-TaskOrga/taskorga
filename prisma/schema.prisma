@@ -158,6 +158,15 @@ model User {
   failedLoginAttempts Int       @default(0)
   lockedUntil         DateTime?
 
+  // Zwei-Faktor-Authentifizierung (TOTP). twoFactorSecret wird schon beim
+  // Einrichten gespeichert, aber erst mit twoFactorEnabled=true beim Login
+  // abgefragt -- so kann der QR-Code erst nach erfolgreicher Bestaetigung
+  // scharf geschaltet werden. Backup-Codes sind wie Passwoerter gehasht
+  // (bcrypt) und einmalig verwendbar.
+  twoFactorSecret      String?
+  twoFactorEnabled     Boolean  @default(false)
+  twoFactorBackupCodes String[] @default([])
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
