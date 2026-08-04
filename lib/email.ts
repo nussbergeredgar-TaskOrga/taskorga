@@ -23,6 +23,26 @@ export async function sendPasswordResetEmail(to: string, resetUrl: string) {
   });
 }
 
+export async function sendEmailVerificationEmail(to: string, verifyUrl: string) {
+  if (!resend) {
+    throw new Error(
+      "E-Mail-Versand ist noch nicht eingerichtet. Bitte einen Admin bitten, die Adresse manuell zu bestätigen."
+    );
+  }
+
+  await resend.emails.send({
+    from: process.env.EMAIL_FROM || "TaskOrga <onboarding@resend.dev>",
+    to,
+    subject: "Bitte E-Mail-Adresse bestätigen – TaskOrga",
+    html: `
+      <p>Hallo,</p>
+      <p>bitte bestätige deine E-Mail-Adresse, um dein TaskOrga-Konto vollständig zu aktivieren:</p>
+      <p><a href="${verifyUrl}">${verifyUrl}</a></p>
+      <p>Der Link ist 24 Stunden lang gültig. Falls du dieses Konto nicht erstellt hast, kannst du diese E-Mail ignorieren.</p>
+    `,
+  });
+}
+
 export async function sendPaymentReminderEmail({
   to,
   greeting,

@@ -4,6 +4,7 @@ import { z } from "zod";
 import bcrypt from "bcryptjs";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { sendInitialVerificationEmail } from "@/lib/actions/email-verification";
 
 const signupSchema = z.object({
   companyName: z.string().min(2, "Bitte einen Firmennamen eingeben"),
@@ -63,7 +64,7 @@ export async function signUp(_prevState: SignupState, formData: FormData): Promi
   });
 
   const passwordHash = await bcrypt.hash(parsed.data.password, 10);
-  await prisma.user.create({
+  const user = await prisma.user.create({
     data: {
       companyId: company.id,
       name: parsed.data.name,
@@ -72,6 +73,8 @@ export async function signUp(_prevState: SignupState, formData: FormData): Promi
       roleId: adminRole.id,
     },
   });
+
+  await sendInitialVerificationEmail(user.id, user.email);
 
   // Sinnvolle Standard-Workflow-Schritte und Mahnstufen vorbelegen, wie bei der Demo-Firma
   await prisma.workflowStep.createMany({

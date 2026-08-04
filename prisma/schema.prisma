@@ -167,6 +167,12 @@ model User {
   twoFactorEnabled     Boolean  @default(false)
   twoFactorBackupCodes String[] @default([])
 
+  // Bei Selbstregistrierung (siehe signup.ts) zunaechst leer -- erst nach Klick
+  // auf den per E-Mail zugestellten Verifizierungslink gesetzt. Von einem Admin
+  // angelegte Teammitglieder gelten als bereits verifiziert (die E-Mail-Adresse
+  // ist dem Admin schon bekannt), ebenso bereits bestehende Nutzer (siehe Migration).
+  emailVerifiedAt DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -178,11 +184,23 @@ model User {
   activities      Activity[]
   dashboards      Dashboard[]
   passwordResetTokens PasswordResetToken[]
+  emailVerificationTokens EmailVerificationToken[]
   timeEntries         TimeEntry[]
 }
 
 // Token für den Selfservice-Passwort-vergessen-Link (per E-Mail verschickt)
 model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id])
+  token     String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+}
+
+// Token für den E-Mail-Verifizierungslink nach Selbstregistrierung
+model EmailVerificationToken {
   id        String    @id @default(cuid())
   userId    String
   user      User      @relation(fields: [userId], references: [id])

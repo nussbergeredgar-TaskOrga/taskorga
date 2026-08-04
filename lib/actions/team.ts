@@ -51,6 +51,9 @@ export async function createUser(
       email: parsed.data.email,
       passwordHash,
       roleId: role?.id,
+      // Von einem Admin angelegt -- die E-Mail-Adresse ist damit schon
+      // bekannt/verifiziert, anders als bei der anonymen Selbstregistrierung.
+      emailVerifiedAt: new Date(),
     },
   });
 

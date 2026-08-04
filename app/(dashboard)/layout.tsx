@@ -3,6 +3,7 @@ import { TopBar } from "@/components/top-bar";
 import { MobileNav } from "@/components/mobile-nav";
 import { HelpBook } from "@/components/help-book";
 import { BrandColorStyle } from "@/components/brand-color-style";
+import { EmailVerificationBanner } from "@/components/email-verification-banner";
 import { getNavConfig, getNavLabels } from "@/lib/actions/nav";
 import { DEFAULT_NAV, NAV_CATALOG } from "@/lib/nav-items";
 import { getCurrentUserWithRole, getCurrentCompany } from "@/lib/session";
@@ -39,6 +40,7 @@ export default async function DashboardLayout({
       <NavSidebar config={config} labels={labels} />
       <div className="flex flex-1 flex-col min-w-0">
         <TopBar />
+        {!user.emailVerifiedAt && <EmailVerificationBanner email={user.email} />}
         <main className="flex-1 overflow-y-auto p-4 md:p-6 pb-20 md:pb-6">{children}</main>
       </div>
       <MobileNav config={config} labels={labels} />
