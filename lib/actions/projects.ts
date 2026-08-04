@@ -91,35 +91,6 @@ export async function cancelProject(
   return { success: true };
 }
 
-export async function addProjectTask(projectId: string, title: string) {
-  if (!title.trim()) return;
-  const company = await getCurrentCompany();
-  const project = await prisma.project.findFirst({ where: { id: projectId, companyId: company.id } });
-  if (!project) return;
-
-  await prisma.task.create({
-    data: {
-      companyId: project.companyId,
-      projectId: project.id,
-      title,
-    },
-  });
-
-  revalidatePath(`/arbeit/${projectId}`);
-}
-
-export async function toggleTask(taskId: string, done: boolean) {
-  const company = await getCurrentCompany();
-  const existing = await prisma.task.findFirst({ where: { id: taskId, companyId: company.id } });
-  if (!existing) return;
-
-  const task = await prisma.task.update({
-    where: { id: taskId },
-    data: { status: done ? "DONE" : "OPEN" },
-  });
-  if (task.projectId) revalidatePath(`/arbeit/${task.projectId}`);
-}
-
 // Erzeugt aus einem Auftrag (und dessen ursprünglichem Angebot, falls vorhanden)
 // eine Entwurfs-Rechnung mit denselben Positionen (inkl. MwSt.-Sätzen und Rabatt).
 export async function createInvoiceFromProject(projectId: string) {

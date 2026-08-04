@@ -4,7 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser, getCurrentCompany } from "@/lib/session";
 import { ProjectActions } from "@/components/project-actions";
-import { TaskList } from "@/components/task-list";
+import { RecordTasks } from "@/components/record-tasks";
 import { TimeTracking } from "@/components/time-tracking";
 import { ExpenseForm } from "@/components/expense-form";
 import { ExpensesList } from "@/components/expenses-list";
@@ -70,7 +70,10 @@ export default async function AuftragDetailPage({ params }: { params: { id: stri
       <div className="grid md:grid-cols-2 gap-4">
         <div className="rounded-card border border-ink-100 bg-surface p-5 shadow-card">
           <h2 className="font-display font-semibold text-ink-900 mb-3">Aufgaben</h2>
-          <TaskList projectId={project.id} tasks={project.tasks} />
+          <RecordTasks
+            link={{ projectId: project.id }}
+            tasks={project.tasks.map((t) => ({ id: t.id, title: t.title, status: t.status, dueDate: t.dueDate }))}
+          />
         </div>
 
         <div className="rounded-card border border-ink-100 bg-surface p-5 shadow-card">
