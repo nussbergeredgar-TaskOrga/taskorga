@@ -5,13 +5,8 @@ import { randomUUID } from "crypto";
 import { prisma } from "@/lib/prisma";
 import { getCurrentCompany } from "@/lib/session";
 import { getFieldConfig } from "@/lib/actions/field-config";
+import { parseAmount } from "@/lib/parse-amount";
 import type { AppointmentStatus } from "@prisma/client";
-
-function parseAmount(raw?: string | null) {
-  if (!raw || !raw.trim()) return null;
-  const n = Number(raw.replace(",", "."));
-  return Number.isFinite(n) ? n : null;
-}
 
 const RECURRENCE_DAY_OFFSETS: Record<"WEEKLY" | "BIWEEKLY" | "MONTHLY", number> = {
   WEEKLY: 7,
@@ -40,6 +35,11 @@ export async function createAppointment(
   const config = await getFieldConfig("appointment");
   if (config.amount?.required && !data.amount?.trim()) {
     return { error: "Betrag ist ein Pflichtfeld." };
+  }
+
+  const amountResult = parseAmount(data.amount);
+  if (!amountResult.ok) {
+    return { error: "Bitte einen gültigen Betrag eingeben (z. B. 1500 oder 1500,50)." };
   }
 
   const company = await getCurrentCompany();
@@ -98,7 +98,7 @@ export async function createAppointment(
         scheduledAt,
         endAt,
         status: "SCHEDULED",
-        amount: parseAmount(data.amount),
+        amount: amountResult.value,
         recurrenceGroupId,
       },
     });

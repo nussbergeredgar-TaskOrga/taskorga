@@ -6,11 +6,17 @@ import { updateInquiryAmount } from "@/lib/actions/inquiries";
 export function InquiryAmount({ inquiryId, amount }: { inquiryId: string; amount: number | null }) {
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(amount != null ? String(amount) : "");
+  const [error, setError] = useState("");
   const [pending, startTransition] = useTransition();
 
   function save() {
+    setError("");
     startTransition(async () => {
-      await updateInquiryAmount(inquiryId, value);
+      const result = await updateInquiryAmount(inquiryId, value);
+      if (result?.error) {
+        setError(result.error);
+        return;
+      }
       setEditing(false);
     });
   }
@@ -30,23 +36,26 @@ export function InquiryAmount({ inquiryId, amount }: { inquiryId: string; amount
   }
 
   return (
-    <div className="flex items-center gap-2">
-      <input
-        type="number"
-        step="0.01"
-        autoFocus
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
-        onKeyDown={(e) => e.key === "Enter" && save()}
-        className="w-32 rounded-lg border border-ink-100 px-2 py-1 text-sm outline-none focus:border-brand-500 font-mono"
-      />
-      <button
-        disabled={pending}
-        onClick={save}
-        className="text-xs font-medium text-brand-700 hover:underline disabled:opacity-50"
-      >
-        Speichern
-      </button>
+    <div>
+      <div className="flex items-center gap-2">
+        <input
+          type="number"
+          step="0.01"
+          autoFocus
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && save()}
+          className="w-32 rounded-lg border border-ink-100 px-2 py-1 text-sm outline-none focus:border-brand-500 font-mono"
+        />
+        <button
+          disabled={pending}
+          onClick={save}
+          className="text-xs font-medium text-brand-700 hover:underline disabled:opacity-50"
+        >
+          Speichern
+        </button>
+      </div>
+      {error && <p className="text-xs text-danger mt-1">{error}</p>}
     </div>
   );
 }

@@ -8,6 +8,7 @@ import { getCurrentCompany } from "@/lib/session";
 import { getFieldConfig } from "@/lib/actions/field-config";
 import { FIELD_CATALOGS } from "@/lib/field-config-catalog";
 import { INQUIRY_STATUS_LABELS as STATUS_LABELS } from "@/lib/status-labels";
+import { parseAmount } from "@/lib/parse-amount";
 import type { InquiryStatus } from "@prisma/client";
 
 const inquirySchema = z.object({
@@ -21,12 +22,6 @@ const inquirySchema = z.object({
 export type InquiryFormState = {
   errors?: Record<string, string[]>;
 };
-
-function parseAmount(raw?: string | null) {
-  if (!raw || !raw.trim()) return null;
-  const n = Number(raw.replace(",", "."));
-  return Number.isFinite(n) ? n : null;
-}
 
 async function checkConfiguredRequiredFields(
   formKey: string,
@@ -66,6 +61,11 @@ export async function createInquiry(
     return { errors: configErrors };
   }
 
+  const amountResult = parseAmount(parsed.data.amount);
+  if (!amountResult.ok) {
+    return { errors: { amount: ["Bitte einen gültigen Betrag eingeben (z. B. 1500 oder 1500,50)."] } };
+  }
+
   const company = await getCurrentCompany();
   const customer = await prisma.customer.findFirst({ where: { id: parsed.data.customerId, companyId: company.id } });
   if (!customer) {
@@ -79,7 +79,7 @@ export async function createInquiry(
       title: parsed.data.title,
       description: parsed.data.description || null,
       source: parsed.data.source || null,
-      amount: parseAmount(parsed.data.amount),
+      amount: amountResult.value,
     },
   });
 
@@ -120,6 +120,11 @@ export async function updateInquiry(
     return { errors: configErrors };
   }
 
+  const amountResult = parseAmount(parsed.data.amount);
+  if (!amountResult.ok) {
+    return { errors: { amount: ["Bitte einen gültigen Betrag eingeben (z. B. 1500 oder 1500,50)."] } };
+  }
+
   const company = await getCurrentCompany();
   const existing = await prisma.inquiry.findFirst({ where: { id: inquiryId, companyId: company.id } });
   if (!existing) {
@@ -137,7 +142,7 @@ export async function updateInquiry(
       title: parsed.data.title,
       description: parsed.data.description || null,
       source: parsed.data.source || null,
-      amount: parseAmount(parsed.data.amount),
+      amount: amountResult.value,
     },
   });
 
@@ -236,13 +241,18 @@ export async function createInquiryQuick(
     return { error: `${firstError} Bitte das vollständige Formular unter „Neue Anfrage" nutzen.` };
   }
 
+  const amountResult = parseAmount(data.amount);
+  if (!amountResult.ok) {
+    return { error: "Bitte einen gültigen Betrag eingeben (z. B. 1500 oder 1500,50)." };
+  }
+
   const inquiry = await prisma.inquiry.create({
     data: {
       companyId: company.id,
       customerId,
       title: data.title,
       source: data.source?.trim() || null,
-      amount: parseAmount(data.amount),
+      amount: amountResult.value,
     },
   });
 
@@ -262,21 +272,29 @@ export async function createInquiryQuick(
   return { inquiry };
 }
 
-export async function updateInquiryAmount(inquiryId: string, amount: string) {
+export async function updateInquiryAmount(
+  inquiryId: string,
+  amount: string
+): Promise<{ error?: string }> {
   const company = await getCurrentCompany();
   const existing = await prisma.inquiry.findFirst({ where: { id: inquiryId, companyId: company.id } });
-  if (!existing) return;
+  if (!existing) return { error: "Anfrage nicht gefunden." };
 
-  const inquiry = await prisma.inquiry.update({
+  const amountResult = parseAmount(amount);
+  if (!amountResult.ok) {
+    return { error: "Bitte einen gültigen Betrag eingeben (z. B. 1500 oder 1500,50)." };
+  }
+
+  await prisma.inquiry.update({
     where: { id: inquiryId },
-    data: { amount: parseAmount(amount) },
+    data: { amount: amountResult.value },
   });
   revalidatePath(`/anfragen/${inquiryId}`);
   revalidatePath("/anfragen");
   revalidatePath("/anfragen/gewonnen");
   revalidatePath("/anfragen/verloren");
   revalidatePath("/heute");
-  return inquiry;
+  return {};
 }
 
 export async function updateInquiryStatus(inquiryId: string, status: InquiryStatus, lostReason?: string) {
