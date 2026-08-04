@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import {
   Eye,
@@ -71,39 +71,77 @@ export function DashboardGrid({
   const [labelDraft, setLabelDraft] = useState("");
   const [accentDraft, setAccentDraft] = useState("");
   const [, startTransition] = useTransition();
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const layoutRef = useRef(layout);
+  layoutRef.current = layout;
+  const isFirstLayoutRender = useRef(true);
 
   const entryById = new Map(widgetNodes.map((w) => [w.id, w]));
   const labelById = new Map(widgetNodes.map((w) => [w.id, w.label]));
   const sorted = [...layout].sort((a, b) => a.order - b.order);
 
-  function persist(next: WidgetConfig[]) {
-    setLayout(next);
-    startTransition(() => saveDashboardLayout(next, dashboardId));
-  }
+  // Jeder Klick (Sichtbarkeit, Größe, Reihenfolge) aktualisiert die Anzeige
+  // sofort, aber mehrere schnelle Klicks hintereinander (z.B. dreimal auf
+  // "Nach oben") sollen nur eine einzige Speicheranfrage ausloesen -- sonst
+  // koennten parallele Anfragen in vertauschter Reihenfolge beim Server
+  // ankommen und einen neueren Stand mit einem aelteren ueberschreiben. Der
+  // Effect reagiert auf jede layout-Aenderung und bricht einen noch laufenden
+  // Timer automatisch ab (React-Cleanup), bevor ein neuer gestartet wird --
+  // ohne die Anzeige selbst zu verzoegern.
+  useEffect(() => {
+    if (isFirstLayoutRender.current) {
+      isFirstLayoutRender.current = false;
+      return;
+    }
+    saveTimeoutRef.current = setTimeout(() => {
+      saveTimeoutRef.current = null;
+      startTransition(() => saveDashboardLayout(layout, dashboardId));
+    }, 500);
+    return () => {
+      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [layout, dashboardId]);
 
+  // Flusht eine noch ausstehende Speicherung sofort (z.B. beim Wechsel des
+  // Dashboards oder Verlassen der Seite), damit ein letzter Klick kurz vor dem
+  // Debounce-Intervall nicht verloren geht.
+  useEffect(() => {
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+        saveDashboardLayout(layoutRef.current, dashboardId);
+      }
+    };
+  }, [dashboardId]);
+
+  // Funktionale setState-Form (statt der Closure-Variable "layout" direkt zu
+  // lesen), damit mehrere Klicks, die noch vor dem naechsten Render passieren,
+  // korrekt aufeinander aufbauen statt vom selben veralteten Stand auszugehen.
   function toggleVisible(id: string) {
-    persist(layout.map((w) => (w.id === id ? { ...w, visible: !w.visible } : w)));
+    setLayout((prev) => prev.map((w) => (w.id === id ? { ...w, visible: !w.visible } : w)));
   }
 
   function cycleSize(id: string) {
-    persist(layout.map((w) => (w.id === id ? { ...w, size: NEXT_SIZE[w.size] } : w)));
+    setLayout((prev) => prev.map((w) => (w.id === id ? { ...w, size: NEXT_SIZE[w.size] } : w)));
   }
 
   function move(id: string, direction: "up" | "down") {
-    const ordered = [...layout].sort((a, b) => a.order - b.order);
-    const idx = ordered.findIndex((w) => w.id === id);
-    const swapWith = direction === "up" ? idx - 1 : idx + 1;
-    if (idx === -1 || swapWith < 0 || swapWith >= ordered.length) return;
+    setLayout((prev) => {
+      const ordered = [...prev].sort((a, b) => a.order - b.order);
+      const idx = ordered.findIndex((w) => w.id === id);
+      const swapWith = direction === "up" ? idx - 1 : idx + 1;
+      if (idx === -1 || swapWith < 0 || swapWith >= ordered.length) return prev;
 
-    const a = ordered[idx];
-    const b = ordered[swapWith];
-    const aOrder = a.order;
-    const next = ordered.map((w) => {
-      if (w.id === a.id) return { ...w, order: b.order };
-      if (w.id === b.id) return { ...w, order: aOrder };
-      return w;
+      const a = ordered[idx];
+      const b = ordered[swapWith];
+      const aOrder = a.order;
+      return ordered.map((w) => {
+        if (w.id === a.id) return { ...w, order: b.order };
+        if (w.id === b.id) return { ...w, order: aOrder };
+        return w;
+      });
     });
-    persist(next);
   }
 
   function startEditLabel(w: WidgetConfig, defaultLabel: string, defaultAccent: string) {
@@ -113,8 +151,8 @@ export function DashboardGrid({
   }
 
   function saveLabel(id: string) {
-    persist(
-      layout.map((w) => (w.id === id ? { ...w, label: labelDraft.trim() || undefined, accent: accentDraft } : w))
+    setLayout((prev) =>
+      prev.map((w) => (w.id === id ? { ...w, label: labelDraft.trim() || undefined, accent: accentDraft } : w))
     );
     setEditingLabelId(null);
   }
