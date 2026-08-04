@@ -93,14 +93,24 @@ export async function cancelProject(
 
 // Erzeugt aus einem Auftrag (und dessen ursprünglichem Angebot, falls vorhanden)
 // eine Entwurfs-Rechnung mit denselben Positionen (inkl. MwSt.-Sätzen und Rabatt).
-export async function createInvoiceFromProject(projectId: string) {
+// selectedPositions erlaubt, nur einen Teil der Angebotspositionen abzurechnen
+// (z.B. wenn eine vorherige Rechnung schon einen Teil abgedeckt hat).
+export async function createInvoiceFromProject(
+  projectId: string,
+  selectedPositions?: number[]
+): Promise<{ error?: string }> {
   const currentCompany = await getCurrentCompany();
-  const project = await prisma.project.findFirstOrThrow({
+  const project = await prisma.project.findFirst({
     where: { id: projectId, companyId: currentCompany.id },
     include: { quote: { include: { items: true } }, company: true },
   });
+  if (!project) return { error: "Auftrag nicht gefunden." };
 
-  const items = project.quote?.items ?? [];
+  const allItems = project.quote?.items ?? [];
+  const items = selectedPositions ? allItems.filter((i) => selectedPositions.includes(i.position)) : allItems;
+  if (allItems.length > 0 && items.length === 0) {
+    return { error: "Bitte mindestens eine Position auswählen." };
+  }
   const discountValue = project.quote?.discountValue ?? null;
   const discountType = project.quote?.discountType ?? "AMOUNT";
 

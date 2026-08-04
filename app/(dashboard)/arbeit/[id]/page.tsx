@@ -19,7 +19,7 @@ export default async function AuftragDetailPage({ params }: { params: { id: stri
       customer: true,
       tasks: { orderBy: { createdAt: "asc" } },
       invoices: { orderBy: { createdAt: "desc" } },
-      quote: true,
+      quote: { include: { items: { orderBy: { position: "asc" } } } },
       timeEntries: { orderBy: { date: "desc" }, include: { user: { select: { name: true } } } },
       expenses: {
         orderBy: { date: "desc" },
@@ -64,7 +64,21 @@ export default async function AuftragDetailPage({ params }: { params: { id: stri
             )}
           </p>
         </div>
-        <ProjectActions projectId={project.id} status={project.status} cancelReason={project.cancelReason} />
+        <ProjectActions
+          projectId={project.id}
+          status={project.status}
+          cancelReason={project.cancelReason}
+          existingInvoiceCount={project.invoices.length}
+          quoteItems={
+            project.quote?.items.map((i) => ({
+              position: i.position,
+              description: i.description,
+              quantity: Number(i.quantity),
+              unit: i.unit,
+              unitPrice: Number(i.unitPrice),
+            })) ?? []
+          }
+        />
       </div>
 
       <div className="grid md:grid-cols-2 gap-4">
