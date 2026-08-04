@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { hasPermission } from "@/lib/permissions";
+import { toCsv, csvNum as num, csvResponseHeaders } from "@/lib/csv";
 
 const STATUS_LABELS: Record<string, string> = {
   DRAFT: "Entwurf",
@@ -13,23 +14,6 @@ const STATUS_LABELS: Record<string, string> = {
   OVERDUE: "Überfällig",
   CANCELLED: "Storniert",
 };
-
-// Formatiert Zahlen mit Komma als Dezimaltrennzeichen (deutsche Excel-Konvention)
-function num(n: number): string {
-  return n.toFixed(2).replace(".", ",");
-}
-
-function csvCell(value: string): string {
-  if (value.includes(";") || value.includes('"') || value.includes("\n")) {
-    return `"${value.replace(/"/g, '""')}"`;
-  }
-  return value;
-}
-
-function toCsv(rows: string[][]): string {
-  // BOM voranstellen, damit Excel Umlaute unter Windows korrekt als UTF-8 erkennt
-  return "﻿" + rows.map((row) => row.map(csvCell).join(";")).join("\r\n");
-}
 
 export async function GET(request: Request) {
   const session = await getServerSession(authOptions);
@@ -66,10 +50,7 @@ export async function GET(request: Request) {
     ];
 
     return new NextResponse(toCsv(rows), {
-      headers: {
-        "Content-Type": "text/csv; charset=utf-8",
-        "Content-Disposition": `attachment; filename="ausgaben-${new Date().toISOString().slice(0, 10)}.csv"`,
-      },
+      headers: csvResponseHeaders(`ausgaben-${new Date().toISOString().slice(0, 10)}.csv`),
     });
   }
 
@@ -94,9 +75,6 @@ export async function GET(request: Request) {
   ];
 
   return new NextResponse(toCsv(rows), {
-    headers: {
-      "Content-Type": "text/csv; charset=utf-8",
-      "Content-Disposition": `attachment; filename="rechnungen-${new Date().toISOString().slice(0, 10)}.csv"`,
-    },
+    headers: csvResponseHeaders(`rechnungen-${new Date().toISOString().slice(0, 10)}.csv`),
   });
 }

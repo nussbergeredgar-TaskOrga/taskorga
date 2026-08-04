@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Plus, Building2, User as UserIcon, Archive } from "lucide-react";
+import { Plus, Building2, User as UserIcon, Archive, Download } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { getCurrentCompany } from "@/lib/session";
 
@@ -29,6 +29,13 @@ export default async function KundenPage({
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <a
+            href={`/api/kunden/export${showArchived ? "?archiviert=1" : ""}`}
+            className="flex items-center gap-1.5 rounded-lg border border-ink-100 text-ink-700 text-sm font-medium px-3 py-2.5 hover:bg-ink-50 transition-colors"
+          >
+            <Download size={15} />
+            CSV
+          </a>
           <Link
             href={showArchived ? "/kunden" : "/kunden?archiviert=1"}
             className="flex items-center gap-1.5 rounded-lg border border-ink-100 text-ink-700 text-sm font-medium px-3 py-2.5 hover:bg-ink-50 transition-colors"

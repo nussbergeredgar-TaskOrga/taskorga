@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Plus, Trophy, XCircle, Calendar } from "lucide-react";
+import { Plus, Trophy, XCircle, Calendar, Download } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { getCurrentCompany } from "@/lib/session";
 import { AnfrageRow } from "@/components/anfrage-row";
@@ -92,13 +92,22 @@ export default async function AnfragenPage({
             {inquiries.length} offene Anfrage{inquiries.length !== 1 ? "n" : ""}
           </p>
         </div>
-        <Link
-          href="/anfragen/neu"
-          className="flex items-center gap-1.5 rounded-lg bg-brand-500 text-white text-sm font-medium px-4 py-2.5 hover:bg-brand-600 transition-colors"
-        >
-          <Plus size={16} />
-          Neue Anfrage
-        </Link>
+        <div className="flex items-center gap-2">
+          <a
+            href={`/api/anfragen/export${isMonthFilter ? "?range=month" : ""}`}
+            className="flex items-center gap-1.5 rounded-lg border border-ink-100 text-ink-700 text-sm font-medium px-3 py-2.5 hover:bg-ink-50 transition-colors"
+          >
+            <Download size={15} />
+            CSV
+          </a>
+          <Link
+            href="/anfragen/neu"
+            className="flex items-center gap-1.5 rounded-lg bg-brand-500 text-white text-sm font-medium px-4 py-2.5 hover:bg-brand-600 transition-colors"
+          >
+            <Plus size={16} />
+            Neue Anfrage
+          </Link>
+        </div>
       </div>
 
       {isMonthFilter && (
