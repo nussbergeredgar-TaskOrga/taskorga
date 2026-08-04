@@ -2,12 +2,85 @@
 
 import { useRef, useState, useTransition } from "react";
 import { useFormState, useFormStatus } from "react-dom";
-import { UserPlus, Trash2, KeyRound } from "lucide-react";
+import { UserPlus, Trash2, KeyRound, Eye, EyeOff, RefreshCw } from "lucide-react";
 import { createUser, updateUserRole, deleteUser, resetUserPassword, type CreateUserState } from "@/lib/actions/team";
 
 type TeamUser = { id: string; name: string; email: string; roleName: string };
 
 const initialState: CreateUserState = {};
+
+// Nicht kryptografisch zwingend notwendig (der Admin gibt das Passwort ohnehin
+// meist persoenlich weiter), aber deutlich sicherer als "leer lassen und selbst
+// ausdenken" -- vermeidet schwache Muster wie "start123".
+function generatePassword(length = 14): string {
+  const charset = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!$%&";
+  const bytes = new Uint32Array(length);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (n) => charset[n % charset.length]).join("");
+}
+
+// Startpasswoerter wurden bisher im Klartext (type="text") angezeigt --
+// problematisch bei einem Blick ueber die Schulter, waehrend der Admin ein
+// Konto anlegt. Jetzt standardmaessig maskiert, mit Augen-Symbol zum
+// kurzzeitigen Anzeigen (z.B. um es dem neuen Teammitglied vorzulesen) und
+// einem Wuerfel-Symbol, das ein zufaelliges, staerkeres Passwort einsetzt.
+function PasswordField({
+  inputRef,
+  name,
+  placeholder,
+  onKeyDown,
+}: {
+  inputRef: React.RefObject<HTMLInputElement>;
+  name?: string;
+  placeholder: string;
+  onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
+}) {
+  const [visible, setVisible] = useState(false);
+
+  function generate() {
+    const value = generatePassword();
+    const input = inputRef.current;
+    if (input) {
+      const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")!.set!;
+      setter.call(input, value);
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    }
+    setVisible(true);
+  }
+
+  return (
+    <div className="relative flex-1">
+      <input
+        ref={inputRef}
+        name={name}
+        type={visible ? "text" : "password"}
+        placeholder={placeholder}
+        onKeyDown={onKeyDown}
+        className="w-full rounded-lg border border-ink-100 pl-3 pr-14 py-2 text-sm outline-none focus:border-brand-500 bg-surface"
+      />
+      <div className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center gap-0.5">
+        <button
+          type="button"
+          onClick={generate}
+          className="p-1 text-ink-300 hover:text-ink-700 transition-colors"
+          title="Zufälliges Passwort generieren"
+          aria-label="Zufälliges Passwort generieren"
+        >
+          <RefreshCw size={14} />
+        </button>
+        <button
+          type="button"
+          onClick={() => setVisible((v) => !v)}
+          className="p-1 text-ink-300 hover:text-ink-700 transition-colors"
+          title={visible ? "Passwort verbergen" : "Passwort anzeigen"}
+          aria-label={visible ? "Passwort verbergen" : "Passwort anzeigen"}
+        >
+          {visible ? <EyeOff size={14} /> : <Eye size={14} />}
+        </button>
+      </div>
+    </div>
+  );
+}
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -45,12 +118,10 @@ function ResetPasswordRow({ userId, onClose }: { userId: string; onClose: () => 
 
   return (
     <div className="flex items-center gap-2 pb-2.5 border-b border-ink-100 last:border-0 pl-2">
-      <input
-        ref={inputRef}
-        type="text"
+      <PasswordField
+        inputRef={inputRef}
         placeholder="Neues Passwort (mind. 8 Zeichen)"
         onKeyDown={(e) => e.key === "Enter" && submit()}
-        className="flex-1 rounded-lg border border-ink-100 px-3 py-1.5 text-sm outline-none focus:border-brand-500 bg-surface"
       />
       <button
         disabled={pending}
@@ -129,6 +200,7 @@ function UserRow({ user, currentUserId }: { user: TeamUser; currentUserId: strin
 export function TeamManager({ users, currentUserId }: { users: TeamUser[]; currentUserId: string }) {
   const [showForm, setShowForm] = useState(false);
   const [state, formAction] = useFormState(createUser, initialState);
+  const newPasswordRef = useRef<HTMLInputElement>(null);
 
   return (
     <div>
@@ -151,7 +223,7 @@ export function TeamManager({ users, currentUserId }: { users: TeamUser[]; curre
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <input name="name" placeholder="Name" className="rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface" />
             <input name="email" type="email" placeholder="E-Mail" className="rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface" />
-            <input name="password" type="text" placeholder="Startpasswort" className="rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface" />
+            <PasswordField inputRef={newPasswordRef} name="password" placeholder="Startpasswort" />
             <select name="roleName" defaultValue="Mitarbeiter" className="rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface">
               <option value="Mitarbeiter">Mitarbeiter</option>
               <option value="Admin">Admin</option>
