@@ -46,6 +46,7 @@ export default async function DokumenteSettingsPage() {
           defaultDiscountType={company.defaultDiscountType}
           quoteNumberFormat={company.quoteNumberFormat}
           invoiceNumberFormat={company.invoiceNumberFormat}
+          defaultHourlyRate={company.defaultHourlyRate != null ? Number(company.defaultHourlyRate) : null}
         />
       </SettingsSection>
 

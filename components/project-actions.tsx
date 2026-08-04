@@ -12,23 +12,38 @@ type QuoteItem = {
   unitPrice: number;
 };
 
+type UnbilledTimeEntry = {
+  id: string;
+  description: string | null;
+  minutes: number;
+  date: Date;
+};
+
 export function ProjectActions({
   projectId,
   status,
   cancelReason,
   existingInvoiceCount,
   quoteItems,
+  hourlyRate,
+  unbilledTimeEntries,
 }: {
   projectId: string;
   status: ProjectStatus;
   cancelReason?: string | null;
   existingInvoiceCount: number;
   quoteItems: QuoteItem[];
+  hourlyRate: number | null;
+  unbilledTimeEntries: UnbilledTimeEntry[];
 }) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState("");
   const [invoicePanelOpen, setInvoicePanelOpen] = useState(false);
-  const [selected, setSelected] = useState<Set<number>>(new Set(quoteItems.map((i) => i.position)));
+  const [selectedItems, setSelectedItems] = useState<Set<number>>(new Set(quoteItems.map((i) => i.position)));
+  const [selectedTime, setSelectedTime] = useState<Set<string>>(new Set());
+
+  const hasSelectableContent = quoteItems.length > 0 || unbilledTimeEntries.length > 0;
+  const selectedCount = selectedItems.size + selectedTime.size;
 
   function cancel() {
     const reason = prompt("Auftrag stornieren. Grund (optional):");
@@ -41,10 +56,19 @@ export function ProjectActions({
   }
 
   function toggleItem(position: number) {
-    setSelected((prev) => {
+    setSelectedItems((prev) => {
       const next = new Set(prev);
       if (next.has(position)) next.delete(position);
       else next.add(position);
+      return next;
+    });
+  }
+
+  function toggleTime(id: string) {
+    setSelectedTime((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
       return next;
     });
   }
@@ -54,15 +78,16 @@ export function ProjectActions({
     startTransition(async () => {
       const result = await createInvoiceFromProject(
         projectId,
-        quoteItems.length > 0 ? Array.from(selected) : undefined
+        quoteItems.length > 0 ? Array.from(selectedItems) : undefined,
+        selectedTime.size > 0 ? Array.from(selectedTime) : undefined
       );
       if (result?.error) setError(result.error);
     });
   }
 
   function openInvoicePanel() {
-    if (quoteItems.length === 0) {
-      // Kein Angebot verknüpft -- nichts auszuwählen, direkt anlegen.
+    if (!hasSelectableContent) {
+      // Nichts auszuwählen -- direkt anlegen.
       if (
         existingInvoiceCount > 0 &&
         !confirm(
@@ -133,33 +158,73 @@ export function ProjectActions({
               Bitte prüfen, ob die ausgewählten Positionen nicht schon abgerechnet wurden.
             </p>
           )}
-          <p className="text-sm font-medium text-ink-900">Welche Positionen abrechnen?</p>
-          <div className="space-y-1.5 max-h-64 overflow-y-auto">
-            {quoteItems.map((item) => (
-              <label
-                key={item.position}
-                className="flex items-center gap-2.5 rounded-lg px-2 py-1.5 hover:bg-ink-50 text-sm cursor-pointer"
-              >
-                <input
-                  type="checkbox"
-                  checked={selected.has(item.position)}
-                  onChange={() => toggleItem(item.position)}
-                  className="rounded accent-brand-500 shrink-0"
-                />
-                <span className="text-ink-900 truncate">{item.description}</span>
-                <span className="text-xs text-ink-500 ml-auto shrink-0 font-mono">
-                  {item.quantity} {item.unit} × {item.unitPrice.toLocaleString("de-DE")} €
-                </span>
-              </label>
-            ))}
-          </div>
+
+          {quoteItems.length > 0 && (
+            <>
+              <p className="text-sm font-medium text-ink-900">Welche Positionen abrechnen?</p>
+              <div className="space-y-1.5 max-h-64 overflow-y-auto">
+                {quoteItems.map((item) => (
+                  <label
+                    key={item.position}
+                    className="flex items-center gap-2.5 rounded-lg px-2 py-1.5 hover:bg-ink-50 text-sm cursor-pointer"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedItems.has(item.position)}
+                      onChange={() => toggleItem(item.position)}
+                      className="rounded accent-brand-500 shrink-0"
+                    />
+                    <span className="text-ink-900 truncate">{item.description}</span>
+                    <span className="text-xs text-ink-500 ml-auto shrink-0 font-mono">
+                      {item.quantity} {item.unit} × {item.unitPrice.toLocaleString("de-DE")} €
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </>
+          )}
+
+          {unbilledTimeEntries.length > 0 && (
+            <>
+              <p className="text-sm font-medium text-ink-900">Erfasste Arbeitszeit mit abrechnen?</p>
+              {!hourlyRate ? (
+                <p className="text-xs text-ink-500">
+                  Kein Stundensatz hinterlegt — unter Einstellungen → Dokumente einstellbar.
+                </p>
+              ) : (
+                <div className="space-y-1.5 max-h-64 overflow-y-auto">
+                  {unbilledTimeEntries.map((t) => (
+                    <label
+                      key={t.id}
+                      className="flex items-center gap-2.5 rounded-lg px-2 py-1.5 hover:bg-ink-50 text-sm cursor-pointer"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedTime.has(t.id)}
+                        onChange={() => toggleTime(t.id)}
+                        className="rounded accent-brand-500 shrink-0"
+                      />
+                      <span className="text-ink-900 truncate">
+                        {t.description || "Arbeitszeit"} · {t.date.toLocaleDateString("de-DE")}
+                      </span>
+                      <span className="text-xs text-ink-500 ml-auto shrink-0 font-mono">
+                        {(t.minutes / 60).toLocaleString("de-DE", { maximumFractionDigits: 2 })} Std ×{" "}
+                        {hourlyRate.toLocaleString("de-DE")} €
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+
           <div className="flex gap-2">
             <button
-              disabled={pending || selected.size === 0}
+              disabled={pending || selectedCount === 0}
               onClick={createInvoice}
               className="rounded-lg bg-brand-500 text-white text-sm font-medium px-4 py-2 hover:bg-brand-600 disabled:opacity-60 transition-colors"
             >
-              {pending ? "Wird erstellt …" : `${selected.size} Position${selected.size !== 1 ? "en" : ""} abrechnen`}
+              {pending ? "Wird erstellt …" : `${selectedCount} Position${selectedCount !== 1 ? "en" : ""} abrechnen`}
             </button>
             <button
               disabled={pending}

@@ -95,9 +95,13 @@ export async function cancelProject(
 // eine Entwurfs-Rechnung mit denselben Positionen (inkl. MwSt.-Sätzen und Rabatt).
 // selectedPositions erlaubt, nur einen Teil der Angebotspositionen abzurechnen
 // (z.B. wenn eine vorherige Rechnung schon einen Teil abgedeckt hat).
+// timeEntryIds haengt zusaetzlich noch nicht abgerechnete Zeiterfassungen als
+// eigene Positionen an (zum Stundensatz aus den Firmeneinstellungen) und
+// markiert sie danach als abgerechnet, damit sie nicht doppelt berechnet werden.
 export async function createInvoiceFromProject(
   projectId: string,
-  selectedPositions?: number[]
+  selectedPositions?: number[],
+  timeEntryIds?: string[]
 ): Promise<{ error?: string }> {
   const currentCompany = await getCurrentCompany();
   const project = await prisma.project.findFirst({
@@ -108,12 +112,25 @@ export async function createInvoiceFromProject(
 
   const allItems = project.quote?.items ?? [];
   const items = selectedPositions ? allItems.filter((i) => selectedPositions.includes(i.position)) : allItems;
-  if (allItems.length > 0 && items.length === 0) {
+
+  let timeEntries: { id: string; description: string | null; minutes: number; date: Date }[] = [];
+  if (timeEntryIds && timeEntryIds.length > 0) {
+    if (!project.company.defaultHourlyRate) {
+      return { error: "Bitte zuerst einen Stundensatz unter Einstellungen → Dokumente hinterlegen." };
+    }
+    timeEntries = await prisma.timeEntry.findMany({
+      where: { id: { in: timeEntryIds }, projectId: project.id, billed: false },
+    });
+  }
+
+  if (allItems.length > 0 && items.length === 0 && timeEntries.length === 0) {
     return { error: "Bitte mindestens eine Position auswählen." };
   }
+
   const discountValue = project.quote?.discountValue ?? null;
   const discountType = project.quote?.discountType ?? "AMOUNT";
 
+  // Rabatt gilt nur fuer die Angebotspositionen, nicht fuer abgerechnete Arbeitszeit.
   const netBeforeDiscount = items.reduce((sum, i) => sum + Number(i.quantity) * Number(i.unitPrice), 0);
   const grossBeforeDiscount = items.reduce(
     (sum, i) => sum + Number(i.quantity) * Number(i.unitPrice) * (1 + Number(i.taxRate) / 100),
@@ -124,10 +141,26 @@ export async function createInvoiceFromProject(
       ? netBeforeDiscount * (Number(discountValue) / 100)
       : Number(discountValue)
     : 0;
-  const totalNet = Math.max(0, netBeforeDiscount - discountAmount);
-  const factor = netBeforeDiscount > 0 ? totalNet / netBeforeDiscount : 1;
-  const totalGross = grossBeforeDiscount * factor;
+  const quoteNet = Math.max(0, netBeforeDiscount - discountAmount);
+  const factor = netBeforeDiscount > 0 ? quoteNet / netBeforeDiscount : 1;
+  const quoteGross = grossBeforeDiscount * factor;
+
+  const hourlyRate = Number(project.company.defaultHourlyRate ?? 0);
+  const TIME_TAX_RATE = 19;
+  const timeNet = timeEntries.reduce((sum, t) => sum + (t.minutes / 60) * hourlyRate, 0);
+  const timeGross = timeNet * (1 + TIME_TAX_RATE / 100);
+
+  const totalNet = quoteNet + timeNet;
+  const totalGross = quoteGross + timeGross;
   const avgTaxRate = totalNet > 0 ? ((totalGross - totalNet) / totalNet) * 100 : 19;
+
+  const timeItemsData = timeEntries.map((t) => ({
+    description: `Arbeitszeit${t.description ? `: ${t.description}` : ""} (${t.date.toLocaleDateString("de-DE")})`,
+    quantity: Math.round((t.minutes / 60) * 100) / 100,
+    unit: "Std",
+    unitPrice: hourlyRate,
+    taxRate: TIME_TAX_RATE,
+  }));
 
   const invoice = await createWithUniqueNumber(
     "invoice",
@@ -147,18 +180,28 @@ export async function createInvoiceFromProject(
           discountValue,
           discountType,
           items: {
-            create: items.map((item, i) => ({
-              position: i + 1,
-              description: item.description,
-              quantity: item.quantity,
-              unit: item.unit,
-              unitPrice: item.unitPrice,
-              taxRate: item.taxRate,
-            })),
+            create: [
+              ...items.map((item, i) => ({
+                position: i + 1,
+                description: item.description,
+                quantity: item.quantity,
+                unit: item.unit,
+                unitPrice: item.unitPrice,
+                taxRate: item.taxRate,
+              })),
+              ...timeItemsData.map((item, i) => ({ ...item, position: items.length + i + 1 })),
+            ],
           },
         },
       })
   );
+
+  if (timeEntries.length > 0) {
+    await prisma.timeEntry.updateMany({
+      where: { id: { in: timeEntries.map((t) => t.id) } },
+      data: { billed: true },
+    });
+  }
 
   await prisma.activity.create({
     data: {

@@ -61,6 +61,9 @@ export async function updateEmailSignature(formData: FormData) {
 export async function updateDocumentDefaults(formData: FormData) {
   const admin = await requireAdmin();
 
+  const hourlyRateRaw = (formData.get("defaultHourlyRate") as string)?.trim();
+  const hourlyRate = hourlyRateRaw ? Number(hourlyRateRaw.replace(",", ".")) : null;
+
   await prisma.company.update({
     where: { id: admin.companyId },
     data: {
@@ -69,6 +72,7 @@ export async function updateDocumentDefaults(formData: FormData) {
       defaultDiscountType: (formData.get("defaultDiscountType") as string) || "AMOUNT",
       quoteNumberFormat: (formData.get("quoteNumberFormat") as string)?.trim() || "ANG-{YYYY}-{NNNN}",
       invoiceNumberFormat: (formData.get("invoiceNumberFormat") as string)?.trim() || "RE-{YYYY}-{NNNN}",
+      defaultHourlyRate: hourlyRate != null && Number.isFinite(hourlyRate) && hourlyRate > 0 ? hourlyRate : null,
     },
   });
 

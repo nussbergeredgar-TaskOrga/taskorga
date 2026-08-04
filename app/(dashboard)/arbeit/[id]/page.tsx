@@ -78,6 +78,10 @@ export default async function AuftragDetailPage({ params }: { params: { id: stri
               unitPrice: Number(i.unitPrice),
             })) ?? []
           }
+          hourlyRate={company.defaultHourlyRate != null ? Number(company.defaultHourlyRate) : null}
+          unbilledTimeEntries={project.timeEntries
+            .filter((t) => !t.billed)
+            .map((t) => ({ id: t.id, description: t.description, minutes: t.minutes, date: t.date }))}
         />
       </div>
 

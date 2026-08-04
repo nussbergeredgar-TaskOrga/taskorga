@@ -9,12 +9,14 @@ export function DocumentDefaultsForm({
   defaultDiscountType,
   quoteNumberFormat,
   invoiceNumberFormat,
+  defaultHourlyRate,
 }: {
   defaultQuoteValidityDays: number;
   defaultInvoicePaymentDays: number;
   defaultDiscountType: string;
   quoteNumberFormat: string;
   invoiceNumberFormat: string;
+  defaultHourlyRate: number | null;
 }) {
   const [pending, startTransition] = useTransition();
   const [saved, setSaved] = useState(false);
@@ -66,7 +68,24 @@ export function DocumentDefaultsForm({
             <option value="PERCENT">Prozent (%)</option>
           </select>
         </div>
+        <div>
+          <label className="block text-xs text-ink-500 mb-1">
+            Stundensatz für Zeiterfassung (€)
+          </label>
+          <input
+            type="number"
+            name="defaultHourlyRate"
+            step="0.01"
+            min={0}
+            defaultValue={defaultHourlyRate ?? ""}
+            placeholder="z. B. 65"
+            className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface font-mono"
+          />
+        </div>
       </div>
+      <p className="text-xs text-ink-300">
+        Ohne Stundensatz lässt sich erfasste Arbeitszeit beim Auftrag nicht in Rechnungspositionen umwandeln.
+      </p>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>

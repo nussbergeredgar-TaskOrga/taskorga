@@ -52,6 +52,9 @@ model Company {
   defaultDiscountType      String @default("AMOUNT") // AMOUNT | PERCENT
   quoteNumberFormat        String @default("ANG-{YYYY}-{NNNN}")
   invoiceNumberFormat      String @default("RE-{YYYY}-{NNNN}")
+  // Stundensatz fuer die Umwandlung erfasster Zeit in Rechnungspositionen.
+  // Ohne gesetzten Satz wird Zeiterfassung nicht zur Abrechnung angeboten.
+  defaultHourlyRate        Decimal? @db.Decimal(10, 2)
   projectNumberFormat      String @default("AUF-{YYYY}-{NNNN}")
 
   // Firmenweite Anpassungen (nur Admin)
@@ -719,6 +722,7 @@ model TimeEntry {
   description String?
   minutes     Int
   date        DateTime
+  billed      Boolean  @default(false)
 
   createdAt DateTime @default(now())
 }
