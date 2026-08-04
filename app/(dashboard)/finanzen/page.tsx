@@ -137,7 +137,11 @@ export default async function FinanzenPage({
                 <div className="flex items-center gap-3">
                   <span className="font-mono text-ink-900">{Number(inv.totalGross).toLocaleString("de-DE")} €</span>
                   {inv.reminderLevel > 0 && (
-                    <span className="text-xs text-warning">Stufe {inv.reminderLevel}</span>
+                    <span className="text-xs text-warning">
+                      Stufe {inv.reminderLevel}
+                      {inv.lastReminderSentAt &&
+                        ` · zuletzt ${inv.lastReminderSentAt.toLocaleDateString("de-DE")}`}
+                    </span>
                   )}
                 </div>
               </Link>
