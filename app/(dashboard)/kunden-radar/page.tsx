@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Clock, TrendingDown, Radar } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { getCurrentCompany } from "@/lib/session";
+import { MS_PER_DAY } from "@/lib/date-utils";
 
 const INACTIVE_DAYS_THRESHOLD = 90;
 
@@ -48,7 +49,7 @@ export default async function KundenRadarPage() {
         : lastActivity || lastAppointment;
 
     if (lastContact) {
-      const daysSince = Math.floor((now.getTime() - lastContact.getTime()) / 86400000);
+      const daysSince = Math.floor((now.getTime() - lastContact.getTime()) / MS_PER_DAY);
       if (daysSince >= INACTIVE_DAYS_THRESHOLD) {
         inactive.push({ id: c.id, name: c.name, daysSince });
       }

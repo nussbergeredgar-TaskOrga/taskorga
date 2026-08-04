@@ -12,6 +12,7 @@ import { DocumentPdf } from "@/lib/pdf/document-pdf";
 import { buildPlaceholderContext } from "@/lib/pdf/build-context";
 import { resolvePlaceholders } from "@/lib/document-placeholders";
 import { createWithUniqueNumber } from "@/lib/numbering";
+import { addDays } from "@/lib/date-utils";
 
 const invoiceSchema = z.object({
   customerId: z.string().min(1, "Bitte einen Kunden auswählen"),
@@ -143,7 +144,7 @@ export async function markInvoiceSent(invoiceId: string) {
     data: {
       status: "SENT",
       issueDate: new Date(),
-      dueDate: new Date(Date.now() + company.defaultInvoicePaymentDays * 86400000),
+      dueDate: addDays(Date.now(), company.defaultInvoicePaymentDays),
     },
   });
 
@@ -412,7 +413,7 @@ export async function sendInvoiceEmail(
 
   const wasDraft = invoice.status === "DRAFT";
   const issueDate = invoice.issueDate ?? new Date();
-  const dueDate = invoice.dueDate ?? new Date(Date.now() + invoice.company.defaultInvoicePaymentDays * 86400000);
+  const dueDate = invoice.dueDate ?? addDays(Date.now(), invoice.company.defaultInvoicePaymentDays);
 
   const createdAtStr = issueDate.toLocaleDateString("de-DE");
   const dueDateStr = dueDate.toLocaleDateString("de-DE");

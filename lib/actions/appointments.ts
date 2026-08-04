@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentCompany } from "@/lib/session";
 import { getFieldConfig } from "@/lib/actions/field-config";
 import { parseAmount } from "@/lib/parse-amount";
+import { addDays } from "@/lib/date-utils";
 import type { AppointmentStatus } from "@prisma/client";
 
 const RECURRENCE_DAY_OFFSETS: Record<"WEEKLY" | "BIWEEKLY" | "MONTHLY", number> = {
@@ -64,8 +65,8 @@ export async function createAppointment(
   let skipped = 0;
 
   for (let i = 0; i < occurrenceCount; i++) {
-    const scheduledAt = new Date(baseScheduledAt.getTime() + i * dayOffset * 86400000);
-    const endAt = new Date(baseEndAt.getTime() + i * dayOffset * 86400000);
+    const scheduledAt = addDays(baseScheduledAt, i * dayOffset);
+    const endAt = addDays(baseEndAt, i * dayOffset);
 
     if (data.assigneeId) {
       const overlapping = await prisma.appointment.findFirst({
