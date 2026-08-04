@@ -14,7 +14,7 @@ export default async function RechnungDetailPage({ params }: { params: { id: str
     include: {
       customer: true,
       items: { orderBy: { position: "asc" } },
-      project: true,
+      project: { include: { quote: true } },
       comments: { orderBy: { createdAt: "desc" }, include: { user: true } },
       tasks: { orderBy: { createdAt: "desc" } },
     },
@@ -48,6 +48,14 @@ export default async function RechnungDetailPage({ params }: { params: { id: str
                 {" · "}
                 <Link href={`/arbeit/${invoice.project.id}`} className="hover:underline">
                   Auftrag {invoice.project.number}
+                </Link>
+              </>
+            )}
+            {invoice.project?.quote && (
+              <>
+                {" · "}
+                <Link href={`/angebote/${invoice.project.quote.id}`} className="hover:underline">
+                  Angebot {invoice.project.quote.number}
                 </Link>
               </>
             )}
