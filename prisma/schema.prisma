@@ -143,6 +143,18 @@ model PlatformAdminAttempt {
   @@index([createdAt])
 }
 
+// Protokolliert fehlgeschlagene Einladungscode-Versuche bei der Registrierung
+// (falscher/abgelaufener/verbrauchter Code). Verhindert, dass ein gueltiger
+// Code per Ausprobieren erraten werden kann -- analog zum Login-Lockout,
+// aber pro IP statt pro Nutzer, da vor der Registrierung noch kein Konto existiert.
+model SignupAttempt {
+  id        String   @id @default(cuid())
+  ipAddress String
+  createdAt DateTime @default(now())
+
+  @@index([ipAddress, createdAt])
+}
+
 model User {
   id        String   @id @default(cuid())
   companyId String

@@ -3,8 +3,21 @@
 import { z } from "zod";
 import bcrypt from "bcryptjs";
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { sendInitialVerificationEmail } from "@/lib/actions/email-verification";
+
+const MAX_INVITE_CODE_ATTEMPTS_PER_HOUR = 10;
+
+// Vercel setzt x-forwarded-for zuverlaessig; ohne vertrauenswuerdigen Proxy
+// waere der Header faelschbar, hier aber ausreichend, um blosses Durchprobieren
+// vieler Codes von derselben Quelle zu bremsen (kein alleiniger Schutz --
+// siehe auch die durch mehr Entropie erschwerte Erratbarkeit des Codes selbst).
+function getClientIp(): string {
+  const forwarded = headers().get("x-forwarded-for");
+  if (forwarded) return forwarded.split(",")[0].trim();
+  return headers().get("x-real-ip") ?? "unknown";
+}
 
 const signupSchema = z.object({
   companyName: z.string().min(2, "Bitte einen Firmennamen eingeben"),
@@ -32,17 +45,28 @@ export async function signUp(_prevState: SignupState, formData: FormData): Promi
     return { errors: parsed.error.flatten().fieldErrors };
   }
 
+  const ip = getClientIp();
+  const recentAttempts = await prisma.signupAttempt.count({
+    where: { ipAddress: ip, createdAt: { gte: new Date(Date.now() - 60 * 60 * 1000) } },
+  });
+  if (recentAttempts >= MAX_INVITE_CODE_ATTEMPTS_PER_HOUR) {
+    return { message: "Zu viele Versuche. Bitte in einer Stunde erneut versuchen." };
+  }
+
   const invite = await prisma.inviteCode.findUnique({
     where: { code: parsed.data.inviteCode.trim().toUpperCase() },
   });
 
   if (!invite) {
+    await prisma.signupAttempt.create({ data: { ipAddress: ip } });
     return { message: "Ungültiger Einladungscode." };
   }
   if (invite.expiresAt && invite.expiresAt < new Date()) {
+    await prisma.signupAttempt.create({ data: { ipAddress: ip } });
     return { message: "Dieser Einladungscode ist abgelaufen." };
   }
   if (invite.usedCount >= invite.maxUses) {
+    await prisma.signupAttempt.create({ data: { ipAddress: ip } });
     return { message: "Dieser Einladungscode wurde bereits verwendet." };
   }
 

@@ -54,7 +54,10 @@ export async function createInviteCode(
   data: { note?: string; maxUses: number }
 ) {
   await checkSecret(secret);
-  const code = crypto.randomBytes(4).toString("hex").toUpperCase();
+  // 8 statt vorher 4 Bytes (64 statt 32 Bit Entropie) -- ein 4-Byte-Code war
+  // mit genug Versuchen theoretisch erratbar, gerade weil Einladungscodes ein
+  // ganzes neues, von allen anderen Firmen isoliertes Firmenkonto freischalten.
+  const code = crypto.randomBytes(8).toString("hex").toUpperCase();
   await prisma.inviteCode.create({
     data: {
       code,

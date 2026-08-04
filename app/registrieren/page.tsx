@@ -39,7 +39,7 @@ export default function RegistrierenPage() {
             <input
               name="inviteCode"
               required
-              placeholder="z. B. A1B2C3D4"
+              placeholder="z. B. A1B2C3D4E5F6A7B8"
               className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 font-mono uppercase"
             />
             {state.errors?.inviteCode && (
