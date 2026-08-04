@@ -8,15 +8,27 @@ import { updateQuoteStatus, acceptQuote, sendQuoteEmail, duplicateQuote } from "
 import { ConfirmSendDialog } from "@/components/confirm-send-dialog";
 import type { QuoteStatus } from "@prisma/client";
 
-function DuplicateButton({ quoteId, pending, startTransition }: { quoteId: string; pending: boolean; startTransition: (fn: () => void) => void }) {
+type Action = "duplicate" | "email" | "markSent" | "accept" | "reject" | null;
+
+function DuplicateButton({
+  quoteId,
+  pending,
+  isActive,
+  run,
+}: {
+  quoteId: string;
+  pending: boolean;
+  isActive: boolean;
+  run: (action: Action, fn: () => Promise<unknown>) => void;
+}) {
   return (
     <button
       disabled={pending}
-      onClick={() => startTransition(() => duplicateQuote(quoteId))}
+      onClick={() => run("duplicate", () => duplicateQuote(quoteId))}
       className="flex items-center gap-1.5 rounded-lg border border-ink-100 px-3 py-2 text-sm font-medium text-ink-700 hover:bg-ink-50 transition-colors disabled:opacity-60"
     >
       <Copy size={15} />
-      Duplizieren
+      {isActive ? "Wird dupliziert …" : "Duplizieren"}
     </button>
   );
 }
@@ -32,13 +44,25 @@ export function QuoteActions({
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const [activeAction, setActiveAction] = useState<Action>(null);
   const [error, setError] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
 
+  function run(action: Action, fn: () => Promise<unknown>) {
+    setError("");
+    setActiveAction(action);
+    startTransition(async () => {
+      await fn();
+      setActiveAction(null);
+    });
+  }
+
   function sendEmail() {
     setError("");
+    setActiveAction("email");
     startTransition(async () => {
       const result = await sendQuoteEmail(quoteId);
+      setActiveAction(null);
       if (result?.error) {
         setError(result.error);
         return;
@@ -51,7 +75,7 @@ export function QuoteActions({
     return (
       <div className="flex flex-wrap items-center gap-3">
         <p className="text-sm text-success font-medium">Angenommen – Auftrag wurde erstellt.</p>
-        <DuplicateButton quoteId={quoteId} pending={pending} startTransition={startTransition} />
+        <DuplicateButton quoteId={quoteId} pending={pending} isActive={activeAction === "duplicate"} run={run} />
       </div>
     );
   }
@@ -62,7 +86,7 @@ export function QuoteActions({
           {status === "REJECTED" ? "Abgelehnt." : "Abgelaufen."} Möchtest du ein überarbeitetes
           Angebot erstellen?
         </p>
-        <DuplicateButton quoteId={quoteId} pending={pending} startTransition={startTransition} />
+        <DuplicateButton quoteId={quoteId} pending={pending} isActive={activeAction === "duplicate"} run={run} />
       </div>
     );
   }
@@ -79,7 +103,7 @@ export function QuoteActions({
             Bearbeiten
           </Link>
         )}
-        <DuplicateButton quoteId={quoteId} pending={pending} startTransition={startTransition} />
+        <DuplicateButton quoteId={quoteId} pending={pending} isActive={activeAction === "duplicate"} run={run} />
         {hasCustomerEmail ? (
           <button
             disabled={pending}
@@ -93,29 +117,29 @@ export function QuoteActions({
           status === "DRAFT" && (
             <button
               disabled={pending}
-              onClick={() => startTransition(() => updateQuoteStatus(quoteId, "SENT"))}
-              className="rounded-lg border border-ink-100 px-3 py-2 text-sm font-medium text-ink-700 hover:bg-ink-50 transition-colors"
+              onClick={() => run("markSent", () => updateQuoteStatus(quoteId, "SENT"))}
+              className="rounded-lg border border-ink-100 px-3 py-2 text-sm font-medium text-ink-700 hover:bg-ink-50 transition-colors disabled:opacity-60"
             >
-              Als versendet markieren
+              {activeAction === "markSent" ? "Wird markiert …" : "Als versendet markieren"}
             </button>
           )
         )}
         <button
           disabled={pending}
-          onClick={() => startTransition(() => acceptQuote(quoteId))}
+          onClick={() => run("accept", () => acceptQuote(quoteId))}
           className="rounded-lg bg-success text-white px-3 py-2 text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-60"
         >
-          Angebot annehmen → Auftrag erstellen
+          {activeAction === "accept" ? "Wird angenommen …" : "Angebot annehmen → Auftrag erstellen"}
         </button>
         <button
           disabled={pending}
           onClick={() => {
             if (!confirm("Angebot wirklich als abgelehnt markieren?")) return;
-            startTransition(() => updateQuoteStatus(quoteId, "REJECTED"));
+            run("reject", () => updateQuoteStatus(quoteId, "REJECTED"));
           }}
-          className="rounded-lg border border-danger text-danger px-3 py-2 text-sm font-medium hover:bg-danger/5 transition-colors"
+          className="rounded-lg border border-danger text-danger px-3 py-2 text-sm font-medium hover:bg-danger/5 transition-colors disabled:opacity-60"
         >
-          Ablehnen
+          {activeAction === "reject" ? "Wird abgelehnt …" : "Ablehnen"}
         </button>
       </div>
       {error && <p className="text-xs text-danger">{error}</p>}
@@ -126,7 +150,7 @@ export function QuoteActions({
         onPreview={() => router.push(`/angebote/${quoteId}/vorschau`)}
         onSendDirect={sendEmail}
         documentLabel="Angebot"
-        sending={pending}
+        sending={pending && activeAction === "email"}
       />
     </div>
   );
