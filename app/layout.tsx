@@ -54,7 +54,17 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="de" className={`${display.variable} ${body.variable} ${mono.variable}`}>
+    <html
+      lang="de"
+      className={`${display.variable} ${body.variable} ${mono.variable}`}
+      // ThemeScript setzt die "dark"-Klasse hier noch vor dem ersten Rendern per
+      // <script> direkt im DOM (siehe components/theme-script.tsx), damit beim Laden
+      // im Dunkelmodus kein Hell-Modus aufblitzt. Der Server kennt die gespeicherte
+      // Praeferenz aber nicht und rendert daher ohne diese Klasse -- ohne dieses Flag
+      // wirft React beim Hydrieren einen Mismatch-Fehler und entfernt die Klasse kurz
+      // wieder, was genau den Hell-Modus-Flash verursacht, den es zu vermeiden gilt.
+      suppressHydrationWarning
+    >
       <body>
         <ThemeScript />
         <Providers>{children}</Providers>
