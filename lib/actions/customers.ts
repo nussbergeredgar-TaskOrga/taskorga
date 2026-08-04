@@ -164,8 +164,7 @@ export async function updateCustomer(
   }
 
   const name = resolveDisplayName(parsed.data);
-  const finalName = name || existing.name;
-  if (!finalName) {
+  if (!name) {
     return {
       errors:
         parsed.data.type === "PRIVATE"
@@ -177,7 +176,7 @@ export async function updateCustomer(
   const customer = await prisma.customer.update({
     where: { id: customerId },
     data: {
-      name: finalName,
+      name,
       type: parsed.data.type,
       salutation: parsed.data.type === "PRIVATE" && parsed.data.salutation ? parsed.data.salutation : null,
       firstName: parsed.data.type === "PRIVATE" ? parsed.data.firstName || null : null,
