@@ -33,7 +33,14 @@ export default async function AngebotDetailPage({ params }: { params: { id: stri
   const link = { quoteId: quote.id };
 
   const netBeforeDiscount = quote.items.reduce((s, i) => s + Number(i.quantity) * Number(i.unitPrice), 0);
-  const discountAmount = netBeforeDiscount - Number(quote.totalNet) * (netBeforeDiscount / Math.max(Number(quote.totalNet), 1));
+  const rawDiscountAmount = quote.discountValue != null
+    ? quote.discountType === "PERCENT"
+      ? netBeforeDiscount * (Number(quote.discountValue) / 100)
+      : Number(quote.discountValue)
+    : 0;
+  // Wie im PDF geclampt, damit ein Rabatt, der den Nettowert übersteigt, nicht
+  // als negativer Betrag angezeigt wird.
+  const discountAmount = netBeforeDiscount - Math.max(0, netBeforeDiscount - rawDiscountAmount);
 
   return (
     <div className="space-y-6">
@@ -106,6 +113,7 @@ export default async function AngebotDetailPage({ params }: { params: { id: stri
               <span>
                 Rabatt {quote.discountType === "PERCENT" ? `(${Number(quote.discountValue)}%)` : ""}
               </span>
+              <span>−{discountAmount.toLocaleString("de-DE")} €</span>
             </div>
           )}
           <div className="flex justify-end gap-6 text-sm font-mono">
