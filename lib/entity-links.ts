@@ -11,9 +11,7 @@ const ENTITY_LIST_PATH: Record<EntityKey, string> = {
   expenses: "/finanzen",
 };
 
-// Baut die Ziel-URL fuer einen Datentyp + optionalen Status. Nicht jede Zielseite
-// unterstuetzt Status-Filter (z.B. Ausgaben leben eingebettet in Finanzen) — dort
-// wird einfach auf die allgemeine Seite verlinkt.
+// Baut die Ziel-URL fuer einen Datentyp + optionalen Status.
 export function entityStatusHref(entity: EntityKey, status?: string | null): string {
   const base = ENTITY_LIST_PATH[entity];
   if (!status) return base;
@@ -24,7 +22,11 @@ export function entityStatusHref(entity: EntityKey, status?: string | null): str
     return base;
   }
 
-  if (entity === "expenses" || entity === "customers") return base;
+  // Ausgaben leben eingebettet in Finanzen, mit eigenem Query-Parameter statt
+  // "status" (der dort bereits fuer Rechnungen verwendet wird).
+  if (entity === "expenses") return `${base}?expenseStatus=${encodeURIComponent(status)}`;
+
+  if (entity === "customers") return base;
 
   return `${base}?status=${encodeURIComponent(status)}`;
 }

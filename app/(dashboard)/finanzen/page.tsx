@@ -20,10 +20,15 @@ const STATUS_LABELS: Record<string, string> = {
 
 const OPEN_INVOICE_STATUSES = ["SENT", "OPEN", "PARTIALLY_PAID", "OVERDUE"];
 
+const EXPENSE_STATUS_LABELS: Record<string, string> = {
+  OPEN: "Offen",
+  PAID: "Bezahlt",
+};
+
 export default async function FinanzenPage({
   searchParams,
 }: {
-  searchParams: { status?: string };
+  searchParams: { status?: string; expenseStatus?: string };
 }) {
   const admin = await requirePermission("finanzen");
   const company = { id: admin.companyId };
@@ -71,6 +76,9 @@ export default async function FinanzenPage({
   const paidExpenses = expenses.filter((e) => e.status === "PAID");
   const openExpensesTotal = openExpenses.reduce((sum, e) => sum + Number(e.amount), 0);
   const paidExpensesTotal = paidExpenses.reduce((sum, e) => sum + Number(e.amount), 0);
+
+  const expenseStatusFilter = searchParams.expenseStatus;
+  const expenseStatusFilterLabel = expenseStatusFilter ? EXPENSE_STATUS_LABELS[expenseStatusFilter] : null;
 
   const mappedExpenses = (list: typeof expenses) =>
     list.map((e) => ({
@@ -212,9 +220,22 @@ export default async function FinanzenPage({
           <KpiCard label="Bezahlt" value={`${paidExpensesTotal.toLocaleString("de-DE")} €`} accent="border-l-success" />
         </div>
 
+        {expenseStatusFilterLabel && (
+          <div className="flex items-center gap-2 text-sm text-ink-500">
+            Gefiltert: <span className="font-medium text-ink-900">{expenseStatusFilterLabel}</span>
+            <Link href="/finanzen" className="text-brand-700 hover:underline">
+              Zurücksetzen
+            </Link>
+          </div>
+        )}
+
         <div className="grid md:grid-cols-2 gap-6">
-          <ExpensesList title="Offene Ausgaben" expenses={mappedExpenses(openExpenses)} />
-          <ExpensesList title="Bezahlte Ausgaben" expenses={mappedExpenses(paidExpenses)} />
+          {(!expenseStatusFilter || expenseStatusFilter === "OPEN") && (
+            <ExpensesList title="Offene Ausgaben" expenses={mappedExpenses(openExpenses)} />
+          )}
+          {(!expenseStatusFilter || expenseStatusFilter === "PAID") && (
+            <ExpensesList title="Bezahlte Ausgaben" expenses={mappedExpenses(paidExpenses)} />
+          )}
         </div>
       </div>
     </div>
