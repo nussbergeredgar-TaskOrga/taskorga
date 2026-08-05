@@ -132,6 +132,81 @@ export async function createAppointment(
   return { success: true, created, skipped };
 }
 
+export async function updateAppointment(
+  appointmentId: string,
+  data: {
+    customerId: string;
+    title: string;
+    type: string;
+    startAt: string;
+    endAt: string;
+    amount?: string;
+  }
+): Promise<{ error?: string; success?: boolean }> {
+  if (!data.title.trim() || !data.startAt || !data.endAt) {
+    return { error: "Bitte Titel, Von- und Bis-Zeit angeben." };
+  }
+  if (new Date(data.endAt) <= new Date(data.startAt)) {
+    return { error: "Die Bis-Zeit muss nach der Von-Zeit liegen." };
+  }
+
+  const config = await getFieldConfig("appointment");
+  if (config.amount?.required && !data.amount?.trim()) {
+    return { error: "Betrag ist ein Pflichtfeld." };
+  }
+
+  const amountResult = parseAmount(data.amount);
+  if (!amountResult.ok) {
+    return { error: "Bitte einen gültigen Betrag eingeben (z. B. 1500 oder 1500,50)." };
+  }
+
+  const company = await getCurrentCompany();
+  const existing = await prisma.appointment.findFirst({ where: { id: appointmentId, companyId: company.id } });
+  if (!existing) return { error: "Termin nicht gefunden." };
+
+  const customer = await prisma.customer.findFirst({ where: { id: data.customerId, companyId: company.id } });
+  if (!customer) return { error: "Kunde nicht gefunden." };
+
+  const scheduledAt = new Date(data.startAt);
+  const endAt = new Date(data.endAt);
+
+  if (existing.assigneeId) {
+    const overlapping = await prisma.appointment.findFirst({
+      where: {
+        id: { not: appointmentId },
+        companyId: company.id,
+        assigneeId: existing.assigneeId,
+        status: { not: "CANCELLED" },
+        scheduledAt: { lt: endAt },
+        endAt: { gt: scheduledAt },
+      },
+      select: { title: true },
+    });
+    if (overlapping) {
+      return { error: `Zeitüberschneidung: „${overlapping.title}“ ist zu dieser Zeit bereits geplant.` };
+    }
+  }
+
+  await prisma.appointment.update({
+    where: { id: appointmentId },
+    data: {
+      customerId: data.customerId,
+      title: data.title,
+      type: data.type,
+      scheduledAt,
+      endAt,
+      amount: amountResult.value,
+    },
+  });
+
+  if (existing.customerId !== data.customerId) revalidatePath(`/kunden/${existing.customerId}`);
+  revalidatePath(`/kunden/${data.customerId}`);
+  revalidatePath(`/termine/${appointmentId}`);
+  revalidatePath("/heute");
+  revalidatePath("/termine");
+  return { success: true };
+}
+
 export async function updateAppointmentAssignee(appointmentId: string, assigneeId: string) {
   const company = await getCurrentCompany();
   await prisma.appointment.updateMany({

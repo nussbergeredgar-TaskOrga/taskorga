@@ -7,6 +7,9 @@ import { RecordNotes } from "@/components/record-notes";
 import { RecordTasks } from "@/components/record-tasks";
 import { AppointmentStatusSelect } from "@/components/appointment-status-select";
 import { AppointmentAssigneeSelect } from "@/components/appointment-assignee-select";
+import { AppointmentEditForm } from "@/components/appointment-edit-form";
+import { getAppointmentTypes } from "@/lib/actions/appointment-types";
+import { getFieldConfig } from "@/lib/actions/field-config";
 
 export default async function TerminDetailPage({ params }: { params: { id: string } }) {
   const company = await getCurrentCompany();
@@ -22,11 +25,20 @@ export default async function TerminDetailPage({ params }: { params: { id: strin
   });
   if (!appointment) notFound();
 
-  const users = await prisma.user.findMany({
-    where: { companyId: company.id },
-    select: { id: true, name: true },
-    orderBy: { name: "asc" },
-  });
+  const [users, customers, appointmentTypes, fieldConfig] = await Promise.all([
+    prisma.user.findMany({
+      where: { companyId: company.id },
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+    }),
+    prisma.customer.findMany({
+      where: { companyId: company.id },
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+    }),
+    getAppointmentTypes(),
+    getFieldConfig("appointment"),
+  ]);
 
   const link = { appointmentId: appointment.id };
 
@@ -75,6 +87,22 @@ export default async function TerminDetailPage({ params }: { params: { id: strin
           )}
         </div>
         <div className="flex items-center gap-2">
+          {appointment.customer && appointment.scheduledAt && appointment.endAt && (
+            <AppointmentEditForm
+              appointmentId={appointment.id}
+              customers={customers}
+              appointmentTypes={appointmentTypes}
+              fieldConfig={fieldConfig}
+              initial={{
+                customerId: appointment.customer.id,
+                title: appointment.title,
+                type: appointment.type,
+                scheduledAt: appointment.scheduledAt,
+                endAt: appointment.endAt,
+                amount: appointment.amount != null ? Number(appointment.amount) : null,
+              }}
+            />
+          )}
           <AppointmentAssigneeSelect
             appointmentId={appointment.id}
             assigneeId={appointment.assigneeId}
