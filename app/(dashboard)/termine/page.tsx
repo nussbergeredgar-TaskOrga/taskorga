@@ -20,11 +20,14 @@ import { de } from "date-fns/locale";
 import { prisma } from "@/lib/prisma";
 import { getCurrentCompany, getCurrentUser } from "@/lib/session";
 import { TermineCalendarSection } from "@/components/termine-calendar-section";
-import { TermineListView } from "@/components/termine-list-view";
+import { TermineView } from "@/components/termine-view";
 import { CollapsiblePanel } from "@/components/collapsible-panel";
 import { getAppointmentTypes } from "@/lib/actions/appointment-types";
 import { getFieldConfig } from "@/lib/actions/field-config";
 import { getAllUsersWorkingHours, getAbsences } from "@/lib/actions/schedule";
+import { getListViewConfig } from "@/lib/actions/list-view";
+import { getFilterState } from "@/lib/actions/filters";
+import { APPOINTMENT_COLUMNS_DEFAULT } from "@/lib/appointment-columns";
 import { KpiCard } from "@/components/kpi-card";
 import { CalendarCheck, CalendarClock, Wallet } from "lucide-react";
 
@@ -43,7 +46,7 @@ export default async function TerminePage({
   const gridEnd = endOfWeek(monthEnd, { weekStartsOn: 1 });
   const days = eachDayOfInterval({ start: gridStart, end: gridEnd });
 
-  const [appointments, allAppointments, customers, openInquiries, appointmentTypes, appointmentFieldConfig, companyUsers, allUsersWorkingHours, allAbsences] = await Promise.all([
+  const [appointments, allAppointments, customers, openInquiries, appointmentTypes, appointmentFieldConfig, companyUsers, allUsersWorkingHours, allAbsences, savedListConfig, filterState] = await Promise.all([
     prisma.appointment.findMany({
       where: {
         companyId: company.id,
@@ -71,7 +74,14 @@ export default async function TerminePage({
     prisma.user.findMany({ where: { companyId: company.id }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
     getAllUsersWorkingHours(company.id),
     getAbsences(),
+    getListViewConfig("appointment"),
+    getFilterState("appointment"),
   ]);
+
+  const savedColumns = savedListConfig?.columns ?? [];
+  const savedColumnKeys = new Set(savedColumns.map((c) => c.key));
+  const missingColumns = APPOINTMENT_COLUMNS_DEFAULT.filter((c) => !savedColumnKeys.has(c.key));
+  const appointmentColumns = [...savedColumns, ...missingColumns];
 
   const prevMonth = format(subMonths(anchorDate, 1), "yyyy-MM");
   const nextMonth = format(addMonths(anchorDate, 1), "yyyy-MM");
@@ -115,8 +125,6 @@ export default async function TerminePage({
       })),
     };
   });
-
-  const distinctTypes = Array.from(new Set(allAppointments.map((a) => a.type)));
 
   const statusFilter = searchParams.status;
   const dayFilter = searchParams.day === "today";
@@ -213,7 +221,7 @@ export default async function TerminePage({
             </Link>
           </div>
         )}
-        <TermineListView
+        <TermineView
           appointments={filteredAppointments.map((a) => ({
             id: a.id,
             title: a.title,
@@ -223,7 +231,9 @@ export default async function TerminePage({
             customerName: a.customer?.name ?? null,
             amount: a.amount != null ? Number(a.amount) : null,
           }))}
-          appointmentTypes={distinctTypes}
+          initialViewMode={savedListConfig?.viewMode ?? "cards"}
+          initialColumns={appointmentColumns}
+          initialFilterState={filterState}
         />
       </CollapsiblePanel>
 

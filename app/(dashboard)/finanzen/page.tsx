@@ -5,18 +5,11 @@ import { requirePermission } from "@/lib/session";
 import { KpiCard } from "@/components/kpi-card";
 import { ExpenseForm } from "@/components/expense-form";
 import { ExpensesList } from "@/components/expenses-list";
-import { InvoicesListView } from "@/components/invoices-list-view";
+import { InvoicesView } from "@/components/invoices-view";
 import { markOverdueInvoices } from "@/lib/actions/invoices";
-
-const STATUS_LABELS: Record<string, string> = {
-  DRAFT: "Entwurf",
-  SENT: "Versendet",
-  OPEN: "Offen",
-  PARTIALLY_PAID: "Teilbezahlt",
-  PAID: "Bezahlt",
-  OVERDUE: "Überfällig",
-  CANCELLED: "Storniert",
-};
+import { getListViewConfig } from "@/lib/actions/list-view";
+import { getFilterState } from "@/lib/actions/filters";
+import { INVOICE_COLUMNS_DEFAULT, INVOICE_STATUS_LABELS as STATUS_LABELS } from "@/lib/invoice-columns";
 
 const OPEN_INVOICE_STATUSES = ["SENT", "OPEN", "PARTIALLY_PAID", "OVERDUE"];
 
@@ -36,7 +29,7 @@ export default async function FinanzenPage({
   // Fällige, unbezahlte Rechnungen automatisch auf "Überfällig" setzen
   await markOverdueInvoices();
 
-  const [invoices, expenses, projects] = await Promise.all([
+  const [invoices, expenses, projects, savedListConfig, filterState] = await Promise.all([
     prisma.invoice.findMany({
       where: { companyId: company.id },
       orderBy: { createdAt: "desc" },
@@ -55,7 +48,14 @@ export default async function FinanzenPage({
       orderBy: { createdAt: "desc" },
       select: { id: true, title: true, number: true },
     }),
+    getListViewConfig("invoice"),
+    getFilterState("invoice"),
   ]);
+
+  const savedColumns = savedListConfig?.columns ?? [];
+  const savedColumnKeys = new Set(savedColumns.map((c) => c.key));
+  const missingColumns = INVOICE_COLUMNS_DEFAULT.filter((c) => !savedColumnKeys.has(c.key));
+  const invoiceColumns = [...savedColumns, ...missingColumns];
 
   const paidTotal = invoices.reduce((sum, i) => sum + Number(i.paidAmount), 0);
   const openTotal = invoices
@@ -186,7 +186,7 @@ export default async function FinanzenPage({
           <p className="text-ink-500 text-sm">Keine Rechnungen mit diesem Filter.</p>
         </div>
       ) : (
-        <InvoicesListView
+        <InvoicesView
           invoices={displayedInvoices.map((inv) => ({
             id: inv.id,
             number: inv.number,
@@ -196,6 +196,9 @@ export default async function FinanzenPage({
             dueDate: inv.dueDate ? inv.dueDate.toISOString() : null,
             createdAt: inv.createdAt.toISOString(),
           }))}
+          initialViewMode={savedListConfig?.viewMode ?? "cards"}
+          initialColumns={invoiceColumns}
+          initialFilterState={filterState}
         />
       )}
 

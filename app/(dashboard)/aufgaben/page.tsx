@@ -1,8 +1,12 @@
+import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { getCurrentCompany } from "@/lib/session";
 import { getLinkablesForCompany } from "@/lib/task-linkables";
 import { getCompanyUsers } from "@/lib/actions/free-tasks";
 import { getFieldConfig } from "@/lib/actions/field-config";
+import { getListViewConfig } from "@/lib/actions/list-view";
+import { getFilterState } from "@/lib/actions/filters";
+import { TASK_COLUMNS_DEFAULT } from "@/lib/task-columns";
 import { TasksListView } from "@/components/tasks-list-view";
 
 export default async function AufgabenPage({
@@ -12,7 +16,7 @@ export default async function AufgabenPage({
 }) {
   const company = await getCurrentCompany();
 
-  const [tasks, users, customers, linkables, fieldConfig] = await Promise.all([
+  const [tasks, users, customers, linkables, fieldConfig, savedListConfig, filterState] = await Promise.all([
     prisma.task.findMany({
       where: { companyId: company.id },
       orderBy: [{ dueDate: "asc" }, { createdAt: "desc" }],
@@ -26,9 +30,18 @@ export default async function AufgabenPage({
     }),
     getLinkablesForCompany(company.id),
     getFieldConfig("task"),
+    getListViewConfig("task"),
+    getFilterState("task"),
   ]);
 
+  const savedColumns = savedListConfig?.columns ?? [];
+  const savedColumnKeys = new Set(savedColumns.map((c) => c.key));
+  const missingColumns = TASK_COLUMNS_DEFAULT.filter((c) => !savedColumnKeys.has(c.key));
+  const taskColumns = [...savedColumns, ...missingColumns];
+
   const openCount = tasks.filter((t) => t.status === "OPEN" || t.status === "IN_PROGRESS").length;
+  const statusFilter = searchParams.status;
+  const displayedTasks = statusFilter === "open" ? tasks.filter((t) => t.status === "OPEN" || t.status === "IN_PROGRESS") : tasks;
 
   return (
     <div className="space-y-6">
@@ -39,13 +52,22 @@ export default async function AufgabenPage({
         </p>
       </div>
 
+      {statusFilter === "open" && (
+        <div className="flex items-center gap-2 text-sm text-ink-500">
+          Gefiltert: <span className="font-medium text-ink-900">Offen (alle)</span>
+          <Link href="/aufgaben" className="text-brand-700 hover:underline">
+            Zurücksetzen
+          </Link>
+        </div>
+      )}
+
       <TasksListView
-        tasks={tasks.map((t) => ({
+        tasks={displayedTasks.map((t) => ({
           id: t.id,
           title: t.title,
           status: t.status,
           priority: t.priority,
-          dueDate: t.dueDate,
+          dueDate: t.dueDate ? t.dueDate.toISOString() : null,
           assigneeName: t.assignee?.name ?? null,
           customerName: t.customer?.name ?? null,
         }))}
@@ -53,7 +75,9 @@ export default async function AufgabenPage({
         customers={customers}
         linkables={linkables}
         fieldConfig={fieldConfig}
-        initialStatusFilter={searchParams.status === "open" ? "OPEN_ALL" : ""}
+        initialViewMode={savedListConfig?.viewMode ?? "cards"}
+        initialColumns={taskColumns}
+        initialFilterState={filterState}
       />
     </div>
   );

@@ -2,14 +2,10 @@ import Link from "next/link";
 import { Plus, Briefcase, FileText } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { getCurrentCompany } from "@/lib/session";
-import { statusColor } from "@/lib/utils";
-
-const STATUS_LABELS: Record<string, string> = {
-  PLANNED: "Geplant",
-  IN_PROGRESS: "In Arbeit",
-  DONE: "Abgeschlossen",
-  CANCELLED: "Storniert",
-};
+import { ProjectsView } from "@/components/projects-view";
+import { getListViewConfig } from "@/lib/actions/list-view";
+import { getFilterState } from "@/lib/actions/filters";
+import { PROJECT_COLUMNS_DEFAULT, PROJECT_STATUS_LABELS as STATUS_LABELS } from "@/lib/project-columns";
 
 export default async function ArbeitPage({
   searchParams,
@@ -17,14 +13,23 @@ export default async function ArbeitPage({
   searchParams: { status?: string };
 }) {
   const company = await getCurrentCompany();
-  const projects = await prisma.project.findMany({
-    where: { companyId: company.id },
-    orderBy: { createdAt: "desc" },
-    include: {
-      customer: { select: { name: true } },
-      _count: { select: { tasks: true } },
-    },
-  });
+  const [projects, savedListConfig, filterState] = await Promise.all([
+    prisma.project.findMany({
+      where: { companyId: company.id },
+      orderBy: { createdAt: "desc" },
+      include: {
+        customer: { select: { name: true } },
+        _count: { select: { tasks: true } },
+      },
+    }),
+    getListViewConfig("project"),
+    getFilterState("project"),
+  ]);
+
+  const savedColumns = savedListConfig?.columns ?? [];
+  const savedColumnKeys = new Set(savedColumns.map((c) => c.key));
+  const missingColumns = PROJECT_COLUMNS_DEFAULT.filter((c) => !savedColumnKeys.has(c.key));
+  const projectColumns = [...savedColumns, ...missingColumns];
 
   const statusFilter = searchParams.status;
   const displayedProjects = statusFilter ? projects.filter((p) => p.status === statusFilter) : projects;
@@ -93,22 +98,21 @@ export default async function ArbeitPage({
               <p className="text-ink-500 text-sm">Keine Aufträge mit diesem Filter.</p>
             </div>
           ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {displayedProjects.map((p) => (
-            <Link
-              key={p.id}
-              href={`/arbeit/${p.id}`}
-              className={`rounded-card border-l-4 bg-surface p-5 shadow-card hover:shadow-cardHover transition-shadow ${statusColor[p.status]}`}
-            >
-              <h3 className="font-display font-semibold text-ink-900">{p.title}</h3>
-              <p className="text-sm text-ink-500 mt-0.5">{p.customer.name} · {p.number}</p>
-              <div className="mt-4 flex items-center justify-between">
-                <span className="text-xs font-mono text-ink-500">{p._count.tasks} Aufgaben</span>
-                <span className="text-xs font-medium text-ink-700">{STATUS_LABELS[p.status]}</span>
-              </div>
-            </Link>
-          ))}
-        </div>
+            <ProjectsView
+              projects={displayedProjects.map((p) => ({
+                id: p.id,
+                title: p.title,
+                customerName: p.customer.name,
+                number: p.number,
+                status: p.status,
+                tasksCount: p._count.tasks,
+                startDate: p.startDate ? p.startDate.toISOString() : null,
+                endDate: p.endDate ? p.endDate.toISOString() : null,
+              }))}
+              initialViewMode={savedListConfig?.viewMode ?? "cards"}
+              initialColumns={projectColumns}
+              initialFilterState={filterState}
+            />
           )}
         </>
       )}
