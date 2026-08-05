@@ -204,6 +204,46 @@ export async function updateCustomer(
   redirect(`/kunden/${customerId}`);
 }
 
+const INLINE_EDITABLE_FIELDS = ["name", "type", "email", "phone", "address", "zip", "city"] as const;
+type InlineEditableField = (typeof INLINE_EDITABLE_FIELDS)[number];
+
+// Schnelle Einzelfeld-Aenderung fuer die Tabellenansicht (Klick in eine Zelle,
+// direkt speichern) -- bewusst schlanker als updateCustomer: kein Redirect,
+// keine Vor-/Nachname-Zusammensetzung, kein Pflichtfeld-Check je Tastendruck.
+export async function updateCustomerField(
+  customerId: string,
+  field: string,
+  value: string
+): Promise<{ error?: string }> {
+  if (!INLINE_EDITABLE_FIELDS.includes(field as InlineEditableField)) {
+    return { error: "Dieses Feld kann hier nicht bearbeitet werden." };
+  }
+
+  const company = await getCurrentCompany();
+  const existing = await prisma.customer.findFirst({ where: { id: customerId, companyId: company.id } });
+  if (!existing) return { error: "Kunde nicht gefunden." };
+
+  const trimmed = value.trim();
+
+  if (field === "name" && !trimmed) {
+    return { error: "Der Name darf nicht leer sein." };
+  }
+  if (field === "email" && trimmed && !z.string().email().safeParse(trimmed).success) {
+    return { error: "Ungültige E-Mail-Adresse." };
+  }
+  if (field === "type" && trimmed !== "PRIVATE" && trimmed !== "BUSINESS") {
+    return { error: "Ungültiger Kundentyp." };
+  }
+
+  await prisma.customer.update({
+    where: { id: customerId },
+    data: { [field]: field === "name" || field === "type" ? trimmed : trimmed || null },
+  });
+
+  revalidatePath("/kunden");
+  return {};
+}
+
 export async function createCustomerQuick(data: {
   name: string;
   type: "PRIVATE" | "BUSINESS";

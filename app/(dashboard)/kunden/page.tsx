@@ -1,7 +1,10 @@
 import Link from "next/link";
-import { Plus, Building2, User as UserIcon, Archive, Download } from "lucide-react";
+import { Plus, Archive, Download } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { getCurrentCompany } from "@/lib/session";
+import { CustomersView } from "@/components/customers-view";
+import { getListViewConfig } from "@/lib/actions/list-view";
+import { CUSTOMER_COLUMNS_DEFAULT } from "@/lib/customer-columns";
 
 export default async function KundenPage({
   searchParams,
@@ -11,13 +14,24 @@ export default async function KundenPage({
   const company = await getCurrentCompany();
   const showArchived = searchParams.archiviert === "1";
 
-  const customers = await prisma.customer.findMany({
-    where: { companyId: company.id, archivedAt: showArchived ? { not: null } : null },
-    orderBy: { createdAt: "desc" },
-    include: {
-      _count: { select: { projects: true, invoices: true } },
-    },
-  });
+  const [customers, savedListConfig] = await Promise.all([
+    prisma.customer.findMany({
+      where: { companyId: company.id, archivedAt: showArchived ? { not: null } : null },
+      orderBy: { createdAt: "desc" },
+      include: {
+        _count: { select: { projects: true, invoices: true } },
+      },
+    }),
+    getListViewConfig("customer"),
+  ]);
+
+  // Neue Spalten, die es beim letzten Speichern der Konfiguration noch nicht
+  // gab, werden ergaenzt (analog zum Dashboard-Layout) -- sonst wuerden
+  // zukuenftig hinzugefuegte Spalten fuer bestehende Nutzer nie auftauchen.
+  const savedColumns = savedListConfig?.columns ?? [];
+  const savedKeys = new Set(savedColumns.map((c) => c.key));
+  const missingColumns = CUSTOMER_COLUMNS_DEFAULT.filter((c) => !savedKeys.has(c.key));
+  const columns = [...savedColumns, ...missingColumns];
 
   return (
     <div className="space-y-6">
@@ -60,35 +74,23 @@ export default async function KundenPage({
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {customers.map((customer) => (
-            <Link
-              key={customer.id}
-              href={`/kunden/${customer.id}`}
-              className="rounded-card border-l-4 border-l-brand-500 bg-surface p-5 shadow-card hover:shadow-cardHover transition-shadow"
-            >
-              <div className="flex items-start justify-between">
-                <div>
-                  <h3 className="font-display font-semibold text-ink-900">
-                    {customer.name}
-                  </h3>
-                  <p className="text-sm text-ink-500 mt-0.5">
-                    {customer.city || "Ort nicht angegeben"}
-                  </p>
-                </div>
-                {customer.type === "BUSINESS" ? (
-                  <Building2 size={18} className="text-ink-300 shrink-0" />
-                ) : (
-                  <UserIcon size={18} className="text-ink-300 shrink-0" />
-                )}
-              </div>
-              <div className="mt-4 flex gap-4 text-xs text-ink-500 font-mono">
-                <span>{customer._count.projects} Aufträge</span>
-                <span>{customer._count.invoices} Rechnungen</span>
-              </div>
-            </Link>
-          ))}
-        </div>
+        <CustomersView
+          customers={customers.map((c) => ({
+            id: c.id,
+            name: c.name,
+            type: c.type,
+            email: c.email,
+            phone: c.phone,
+            address: c.address,
+            zip: c.zip,
+            city: c.city,
+            customerSince: c.customerSince.toISOString(),
+            projectsCount: c._count.projects,
+            invoicesCount: c._count.invoices,
+          }))}
+          initialViewMode={savedListConfig?.viewMode ?? "cards"}
+          initialColumns={columns}
+        />
       )}
     </div>
   );
