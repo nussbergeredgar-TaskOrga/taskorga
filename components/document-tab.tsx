@@ -31,7 +31,7 @@ export function DocumentTab({ link, documents }: { link: RecordLink; documents: 
       // Lädt die Datei direkt vom Gerät zu Vercel Blob hoch (kein Umweg über
       // unsere eigene Funktion), dadurch gibt es kein 4,5-MB-Limit mehr.
       const blob = await upload(file.name, file, {
-        access: "public",
+        access: "private",
         handleUploadUrl: "/api/upload",
         multipart: true,
       });
@@ -100,7 +100,7 @@ export function DocumentTab({ link, documents }: { link: RecordLink; documents: 
         {documents.map((d) => (
           <a
             key={d.id}
-            href={d.fileUrl}
+            href={`/api/files/${d.id}`}
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center justify-between rounded-lg bg-ink-50 p-3 text-sm hover:bg-ink-100 transition-colors"

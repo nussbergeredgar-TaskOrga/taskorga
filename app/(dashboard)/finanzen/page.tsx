@@ -4,19 +4,15 @@ import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/session";
 import { KpiCard } from "@/components/kpi-card";
 import { ExpenseForm } from "@/components/expense-form";
-import { ExpensesList } from "@/components/expenses-list";
+import { ExpensesView } from "@/components/expenses-view";
 import { InvoicesView } from "@/components/invoices-view";
 import { markOverdueInvoices } from "@/lib/actions/invoices";
 import { getListViewConfig } from "@/lib/actions/list-view";
 import { getFilterState } from "@/lib/actions/filters";
 import { INVOICE_COLUMNS_DEFAULT, INVOICE_STATUS_LABELS as STATUS_LABELS } from "@/lib/invoice-columns";
+import { EXPENSE_COLUMNS_DEFAULT, EXPENSE_STATUS_LABELS } from "@/lib/expense-columns";
 
 const OPEN_INVOICE_STATUSES = ["SENT", "OPEN", "PARTIALLY_PAID", "OVERDUE"];
-
-const EXPENSE_STATUS_LABELS: Record<string, string> = {
-  OPEN: "Offen",
-  PAID: "Bezahlt",
-};
 
 export default async function FinanzenPage({
   searchParams,
@@ -29,7 +25,7 @@ export default async function FinanzenPage({
   // Fällige, unbezahlte Rechnungen automatisch auf "Überfällig" setzen
   await markOverdueInvoices();
 
-  const [invoices, expenses, projects, savedListConfig, filterState] = await Promise.all([
+  const [invoices, expenses, projects, savedListConfig, filterState, savedExpenseListConfig, expenseFilterState] = await Promise.all([
     prisma.invoice.findMany({
       where: { companyId: company.id },
       orderBy: { createdAt: "desc" },
@@ -50,12 +46,19 @@ export default async function FinanzenPage({
     }),
     getListViewConfig("invoice"),
     getFilterState("invoice"),
+    getListViewConfig("expense"),
+    getFilterState("expense"),
   ]);
 
   const savedColumns = savedListConfig?.columns ?? [];
   const savedColumnKeys = new Set(savedColumns.map((c) => c.key));
   const missingColumns = INVOICE_COLUMNS_DEFAULT.filter((c) => !savedColumnKeys.has(c.key));
   const invoiceColumns = [...savedColumns, ...missingColumns];
+
+  const savedExpenseColumns = savedExpenseListConfig?.columns ?? [];
+  const savedExpenseColumnKeys = new Set(savedExpenseColumns.map((c) => c.key));
+  const missingExpenseColumns = EXPENSE_COLUMNS_DEFAULT.filter((c) => !savedExpenseColumnKeys.has(c.key));
+  const expenseColumns = [...savedExpenseColumns, ...missingExpenseColumns];
 
   const paidTotal = invoices.reduce((sum, i) => sum + Number(i.paidAmount), 0);
   const openTotal = invoices
@@ -72,25 +75,12 @@ export default async function FinanzenPage({
     : invoices;
   const statusFilterLabel = statusFilter === "open" ? "Offen" : statusFilter ? STATUS_LABELS[statusFilter] : null;
 
-  const openExpenses = expenses.filter((e) => e.status === "OPEN");
-  const paidExpenses = expenses.filter((e) => e.status === "PAID");
-  const openExpensesTotal = openExpenses.reduce((sum, e) => sum + Number(e.amount), 0);
-  const paidExpensesTotal = paidExpenses.reduce((sum, e) => sum + Number(e.amount), 0);
+  const openExpensesTotal = expenses.filter((e) => e.status === "OPEN").reduce((sum, e) => sum + Number(e.amount), 0);
+  const paidExpensesTotal = expenses.filter((e) => e.status === "PAID").reduce((sum, e) => sum + Number(e.amount), 0);
 
   const expenseStatusFilter = searchParams.expenseStatus;
   const expenseStatusFilterLabel = expenseStatusFilter ? EXPENSE_STATUS_LABELS[expenseStatusFilter] : null;
-
-  const mappedExpenses = (list: typeof expenses) =>
-    list.map((e) => ({
-      id: e.id,
-      title: e.title,
-      category: e.category,
-      amount: Number(e.amount),
-      date: e.date,
-      status: e.status,
-      documents: e.documents,
-      project: e.project,
-    }));
+  const displayedExpenses = expenseStatusFilter ? expenses.filter((e) => e.status === expenseStatusFilter) : expenses;
 
   return (
     <div className="space-y-6">
@@ -232,14 +222,22 @@ export default async function FinanzenPage({
           </div>
         )}
 
-        <div className="grid md:grid-cols-2 gap-6">
-          {(!expenseStatusFilter || expenseStatusFilter === "OPEN") && (
-            <ExpensesList title="Offene Ausgaben" expenses={mappedExpenses(openExpenses)} />
-          )}
-          {(!expenseStatusFilter || expenseStatusFilter === "PAID") && (
-            <ExpensesList title="Bezahlte Ausgaben" expenses={mappedExpenses(paidExpenses)} />
-          )}
-        </div>
+        <ExpensesView
+          expenses={displayedExpenses.map((e) => ({
+            id: e.id,
+            title: e.title,
+            category: e.category,
+            amount: Number(e.amount),
+            date: e.date.toISOString(),
+            status: e.status,
+            documentId: e.documents[0]?.id ?? null,
+            projectId: e.project?.id ?? null,
+            projectNumber: e.project?.number ?? null,
+          }))}
+          initialViewMode={savedExpenseListConfig?.viewMode ?? "cards"}
+          initialColumns={expenseColumns}
+          initialFilterState={expenseFilterState}
+        />
       </div>
     </div>
   );

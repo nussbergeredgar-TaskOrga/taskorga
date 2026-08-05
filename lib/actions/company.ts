@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/session";
+import { getSignedFileUrl, pathnameFromBlobUrl } from "@/lib/blob-signed-url";
 
 export async function updateCompanyProfile(formData: FormData) {
   const admin = await requireAdmin();
@@ -78,6 +79,14 @@ export async function updateDocumentDefaults(formData: FormData) {
   });
 
   revalidatePath("/einstellungen/dokumente");
+}
+
+// Direkt nach dem Hochladen (noch bevor das Profil gespeichert wird) fuer
+// die Sofort-Vorschau -- der Store ist privat, die rohe Blob-URL ist nicht
+// direkt aufrufbar.
+export async function getLogoPreviewUrl(blobUrl: string): Promise<string> {
+  await requireAdmin();
+  return getSignedFileUrl(pathnameFromBlobUrl(blobUrl));
 }
 
 export async function removeCompanyLogo() {

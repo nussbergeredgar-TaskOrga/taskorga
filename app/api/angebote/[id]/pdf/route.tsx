@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { DocumentPdf } from "@/lib/pdf/document-pdf";
 import { buildPlaceholderContext } from "@/lib/pdf/build-context";
 import { resolvePlaceholders } from "@/lib/document-placeholders";
+import { resolveCompanyLogoUrl } from "@/lib/blob-signed-url";
 
 export async function GET(request: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions);
@@ -29,6 +30,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
   const template = await prisma.documentTemplate.findFirst({
     where: { companyId: quote.companyId, type: "QUOTE", isDefault: true },
   });
+  const company = await resolveCompanyLogoUrl(quote.company);
 
   const createdAtStr = quote.createdAt.toLocaleDateString("de-DE");
   const validUntilStr = quote.validUntil ? quote.validUntil.toLocaleDateString("de-DE") : undefined;
@@ -51,7 +53,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
       title={quote.title}
       createdAt={createdAtStr}
       validUntilOrDue={validUntilStr}
-      company={quote.company}
+      company={company}
       customer={quote.customer}
       items={quote.items.map((i) => ({
         description: i.description,

@@ -9,6 +9,7 @@ import { getCurrentCompany } from "@/lib/session";
 import { DocumentPdf } from "@/lib/pdf/document-pdf";
 import { buildPlaceholderContext } from "@/lib/pdf/build-context";
 import { resolvePlaceholders } from "@/lib/document-placeholders";
+import { resolveCompanyLogoUrl } from "@/lib/blob-signed-url";
 import { sendDocumentEmail } from "@/lib/email";
 import { getSalutationShort } from "@/lib/customer-salutation";
 import { createWithUniqueNumber } from "@/lib/numbering";
@@ -438,6 +439,7 @@ export async function sendQuoteEmail(
     totalGross: Number(quote.totalGross),
   });
 
+  const pdfCompany = await resolveCompanyLogoUrl(quote.company);
   const pdfBuffer = await renderToBuffer(
     <DocumentPdf
       kind="Angebot"
@@ -445,7 +447,7 @@ export async function sendQuoteEmail(
       title={quote.title}
       createdAt={createdAtStr}
       validUntilOrDue={validUntilStr}
-      company={quote.company}
+      company={pdfCompany}
       customer={quote.customer}
       items={quote.items.map((i) => ({
         description: i.description,

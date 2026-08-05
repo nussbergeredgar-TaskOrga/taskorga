@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { DocumentPdf } from "@/lib/pdf/document-pdf";
 import { buildPlaceholderContext } from "@/lib/pdf/build-context";
 import { resolvePlaceholders } from "@/lib/document-placeholders";
+import { resolveCompanyLogoUrl } from "@/lib/blob-signed-url";
 
 export async function GET(request: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions);
@@ -29,6 +30,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
   const template = await prisma.documentTemplate.findFirst({
     where: { companyId: invoice.companyId, type: "INVOICE", isDefault: true },
   });
+  const company = await resolveCompanyLogoUrl(invoice.company);
 
   const createdAtStr = (invoice.issueDate ?? invoice.createdAt).toLocaleDateString("de-DE");
   const dueDateStr = invoice.dueDate ? invoice.dueDate.toLocaleDateString("de-DE") : undefined;
@@ -52,7 +54,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
       title={title}
       createdAt={createdAtStr}
       validUntilOrDue={dueDateStr}
-      company={invoice.company}
+      company={company}
       customer={invoice.customer}
       items={invoice.items.map((i) => ({
         description: i.description,

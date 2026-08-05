@@ -12,6 +12,7 @@ import { DocumentPdf } from "@/lib/pdf/document-pdf";
 import { buildPlaceholderContext } from "@/lib/pdf/build-context";
 import { resolvePlaceholders } from "@/lib/document-placeholders";
 import { createWithUniqueNumber } from "@/lib/numbering";
+import { resolveCompanyLogoUrl } from "@/lib/blob-signed-url";
 import { addDays } from "@/lib/date-utils";
 
 const invoiceSchema = z.object({
@@ -326,6 +327,7 @@ export async function sendPaymentReminder(invoiceId: string): Promise<{ error?: 
   const rawIntro = configuredLevel?.introText || FALLBACK_INTROS[Math.min(nextLevelNumber, 3)];
   const resolvedIntro = resolvePlaceholders(rawIntro, context);
 
+  const pdfCompany = await resolveCompanyLogoUrl(invoice.company);
   const pdfBuffer = await renderToBuffer(
     <DocumentPdf
       kind="Rechnung"
@@ -333,7 +335,7 @@ export async function sendPaymentReminder(invoiceId: string): Promise<{ error?: 
       title={title}
       createdAt={createdAtStr}
       validUntilOrDue={dueDateStr}
-      company={invoice.company}
+      company={pdfCompany}
       customer={invoice.customer}
       items={invoice.items.map((i) => ({
         description: i.description,
@@ -430,6 +432,7 @@ export async function sendInvoiceEmail(
     totalGross: Number(invoice.totalGross),
   });
 
+  const pdfCompany = await resolveCompanyLogoUrl(invoice.company);
   const pdfBuffer = await renderToBuffer(
     <DocumentPdf
       kind="Rechnung"
@@ -437,7 +440,7 @@ export async function sendInvoiceEmail(
       title={title}
       createdAt={createdAtStr}
       validUntilOrDue={dueDateStr}
-      company={invoice.company}
+      company={pdfCompany}
       customer={invoice.customer}
       items={invoice.items.map((i) => ({
         description: i.description,

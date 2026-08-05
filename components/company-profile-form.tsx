@@ -3,9 +3,10 @@
 import { useRef, useState, useTransition } from "react";
 import { upload } from "@vercel/blob/client";
 import { Upload, X } from "lucide-react";
-import { updateCompanyProfile, removeCompanyLogo } from "@/lib/actions/company";
+import { updateCompanyProfile, removeCompanyLogo, getLogoPreviewUrl } from "@/lib/actions/company";
 
 type Company = {
+  id: string;
   name: string;
   email: string | null;
   address: string | null;
@@ -40,7 +41,12 @@ function Field({ label, name, defaultValue }: { label: string; name: string; def
 export function CompanyProfileForm({ company }: { company: Company }) {
   const [saved, setSaved] = useState(false);
   const [pending, startTransition] = useTransition();
+  // logoUrl ist die rohe, zu speichernde Blob-URL; previewUrl das, was
+  // tatsaechlich angezeigt wird. Der Store ist privat -- die rohe URL ist
+  // nicht direkt aufrufbar, daher laeuft die Anzeige immer ueber eine
+  // signierte bzw. stabile Weiterleitungs-Route.
   const [logoUrl, setLogoUrl] = useState(company.logoUrl);
+  const [previewUrl, setPreviewUrl] = useState(company.logoUrl ? `/api/public/logo/${company.id}` : null);
   const [uploading, setUploading] = useState(false);
   const [logoError, setLogoError] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -51,8 +57,9 @@ export function CompanyProfileForm({ company }: { company: Company }) {
     setUploading(true);
     setLogoError("");
     try {
-      const blob = await upload(file.name, file, { access: "public", handleUploadUrl: "/api/upload" });
+      const blob = await upload(file.name, file, { access: "private", handleUploadUrl: "/api/upload" });
       setLogoUrl(blob.url);
+      setPreviewUrl(await getLogoPreviewUrl(blob.url));
     } catch (err) {
       setLogoError(err instanceof Error ? err.message : "Upload fehlgeschlagen.");
     } finally {
@@ -75,9 +82,9 @@ export function CompanyProfileForm({ company }: { company: Company }) {
       <div>
         <p className="text-xs font-medium text-ink-700 mb-2">Logo</p>
         <div className="flex items-center gap-4">
-          {logoUrl ? (
+          {previewUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={logoUrl} alt="Firmenlogo" className="h-16 w-16 rounded-lg object-contain border border-ink-100 bg-surface" />
+            <img src={previewUrl} alt="Firmenlogo" className="h-16 w-16 rounded-lg object-contain border border-ink-100 bg-surface" />
           ) : (
             <div className="h-16 w-16 rounded-lg border border-dashed border-ink-100 flex items-center justify-center text-ink-300 text-xs">
               Kein Logo
@@ -93,11 +100,12 @@ export function CompanyProfileForm({ company }: { company: Company }) {
                 <Upload size={13} />
                 {uploading ? "Wird hochgeladen …" : "Logo hochladen"}
               </label>
-              {logoUrl && (
+              {previewUrl && (
                 <button
                   type="button"
                   onClick={() => {
                     setLogoUrl(null);
+                    setPreviewUrl(null);
                     startTransition(() => removeCompanyLogo());
                   }}
                   className="inline-flex items-center gap-1 text-xs text-ink-500 hover:text-danger transition-colors"

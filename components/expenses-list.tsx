@@ -12,7 +12,7 @@ type Expense = {
   amount: number;
   date: Date;
   status: "OPEN" | "PAID";
-  documents: { id: string; fileName: string; fileUrl: string }[];
+  documents: { id: string; fileName: string }[];
   project?: { id: string; title: string; number: string } | null;
 };
 
@@ -38,7 +38,7 @@ function ExpenseRow({ expense }: { expense: Expense }) {
           {doc && (
             <>
               {" · "}
-              <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-brand-700 hover:underline">
+              <a href={`/api/files/${doc.id}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-brand-700 hover:underline">
                 <FileText size={11} /> Beleg
               </a>
             </>

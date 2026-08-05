@@ -23,7 +23,7 @@ export default async function AuftragDetailPage({ params }: { params: { id: stri
       timeEntries: { orderBy: { date: "desc" }, include: { user: { select: { name: true } } } },
       expenses: {
         orderBy: { date: "desc" },
-        include: { documents: { select: { id: true, fileName: true, fileUrl: true } } },
+        include: { documents: { select: { id: true, fileName: true } } },
       },
       documents: { orderBy: { createdAt: "desc" } },
     },
