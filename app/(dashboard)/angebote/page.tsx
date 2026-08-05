@@ -2,15 +2,10 @@ import Link from "next/link";
 import { Plus } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { getCurrentCompany } from "@/lib/session";
-import { statusColor } from "@/lib/utils";
-
-const STATUS_LABELS: Record<string, string> = {
-  DRAFT: "Entwurf",
-  SENT: "Versendet",
-  ACCEPTED: "Angenommen",
-  REJECTED: "Abgelehnt",
-  EXPIRED: "Abgelaufen",
-};
+import { QuotesView } from "@/components/quotes-view";
+import { getListViewConfig } from "@/lib/actions/list-view";
+import { getFilterState } from "@/lib/actions/filters";
+import { QUOTE_COLUMNS_DEFAULT, QUOTE_STATUS_LABELS } from "@/lib/quote-columns";
 
 const OPEN_QUOTE_STATUSES = ["DRAFT", "SENT"];
 
@@ -20,11 +15,20 @@ export default async function AngebotePage({
   searchParams: { status?: string };
 }) {
   const company = await getCurrentCompany();
-  const quotes = await prisma.quote.findMany({
-    where: { companyId: company.id },
-    orderBy: { createdAt: "desc" },
-    include: { customer: { select: { name: true } } },
-  });
+  const [quotes, savedListConfig, filterState] = await Promise.all([
+    prisma.quote.findMany({
+      where: { companyId: company.id },
+      orderBy: { createdAt: "desc" },
+      include: { customer: { select: { name: true } } },
+    }),
+    getListViewConfig("quote"),
+    getFilterState("quote"),
+  ]);
+
+  const savedColumns = savedListConfig?.columns ?? [];
+  const savedColumnKeys = new Set(savedColumns.map((c) => c.key));
+  const missingColumns = QUOTE_COLUMNS_DEFAULT.filter((c) => !savedColumnKeys.has(c.key));
+  const quoteColumns = [...savedColumns, ...missingColumns];
 
   const statusFilter = searchParams.status;
   const displayedQuotes = statusFilter
@@ -32,7 +36,7 @@ export default async function AngebotePage({
         statusFilter === "open" ? OPEN_QUOTE_STATUSES.includes(q.status) : q.status === statusFilter
       )
     : quotes;
-  const statusFilterLabel = statusFilter === "open" ? "Offen" : statusFilter ? STATUS_LABELS[statusFilter] : null;
+  const statusFilterLabel = statusFilter === "open" ? "Offen" : statusFilter ? QUOTE_STATUS_LABELS[statusFilter] : null;
 
   return (
     <div className="space-y-6">
@@ -68,28 +72,21 @@ export default async function AngebotePage({
           <p className="text-ink-500 text-sm">Keine Angebote mit diesem Filter.</p>
         </div>
       ) : (
-        <div className="space-y-2">
-          {displayedQuotes.map((q) => (
-            <Link
-              key={q.id}
-              href={`/angebote/${q.id}`}
-              className={`flex items-center justify-between rounded-lg border-l-4 bg-surface p-4 shadow-card hover:shadow-cardHover transition-shadow ${statusColor[q.status]}`}
-            >
-              <div>
-                <p className="font-medium text-ink-900">{q.title}</p>
-                <p className="text-sm text-ink-500">
-                  {q.customer.name} · {q.number}
-                </p>
-              </div>
-              <div className="text-right">
-                <p className="font-mono text-sm font-medium text-ink-900">
-                  {Number(q.totalGross).toLocaleString("de-DE")} €
-                </p>
-                <p className="text-xs text-ink-500">{STATUS_LABELS[q.status]}</p>
-              </div>
-            </Link>
-          ))}
-        </div>
+        <QuotesView
+          quotes={displayedQuotes.map((q) => ({
+            id: q.id,
+            title: q.title,
+            customerName: q.customer.name,
+            number: q.number,
+            status: q.status,
+            totalGross: Number(q.totalGross),
+            validUntil: q.validUntil ? q.validUntil.toISOString() : null,
+            createdAt: q.createdAt.toISOString(),
+          }))}
+          initialViewMode={savedListConfig?.viewMode ?? "cards"}
+          initialColumns={quoteColumns}
+          initialFilterState={filterState}
+        />
       )}
     </div>
   );

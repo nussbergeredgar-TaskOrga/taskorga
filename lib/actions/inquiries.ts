@@ -297,6 +297,37 @@ export async function updateInquiryAmount(
   return {};
 }
 
+const INQUIRY_INLINE_EDITABLE_FIELDS = ["source", "amount"] as const;
+type InquiryInlineEditableField = (typeof INQUIRY_INLINE_EDITABLE_FIELDS)[number];
+
+export async function updateInquiryField(
+  inquiryId: string,
+  field: string,
+  value: string
+): Promise<{ error?: string }> {
+  if (!INQUIRY_INLINE_EDITABLE_FIELDS.includes(field as InquiryInlineEditableField)) {
+    return { error: "Dieses Feld kann hier nicht bearbeitet werden." };
+  }
+
+  const company = await getCurrentCompany();
+  const existing = await prisma.inquiry.findFirst({ where: { id: inquiryId, companyId: company.id } });
+  if (!existing) return { error: "Anfrage nicht gefunden." };
+
+  if (field === "amount") {
+    const amountResult = parseAmount(value);
+    if (!amountResult.ok) {
+      return { error: "Bitte einen gültigen Betrag eingeben (z. B. 1500 oder 1500,50)." };
+    }
+    await prisma.inquiry.update({ where: { id: inquiryId }, data: { amount: amountResult.value } });
+  } else {
+    await prisma.inquiry.update({ where: { id: inquiryId }, data: { source: value.trim() || null } });
+  }
+
+  revalidatePath("/anfragen");
+  revalidatePath(`/anfragen/${inquiryId}`);
+  return {};
+}
+
 export async function updateInquiryStatus(inquiryId: string, status: InquiryStatus, lostReason?: string) {
   const company = await getCurrentCompany();
   const existing = await prisma.inquiry.findFirst({ where: { id: inquiryId, companyId: company.id } });

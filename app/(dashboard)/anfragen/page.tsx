@@ -4,8 +4,12 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentCompany } from "@/lib/session";
 import { AnfrageRow } from "@/components/anfrage-row";
 import { AnfrageDecisionRow } from "@/components/anfrage-decision-row";
-import { AnfragenListView } from "@/components/anfragen-list-view";
+import { AnfragenView } from "@/components/anfragen-view";
 import { CollapsiblePanel } from "@/components/collapsible-panel";
+import { getListViewConfig } from "@/lib/actions/list-view";
+import { getFilterState } from "@/lib/actions/filters";
+import { INQUIRY_COLUMNS_DEFAULT } from "@/lib/inquiry-columns";
+import { INQUIRY_STATUS_LABELS } from "@/lib/status-labels";
 
 export default async function AnfragenPage({
   searchParams,
@@ -18,7 +22,7 @@ export default async function AnfragenPage({
   startOfMonth.setDate(1);
   startOfMonth.setHours(0, 0, 0, 0);
 
-  const [steps, inquiries, wonAgg, lostAgg, scheduledAppointments] = await Promise.all([
+  const [steps, inquiries, wonAgg, lostAgg, scheduledAppointments, savedListConfig, filterState] = await Promise.all([
     prisma.workflowStep.findMany({
       where: { companyId: company.id },
       orderBy: { order: "asc" },
@@ -53,7 +57,14 @@ export default async function AnfragenPage({
         inquiry: { select: { id: true, title: true } },
       },
     }),
+    getListViewConfig("inquiry"),
+    getFilterState("inquiry"),
   ]);
+
+  const savedColumns = savedListConfig?.columns ?? [];
+  const savedColumnKeys = new Set(savedColumns.map((c) => c.key));
+  const missingColumns = INQUIRY_COLUMNS_DEFAULT.filter((c) => !savedColumnKeys.has(c.key));
+  const inquiryColumns = [...savedColumns, ...missingColumns];
 
   // Für jede offene Anfrage den ersten noch nicht abgehakten Schritt ermitteln
   // und die Anfrage dort einsortieren. Sind alle Schritte erledigt, landet sie
@@ -228,16 +239,20 @@ export default async function AnfragenPage({
           </CollapsiblePanel>
 
           <CollapsiblePanel title="Listenansicht — alle offenen Anfragen" badge={`${inquiries.length}`}>
-            <AnfragenListView
+            <AnfragenView
               inquiries={inquiries.map((i) => ({
                 id: i.id,
                 title: i.title,
                 customerName: i.customer.name,
+                status: INQUIRY_STATUS_LABELS[i.status],
+                source: i.source,
                 amount: i.amount != null ? Number(i.amount) : null,
                 createdAt: i.createdAt.toISOString(),
                 stepLabel: stepLabelByInquiryId.get(i.id) ?? "—",
               }))}
-              stepLabels={[...steps.map((s) => s.label), "Alle Schritte erledigt"]}
+              initialViewMode={savedListConfig?.viewMode ?? "cards"}
+              initialColumns={inquiryColumns}
+              initialFilterState={filterState}
             />
           </CollapsiblePanel>
         </>
