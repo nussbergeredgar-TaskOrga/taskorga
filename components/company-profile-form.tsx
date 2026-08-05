@@ -7,6 +7,7 @@ import { updateCompanyProfile, removeCompanyLogo } from "@/lib/actions/company";
 
 type Company = {
   name: string;
+  email: string | null;
   address: string | null;
   zip: string | null;
   city: string | null;
@@ -112,6 +113,19 @@ export function CompanyProfileForm({ company }: { company: Company }) {
       </div>
 
       <Field label="Firmenname" name="name" defaultValue={company.name} />
+      <div>
+        <label className="block text-xs text-ink-500 mb-1">Kontakt-E-Mail</label>
+        <input
+          name="email"
+          type="email"
+          defaultValue={company.email ?? ""}
+          placeholder="info@meine-firma.de"
+          className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface"
+        />
+        <p className="text-xs text-ink-300 mt-1">
+          Antworten von Kunden auf Angebots-/Rechnungsmails landen hier, statt bei TaskOrga.
+        </p>
+      </div>
 
       <div>
         <p className="text-xs font-medium text-ink-700 mb-2">Adresse</p>

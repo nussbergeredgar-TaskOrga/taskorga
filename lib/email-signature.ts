@@ -1,5 +1,6 @@
 export type SignatureCompany = {
   name: string;
+  email?: string | null;
   logoUrl?: string | null;
   emailSignatureName?: string | null;
   emailSignatureRole?: string | null;

@@ -122,6 +122,7 @@ export const HELP_CHAPTERS: HelpChapter[] = [
       "3. Bei Vercel im Projekt unter Settings → Environment Variables eine neue Variable anlegen: RESEND_API_KEY = dein-key-von-resend",
       "4. Optional: eine eigene Absenderadresse mit EMAIL_FROM hinterlegen (z. B. TaskOrga <info@deine-domain.de>), dafür muss die Domain vorher bei Resend verifiziert werden. Ohne diese Variable wird eine Resend-Testadresse verwendet.",
       "5. Nach dem Speichern der Umgebungsvariable: „Deployments\" → neuestes Deployment → „...\" → „Redeploy\", damit die Änderung übernommen wird.",
+      "Damit Angebots-/Rechnungsmails an eure Kunden nach eurer Firma statt nach TaskOrga aussehen: Unter Einstellungen → Firma → Firmenprofil die „Kontakt-E-Mail\" hinterlegen. Der Firmenname erscheint dann als Absendername, und Antworten eurer Kunden landen automatisch in eurem Postfach statt bei TaskOrga.",
     ],
   },
   {

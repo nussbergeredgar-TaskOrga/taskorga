@@ -3,6 +3,17 @@ import { buildSignatureHtml, type SignatureCompany } from "@/lib/email-signature
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
+// Mails an die eigenen Kunden einer Firma (Angebote, Rechnungen, Mahnungen)
+// laufen technisch weiter ueber die TaskOrga-Absenderadresse (SPF/DKIM dafuer
+// sind eingerichtet, eine beliebige Fremd-Domain waere das nicht), zeigen dem
+// Empfaenger aber den Firmennamen als Absender an. Antworten landen per
+// Reply-To direkt im Postfach der Firma, nicht bei TaskOrga.
+function brandedFrom(companyName: string): string {
+  const base = process.env.EMAIL_FROM || "TaskOrga <onboarding@resend.dev>";
+  const address = base.match(/<(.+)>/)?.[1] ?? base;
+  return `${companyName} (über TaskOrga) <${address}>`;
+}
+
 export async function sendPasswordResetEmail(to: string, resetUrl: string) {
   if (!resend) {
     throw new Error(
@@ -104,7 +115,8 @@ export async function sendPaymentReminderEmail({
   }
 
   await resend.emails.send({
-    from: process.env.EMAIL_FROM || "TaskOrga <onboarding@resend.dev>",
+    from: brandedFrom(company.name),
+    replyTo: company.email || undefined,
     to,
     subject: `${levelLabel}: Rechnung ${invoiceNumber}`,
     html: `
@@ -158,7 +170,8 @@ export async function sendDocumentEmail({
       : "anbei erhalten Sie unsere Rechnung. Vielen Dank für Ihr Vertrauen.";
 
   await resend.emails.send({
-    from: process.env.EMAIL_FROM || "TaskOrga <onboarding@resend.dev>",
+    from: brandedFrom(company.name),
+    replyTo: company.email || undefined,
     to,
     subject: `${kind} ${number}`,
     html: `

@@ -18,6 +18,7 @@ datasource db {
 model Company {
   id        String   @id @default(cuid())
   name      String
+  email       String? // Kontaktadresse der Firma -- Reply-To bei Mails an ihre eigenen Kunden
   address     String?
   zip         String?
   city        String?

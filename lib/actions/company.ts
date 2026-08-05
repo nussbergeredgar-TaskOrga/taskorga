@@ -14,6 +14,7 @@ export async function updateCompanyProfile(formData: FormData) {
     where: { id: admin.companyId },
     data: {
       name: get("name") || undefined, // Name darf nicht leer werden
+      email: get("email"),
       address: get("address"),
       zip: get("zip"),
       city: get("city"),
