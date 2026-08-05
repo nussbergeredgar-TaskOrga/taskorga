@@ -1,10 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { Building2, User as UserIcon } from "lucide-react";
 import { ColumnConfigMenu } from "@/components/column-config-menu";
-import { FilterBar, type FilterDef } from "@/components/filter-bar";
 import { saveListViewConfig, type ColumnConfig } from "@/lib/actions/list-view";
 import { updateCustomerField } from "@/lib/actions/customers";
 import { CUSTOMER_COLUMN_LABELS, CUSTOMER_EDITABLE_FIELDS, type CustomerColumnKey } from "@/lib/customer-columns";
@@ -126,8 +125,6 @@ export function CustomersTableView({
   initialConfig: { viewMode: "cards" | "table"; columns: ColumnConfig[] };
 }) {
   const [columns, setColumns] = useState(initialConfig.columns);
-  const [filters, setFilters] = useState<Record<string, string>>({});
-  const [search, setSearch] = useState("");
   const resizeRef = useRef<{ key: string; startX: number; startWidth: number } | null>(null);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const columnsRef = useRef(columns);
@@ -176,47 +173,15 @@ export function CustomersTableView({
     window.addEventListener("mouseup", onUp);
   }
 
-  const filterDefs: FilterDef[] = [
-    {
-      key: "type",
-      label: "Typ",
-      type: "select",
-      options: [
-        { value: "PRIVATE", label: "Privat" },
-        { value: "BUSINESS", label: "Geschäft" },
-      ],
-    },
-    { key: "city", label: "Ort", type: "text", placeholder: "Ort" },
-  ];
-
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return customers.filter((c) => {
-      if (q && !c.name.toLowerCase().includes(q) && !(c.email ?? "").toLowerCase().includes(q)) return false;
-      if (filters.type && c.type !== filters.type) return false;
-      if (filters.city && !(c.city ?? "").toLowerCase().includes(filters.city.toLowerCase())) return false;
-      return true;
-    });
-  }, [customers, search, filters]);
-
   const visibleColumns = [...columns].filter((c) => c.visible).sort((a, b) => a.order - b.order);
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-center gap-2 justify-between">
-        <div className="flex flex-wrap items-center gap-2">
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Suchen nach Name oder E-Mail …"
-            className="rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 min-w-[200px]"
-          />
-          <FilterBar defs={filterDefs} values={filters} onChange={setFilters} />
-        </div>
+      <div className="flex justify-end">
         <ColumnConfigMenu columns={columns} labels={CUSTOMER_COLUMN_LABELS} onChange={setColumns} />
       </div>
 
-      {filtered.length === 0 ? (
+      {customers.length === 0 ? (
         <div className="rounded-card border border-dashed border-ink-100 bg-surface p-8 text-center">
           <p className="text-ink-500 text-sm">Keine Kunden mit diesen Filtern.</p>
         </div>
@@ -244,7 +209,7 @@ export function CustomersTableView({
               </tr>
             </thead>
             <tbody>
-              {filtered.map((c) => (
+              {customers.map((c) => (
                 <tr key={c.id} className="border-b border-ink-100 last:border-0 hover:bg-ink-50/50 transition-colors">
                   <td className="px-3 py-2">
                     <div className="flex items-center gap-2 min-w-0">

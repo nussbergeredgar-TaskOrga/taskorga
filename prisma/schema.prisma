@@ -168,6 +168,7 @@ model User {
   role      Role?    @relation(fields: [roleId], references: [id])
   navConfig Json? // gespeicherte Reihenfolge/Sichtbarkeit der Navigationspunkte
   listViewConfig Json? // je Entitaet: Ansicht (Karten/Tabelle), Spalten (sichtbar/Reihenfolge/Breite)
+  savedFilters   Json? // je Entitaet: gespeicherte, benannte Filter + aktiver Filter
 
   failedLoginAttempts Int       @default(0)
   lockedUntil         DateTime?

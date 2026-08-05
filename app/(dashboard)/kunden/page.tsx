@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentCompany } from "@/lib/session";
 import { CustomersView } from "@/components/customers-view";
 import { getListViewConfig } from "@/lib/actions/list-view";
+import { getFilterState } from "@/lib/actions/filters";
 import { CUSTOMER_COLUMNS_DEFAULT } from "@/lib/customer-columns";
 
 export default async function KundenPage({
@@ -14,7 +15,7 @@ export default async function KundenPage({
   const company = await getCurrentCompany();
   const showArchived = searchParams.archiviert === "1";
 
-  const [customers, savedListConfig] = await Promise.all([
+  const [customers, savedListConfig, filterState] = await Promise.all([
     prisma.customer.findMany({
       where: { companyId: company.id, archivedAt: showArchived ? { not: null } : null },
       orderBy: { createdAt: "desc" },
@@ -23,6 +24,7 @@ export default async function KundenPage({
       },
     }),
     getListViewConfig("customer"),
+    getFilterState("customer"),
   ]);
 
   // Neue Spalten, die es beim letzten Speichern der Konfiguration noch nicht
@@ -90,6 +92,7 @@ export default async function KundenPage({
           }))}
           initialViewMode={savedListConfig?.viewMode ?? "cards"}
           initialColumns={columns}
+          initialFilterState={filterState}
         />
       )}
     </div>
