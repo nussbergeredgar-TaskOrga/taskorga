@@ -52,6 +52,7 @@ export function PlaceholderTextarea({
               <button
                 key={t.token}
                 type="button"
+                onMouseDown={(e) => e.preventDefault()}
                 onClick={() => insert(t.token)}
                 className="rounded bg-ink-50 hover:bg-ink-100 text-ink-700 text-[11px] px-1.5 py-0.5 font-mono transition-colors"
                 title={t.label}

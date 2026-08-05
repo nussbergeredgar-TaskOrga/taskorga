@@ -7,7 +7,7 @@ const anthropic = process.env.ANTHROPIC_API_KEY
 export async function generateCrossSellSuggestion(context: string): Promise<string> {
   if (!anthropic) {
     throw new Error(
-      "KI-Funktion ist noch nicht eingerichtet. Ein Admin muss unter Einstellungen einen Anthropic-API-Key hinterlegen (ANTHROPIC_API_KEY)."
+      "KI-Funktion ist noch nicht eingerichtet. Dazu muss serverseitig die Umgebungsvariable ANTHROPIC_API_KEY mit einem gültigen Anthropic-API-Key hinterlegt werden (z. B. in den Vercel-Projekteinstellungen)."
     );
   }
 
