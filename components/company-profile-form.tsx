@@ -51,7 +51,7 @@ export function CompanyProfileForm({ company }: { company: Company }) {
     setUploading(true);
     setLogoError("");
     try {
-      const blob = await upload(file.name, file, { access: "public", handleUploadUrl: "/api/upload" });
+      const blob = await upload(file.name, file, { access: "public", handleUploadUrl: "/api/upload", multipart: true });
       setLogoUrl(blob.url);
     } catch (err) {
       setLogoError(err instanceof Error ? err.message : "Upload fehlgeschlagen.");

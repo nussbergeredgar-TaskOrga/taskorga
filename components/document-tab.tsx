@@ -33,6 +33,7 @@ export function DocumentTab({ link, documents }: { link: RecordLink; documents: 
       const blob = await upload(file.name, file, {
         access: "public",
         handleUploadUrl: "/api/upload",
+        multipart: true,
       });
 
       startTransition(() =>

@@ -31,7 +31,7 @@ export function ExpenseForm({
     setUploading(true);
     setError("");
     try {
-      const blob = await upload(file.name, file, { access: "public", handleUploadUrl: "/api/upload" });
+      const blob = await upload(file.name, file, { access: "public", handleUploadUrl: "/api/upload", multipart: true });
       setPendingFile({ fileName: file.name, fileUrl: blob.url, mimeType: file.type || "application/octet-stream", fileSize: file.size });
       setFileName(file.name);
     } catch (err) {
