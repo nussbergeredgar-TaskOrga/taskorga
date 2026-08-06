@@ -9,9 +9,13 @@ import {
   deleteCustomChart,
   duplicateCustomChart,
   toggleChartOnDashboard,
+  type ChartType,
+  type ChartGroupBy,
 } from "@/lib/actions/custom-chart";
 import { CustomChart } from "@/components/charts/custom-chart";
-import { ENTITY_META, ENTITY_KEYS, type EntityKey } from "@/lib/custom-kpi";
+import { ReportFilterConditionsEditor } from "@/components/report-filter-conditions";
+import { ENTITY_META, ENTITY_KEYS, filterableFieldsFor, type EntityKey } from "@/lib/custom-kpi";
+import type { ReportFilterCondition } from "@/lib/report-filters";
 
 type Chart = {
   id: string;
@@ -19,17 +23,34 @@ type Chart = {
   entity: string;
   chartType: string;
   groupBy: string;
+  groupByField: string | null;
   aggregation: string;
+  filterConditions: unknown;
   data: { label: string; value: number; status?: string }[];
   onDashboard: boolean;
 };
 
+const CHART_TYPE_LABELS: Record<ChartType, string> = {
+  bar: "Balkendiagramm",
+  line: "Liniendiagramm",
+  pie: "Kreisdiagramm",
+  area: "Flächendiagramm",
+};
+
 function describeChart(chart: Chart) {
   const meta = ENTITY_META[chart.entity as EntityKey];
-  const chartLabel = chart.chartType === "bar" ? "Balkendiagramm" : "Liniendiagramm";
-  const groupLabel = chart.groupBy === "status" ? "nach Status" : "Verlauf pro Monat (6 Monate)";
+  const chartLabel = CHART_TYPE_LABELS[chart.chartType as ChartType] ?? chart.chartType;
+  const groupField = meta?.groupableFields.find((f) => f.key === chart.groupByField);
+  const groupLabel =
+    chart.groupBy === "status"
+      ? "nach Status"
+      : chart.groupBy === "field"
+        ? `nach ${groupField?.label ?? "Feld"}`
+        : "Verlauf pro Monat (6 Monate)";
   const aggLabel = chart.aggregation === "sum" ? `${meta?.sumFields[0]?.label ?? "Betrag"} summiert` : "Anzahl";
-  return `${meta?.label ?? chart.entity} · ${chartLabel} · ${groupLabel} · ${aggLabel}`;
+  const conditions = (chart.filterConditions as ReportFilterCondition[] | null) ?? [];
+  const filterSuffix = conditions.length > 0 ? ` · ${conditions.length} Bedingung${conditions.length !== 1 ? "en" : ""}` : "";
+  return `${meta?.label ?? chart.entity} · ${chartLabel} · ${groupLabel} · ${aggLabel}${filterSuffix}`;
 }
 
 // Gemeinsames Formular für Neu anlegen UND Bearbeiten
@@ -44,26 +65,33 @@ function ChartForm({
 }) {
   const [label, setLabel] = useState(initial?.label ?? "");
   const [entity, setEntity] = useState<EntityKey>((initial?.entity as EntityKey) ?? "invoices");
-  const [chartType, setChartType] = useState((initial?.chartType as "bar" | "line") ?? "bar");
-  const [groupBy, setGroupBy] = useState((initial?.groupBy as "status" | "month") ?? "status");
+  const [chartType, setChartType] = useState<ChartType>((initial?.chartType as ChartType) ?? "bar");
+  const [groupBy, setGroupBy] = useState<ChartGroupBy>((initial?.groupBy as ChartGroupBy) ?? "status");
   const [aggregation, setAggregation] = useState((initial?.aggregation as "count" | "sum") ?? "count");
+  const [conditions, setConditions] = useState<ReportFilterCondition[]>(
+    (initial?.filterConditions as ReportFilterCondition[] | null) ?? []
+  );
   const [pending, startTransition] = useTransition();
 
   const meta = ENTITY_META[entity];
   const canGroupByStatus = meta.statusOptions.length > 0;
+  const canGroupByField = meta.groupableFields.length > 0;
   const canSum = meta.sumFields.length > 0;
+  const filterFields = filterableFieldsFor(entity);
 
   function submit() {
     if (!label.trim()) return;
-    const effectiveGroupBy = groupBy === "status" && !canGroupByStatus ? "month" : groupBy;
+    const effectiveGroupBy = groupBy === "status" && !canGroupByStatus ? "month" : groupBy === "field" && !canGroupByField ? "month" : groupBy;
     const effectiveAggregation = aggregation === "sum" && !canSum ? "count" : aggregation;
     const payload = {
       label,
       entity,
       chartType,
       groupBy: effectiveGroupBy,
+      groupByField: effectiveGroupBy === "field" ? meta.groupableFields[0]?.key : undefined,
       aggregation: effectiveAggregation,
       sumField: meta.sumFields[0]?.key,
+      filterConditions: conditions.filter((c) => c.value.trim()),
     };
     startTransition(async () => {
       if (initial) {
@@ -100,18 +128,23 @@ function ChartForm({
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
         <select
           value={chartType}
-          onChange={(e) => setChartType(e.target.value as "bar" | "line")}
+          onChange={(e) => setChartType(e.target.value as ChartType)}
           className="rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface"
         >
           <option value="bar">Balkendiagramm</option>
           <option value="line">Liniendiagramm</option>
+          <option value="area">Flächendiagramm</option>
+          <option value="pie">Kreisdiagramm</option>
         </select>
         <select
-          value={canGroupByStatus ? groupBy : "month"}
-          onChange={(e) => setGroupBy(e.target.value as "status" | "month")}
+          value={(groupBy === "status" && !canGroupByStatus) || (groupBy === "field" && !canGroupByField) ? "month" : groupBy}
+          onChange={(e) => setGroupBy(e.target.value as ChartGroupBy)}
           className="rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface"
         >
           {canGroupByStatus && <option value="status">Gruppiert nach Status</option>}
+          {canGroupByField && (
+            <option value="field">Gruppiert nach {meta.groupableFields[0].label}</option>
+          )}
           <option value="month">Verlauf pro Monat (6 Monate)</option>
         </select>
         <select
@@ -123,6 +156,8 @@ function ChartForm({
           {canSum && <option value="sum">{meta.sumFields[0].label} summieren</option>}
         </select>
       </div>
+
+      <ReportFilterConditionsEditor fields={filterFields} conditions={conditions} onChange={setConditions} />
 
       <div className="flex gap-2">
         <button
@@ -204,7 +239,7 @@ function ChartCard({ chart, onEdit }: { chart: Chart; onEdit: () => void }) {
         </div>
       </div>
       <CustomChart
-        chartType={chart.chartType as "bar" | "line"}
+        chartType={chart.chartType as ChartType}
         data={chart.data}
         valueSuffix={chart.aggregation === "sum" ? " €" : undefined}
         entity={chart.entity as EntityKey}

@@ -13,9 +13,12 @@ export const ENTITY_META: Record<
     label: string;
     sumFields: { key: string; label: string }[];
     statusOptions: { value: string; label: string }[];
+    // Freie Textfelder (kein fester Wertevorrat wie bei Status) -- gruppierbar
+    // per groupBy() statt der festen Werteliste, siehe computeFieldBuckets().
+    groupableFields: { key: string; label: string }[];
   }
 > = {
-  customers: { label: "Kunden", sumFields: [], statusOptions: [] },
+  customers: { label: "Kunden", sumFields: [], statusOptions: [], groupableFields: [] },
   inquiries: {
     label: "Anfragen",
     sumFields: [{ key: "amount", label: "Betrag" }],
@@ -27,6 +30,7 @@ export const ENTITY_META: Record<
       { value: "WON", label: "Gewonnen" },
       { value: "LOST", label: "Verloren" },
     ],
+    groupableFields: [{ key: "source", label: "Quelle" }],
   },
   quotes: {
     label: "Angebote",
@@ -38,6 +42,7 @@ export const ENTITY_META: Record<
       { value: "REJECTED", label: "Abgelehnt" },
       { value: "EXPIRED", label: "Abgelaufen" },
     ],
+    groupableFields: [],
   },
   projects: {
     label: "Aufträge",
@@ -48,6 +53,7 @@ export const ENTITY_META: Record<
       { value: "DONE", label: "Abgeschlossen" },
       { value: "CANCELLED", label: "Storniert" },
     ],
+    groupableFields: [],
   },
   invoices: {
     label: "Rechnungen",
@@ -61,6 +67,7 @@ export const ENTITY_META: Record<
       { value: "OVERDUE", label: "Überfällig" },
       { value: "CANCELLED", label: "Storniert" },
     ],
+    groupableFields: [],
   },
   appointments: {
     label: "Termine",
@@ -71,6 +78,7 @@ export const ENTITY_META: Record<
       { value: "DONE", label: "Erledigt" },
       { value: "CANCELLED", label: "Storniert" },
     ],
+    groupableFields: [{ key: "type", label: "Art" }],
   },
   expenses: {
     label: "Ausgaben",
@@ -79,10 +87,24 @@ export const ENTITY_META: Record<
       { value: "OPEN", label: "Offen" },
       { value: "PAID", label: "Bezahlt" },
     ],
+    groupableFields: [{ key: "category", label: "Kategorie" }],
   },
 };
 
 export const ENTITY_KEYS = Object.keys(ENTITY_META) as EntityKey[];
+
+// Kuratierte Liste der Felder, auf die eine zusaetzliche Bedingung (siehe
+// lib/report-filters.ts) gesetzt werden darf -- bewusst nur Summenfelder
+// (Zahl) und gruppierbare Textfelder, keine beliebigen Spaltennamen.
+export function filterableFieldsFor(
+  entity: EntityKey
+): { key: string; label: string; type: "number" | "text" }[] {
+  const meta = ENTITY_META[entity];
+  return [
+    ...meta.sumFields.map((f) => ({ key: f.key, label: f.label, type: "number" as const })),
+    ...meta.groupableFields.map((f) => ({ key: f.key, label: f.label, type: "text" as const })),
+  ];
+}
 
 // Auf welches Datumsfeld sich das Zeitfenster je Datentyp bezieht
 export const DATE_FIELD_BY_ENTITY: Record<EntityKey, string> = {

@@ -10,7 +10,9 @@ import {
   duplicateCustomKpi,
   toggleKpiOnDashboard,
 } from "@/lib/actions/custom-kpi";
-import { ENTITY_META, ENTITY_KEYS, DATE_RANGE_OPTIONS, type EntityKey } from "@/lib/custom-kpi";
+import { ENTITY_META, ENTITY_KEYS, DATE_RANGE_OPTIONS, filterableFieldsFor, type EntityKey } from "@/lib/custom-kpi";
+import { ReportFilterConditionsEditor } from "@/components/report-filter-conditions";
+import type { ReportFilterCondition } from "@/lib/report-filters";
 
 type Kpi = {
   id: string;
@@ -23,6 +25,7 @@ type Kpi = {
   dateRangeType: string;
   dateFrom?: Date | null;
   dateTo?: Date | null;
+  filterConditions: unknown;
 };
 
 function describeKpi(kpi: Kpi) {
@@ -33,7 +36,9 @@ function describeKpi(kpi: Kpi) {
     : null;
   const rangeLabel = DATE_RANGE_OPTIONS.find((r) => r.value === kpi.dateRangeType)?.label;
   const range = kpi.dateRangeType && kpi.dateRangeType !== "ALL" ? rangeLabel : null;
-  return `${meta?.label ?? kpi.entity} · ${base}${status ? ` · Status: ${status}` : ""}${range ? ` · ${range}` : ""}`;
+  const conditions = (kpi.filterConditions as ReportFilterCondition[] | null) ?? [];
+  const filterSuffix = conditions.length > 0 ? ` · ${conditions.length} Bedingung${conditions.length !== 1 ? "en" : ""}` : "";
+  return `${meta?.label ?? kpi.entity} · ${base}${status ? ` · Status: ${status}` : ""}${range ? ` · ${range}` : ""}${filterSuffix}`;
 }
 
 function toDateInputValue(d?: Date | null) {
@@ -58,9 +63,13 @@ function KpiForm({
   const [dateRangeType, setDateRangeType] = useState(initial?.dateRangeType ?? "ALL");
   const [dateFrom, setDateFrom] = useState(toDateInputValue(initial?.dateFrom));
   const [dateTo, setDateTo] = useState(toDateInputValue(initial?.dateTo));
+  const [conditions, setConditions] = useState<ReportFilterCondition[]>(
+    (initial?.filterConditions as ReportFilterCondition[] | null) ?? []
+  );
   const [pending, startTransition] = useTransition();
 
   const meta = ENTITY_META[entity];
+  const filterFields = filterableFieldsFor(entity);
 
   function submit() {
     if (!label.trim()) return;
@@ -73,6 +82,7 @@ function KpiForm({
       dateRangeType,
       dateFrom: dateRangeType === "CUSTOM" ? dateFrom : undefined,
       dateTo: dateRangeType === "CUSTOM" ? dateTo : undefined,
+      filterConditions: conditions.filter((c) => c.value.trim()),
     };
     startTransition(async () => {
       if (initial) {
@@ -174,6 +184,8 @@ function KpiForm({
           </div>
         </div>
       )}
+
+      <ReportFilterConditionsEditor fields={filterFields} conditions={conditions} onChange={setConditions} />
 
       <div className="flex gap-2">
         <button

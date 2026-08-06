@@ -120,6 +120,7 @@ export default async function EinblickePage() {
             dateRangeType: k.dateRangeType,
             dateFrom: k.dateFrom,
             dateTo: k.dateTo,
+            filterConditions: k.filterConditions,
             value: k.value,
             onDashboard: onDashboardIds.has(`custom:${k.id}`),
           }))}
@@ -129,8 +130,9 @@ export default async function EinblickePage() {
       <div className="rounded-card border border-ink-100 bg-surface p-6 shadow-card">
         <h2 className="font-display font-semibold text-ink-900 mb-1">Eigene Diagramme</h2>
         <p className="text-sm text-ink-500 mb-4">
-          Wähle einen Datentyp, ein Diagrammtyp (Balken/Linie) und eine Gruppierung (nach Status
-          oder Verlauf pro Monat). Über das Raster-Symbol erscheint das Diagramm auch auf „Heute".
+          Wähle einen Datentyp, einen Diagrammtyp (Balken/Linie/Fläche/Kreis) und eine Gruppierung
+          (nach Status, freiem Feld oder Verlauf pro Monat) -- optional mit weiteren Bedingungen.
+          Über das Raster-Symbol erscheint das Diagramm auch auf „Heute".
         </p>
         <ChartManager
           charts={customCharts.map((c) => ({
@@ -139,7 +141,9 @@ export default async function EinblickePage() {
             entity: c.entity,
             chartType: c.chartType,
             groupBy: c.groupBy,
+            groupByField: c.groupByField,
             aggregation: c.aggregation,
+            filterConditions: c.filterConditions,
             data: c.data,
             onDashboard: onDashboardIds.has(`chart:${c.id}`),
           }))}

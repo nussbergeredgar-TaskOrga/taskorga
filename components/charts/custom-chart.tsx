@@ -1,11 +1,29 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { ResponsiveContainer, BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
+import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  LineChart,
+  Line,
+  AreaChart,
+  Area,
+  PieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+} from "recharts";
 import { entityStatusHref } from "@/lib/entity-links";
 import type { EntityKey } from "@/lib/custom-kpi";
 
 type ChartPoint = { label: string; value: number; status?: string };
+
+const PALETTE = ["#2F5FFF", "#16A34A", "#F0A020", "#E5484D", "#7C3AED", "#0EA5E9", "#DB2777", "#A8AFB8"];
 
 export function CustomChart({
   chartType,
@@ -13,7 +31,7 @@ export function CustomChart({
   valueSuffix,
   entity,
 }: {
-  chartType: "bar" | "line";
+  chartType: "bar" | "line" | "pie" | "area";
   data: ChartPoint[];
   valueSuffix?: string;
   entity?: EntityKey;
@@ -33,16 +51,63 @@ export function CustomChart({
     valueSuffix ? `${value.toLocaleString("de-DE")}${valueSuffix}` : String(value);
 
   // Balken/Punkte mit Status fuehren zur entsprechend gefilterten Liste;
-  // Monats-Balken (ohne Status, noch keine Datumsbereichs-Filterung
-  // hinterlegt) fuehren zur ungefilterten Liste des Datentyps -- klickbar
-  // sind so beide Diagrammtypen gleichermassen, nicht nur status-gruppierte
-  // Balken wie zuvor.
+  // andere Gruppierungen (Monat, freies Textfeld) haben noch keine passende
+  // Ziel-Filterung auf den Listenseiten -- fuehren zur ungefilterten Liste.
   const clickable = Boolean(entity);
   function handleChartClick(state: { activeTooltipIndex?: number } | null) {
     if (!entity || !state || state.activeTooltipIndex == null) return;
     const point = data[state.activeTooltipIndex];
     if (!point) return;
     router.push(entityStatusHref(entity, point.status));
+  }
+  function handlePieClick(point: ChartPoint) {
+    if (!entity) return;
+    router.push(entityStatusHref(entity, point.status));
+  }
+
+  if (chartType === "pie") {
+    return (
+      <ResponsiveContainer width="100%" height={260}>
+        <PieChart>
+          <Pie
+            data={data}
+            dataKey="value"
+            nameKey="label"
+            innerRadius={55}
+            outerRadius={90}
+            paddingAngle={2}
+            onClick={clickable ? handlePieClick : undefined}
+            className={clickable ? "cursor-pointer" : undefined}
+          >
+            {data.map((entry, i) => (
+              <Cell key={entry.label} fill={PALETTE[i % PALETTE.length]} />
+            ))}
+          </Pie>
+          <Tooltip formatter={tooltipFormatter} contentStyle={{ borderRadius: 8, border: "1px solid #E8EAED", fontSize: 13 }} />
+          <Legend wrapperStyle={{ fontSize: 12 }} />
+        </PieChart>
+      </ResponsiveContainer>
+    );
+  }
+
+  if (chartType === "area") {
+    return (
+      <ResponsiveContainer width="100%" height={240}>
+        <AreaChart data={data} onClick={clickable ? handleChartClick : undefined} className={clickable ? "cursor-pointer" : undefined}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#E8EAED" vertical={false} />
+          <XAxis dataKey="label" tick={{ fontSize: 12, fill: "#5B636D" }} axisLine={{ stroke: "#E8EAED" }} tickLine={false} />
+          <YAxis
+            tick={{ fontSize: 12, fill: "#5B636D" }}
+            axisLine={false}
+            tickLine={false}
+            width={60}
+            tickFormatter={tickFormatter}
+          />
+          <Tooltip formatter={tooltipFormatter} contentStyle={{ borderRadius: 8, border: "1px solid #E8EAED", fontSize: 13 }} />
+          <Area type="monotone" dataKey="value" stroke="#2F5FFF" strokeWidth={2} fill="#2F5FFF" fillOpacity={0.15} />
+        </AreaChart>
+      </ResponsiveContainer>
+    );
   }
 
   if (chartType === "line") {

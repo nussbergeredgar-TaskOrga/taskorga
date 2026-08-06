@@ -809,6 +809,10 @@ model CustomKpi {
   dateRangeType String  @default("ALL") // ALL | TODAY | THIS_WEEK | THIS_MONTH | THIS_YEAR | CUSTOM
   dateFrom      DateTime?
   dateTo        DateTime?
+  // Zusaetzliche, frei kombinierbare Bedingungen (Feld+Operator+Wert, UND-
+  // verknuepft) ueber den Status-/Zeitraum-Filter hinaus -- siehe
+  // lib/report-filters.ts fuer die genaue Form.
+  filterConditions Json?
 
   createdAt DateTime @default(now())
 
@@ -816,20 +820,23 @@ model CustomKpi {
 }
 
 // Frei erstellbare Diagramme fürs Dashboard: Nutzer wählt Datentyp, Diagrammtyp
-// (Balken/Linie), Gruppierung (nach Status oder Verlauf pro Monat) und Berechnung.
-// Vorerst nur "invoices"/"inquiries" unterstützt (siehe lib/actions/custom-chart.ts),
-// weitere Datentypen und Diagrammtypen folgen schrittweise.
+// (Balken/Linie/Kreis/Fläche), Gruppierung (nach Status, freiem Textfeld oder
+// Verlauf pro Monat) und Berechnung. Unterstuetzt alle Datentypen aus
+// lib/custom-kpi.ts (siehe lib/actions/custom-chart.ts).
 model CustomChart {
   id        String   @id @default(cuid())
   companyId String
   company   Company  @relation(fields: [companyId], references: [id])
 
   label       String
-  entity      String // "invoices" | "inquiries"
-  chartType   String // "bar" | "line"
-  groupBy     String // "status" | "month"
+  entity      String // siehe EntityKey in lib/custom-kpi.ts
+  chartType   String // "bar" | "line" | "pie" | "area"
+  groupBy     String // "status" | "month" | "field"
+  groupByField String? // wenn groupBy = "field": welches ENTITY_META.groupableFields-Feld
   aggregation String // "count" | "sum"
   sumField    String?
+  // Wie bei CustomKpi: zusaetzliche Bedingungen, siehe lib/report-filters.ts
+  filterConditions Json?
 
   createdAt DateTime @default(now())
 

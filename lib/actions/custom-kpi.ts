@@ -1,11 +1,13 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getCurrentCompany } from "@/lib/session";
 import { getDashboardLayout, saveDashboardLayout } from "@/lib/actions/dashboard";
 import { DEFAULT_WIDGETS } from "@/lib/dashboard-widgets";
 import { DATE_FIELD_BY_ENTITY, type EntityKey } from "@/lib/custom-kpi";
+import { applyFilterConditions, type ReportFilterCondition } from "@/lib/report-filters";
 
 export type CustomKpiInput = {
   label: string;
@@ -16,6 +18,7 @@ export type CustomKpiInput = {
   dateRangeType?: string;
   dateFrom?: string;
   dateTo?: string;
+  filterConditions?: ReportFilterCondition[];
 };
 
 export async function createCustomKpi(data: CustomKpiInput) {
@@ -33,6 +36,7 @@ export async function createCustomKpi(data: CustomKpiInput) {
       dateRangeType: data.dateRangeType || "ALL",
       dateFrom: data.dateRangeType === "CUSTOM" && data.dateFrom ? new Date(data.dateFrom) : null,
       dateTo: data.dateRangeType === "CUSTOM" && data.dateTo ? new Date(data.dateTo) : null,
+      filterConditions: data.filterConditions && data.filterConditions.length > 0 ? data.filterConditions : undefined,
     },
   });
 
@@ -58,6 +62,7 @@ export async function duplicateCustomKpi(id: string) {
       dateRangeType: original.dateRangeType,
       dateFrom: original.dateFrom,
       dateTo: original.dateTo,
+      filterConditions: original.filterConditions ?? undefined,
     },
   });
 
@@ -80,6 +85,8 @@ export async function updateCustomKpi(id: string, data: CustomKpiInput) {
       dateRangeType: data.dateRangeType || "ALL",
       dateFrom: data.dateRangeType === "CUSTOM" && data.dateFrom ? new Date(data.dateFrom) : null,
       dateTo: data.dateRangeType === "CUSTOM" && data.dateTo ? new Date(data.dateTo) : null,
+      filterConditions:
+        data.filterConditions && data.filterConditions.length > 0 ? data.filterConditions : Prisma.JsonNull,
     },
   });
 
@@ -174,7 +181,8 @@ async function computeValue(
   statusValue: string | null,
   dateRangeType: string,
   dateFrom: Date | null,
-  dateTo: Date | null
+  dateTo: Date | null,
+  filterConditions?: ReportFilterCondition[] | null
 ): Promise<number> {
   const where: Record<string, unknown> = { companyId };
   if (statusValue) where.status = statusValue;
@@ -183,6 +191,8 @@ async function computeValue(
   if (dateFilter) {
     where[DATE_FIELD_BY_ENTITY[entity]] = dateFilter;
   }
+
+  applyFilterConditions(where, filterConditions);
 
   switch (entity) {
     case "customers":
@@ -241,7 +251,8 @@ export async function getCustomKpiValues() {
         kpi.statusValue,
         kpi.dateRangeType,
         kpi.dateFrom,
-        kpi.dateTo
+        kpi.dateTo,
+        kpi.filterConditions as ReportFilterCondition[] | null
       ),
     }))
   );

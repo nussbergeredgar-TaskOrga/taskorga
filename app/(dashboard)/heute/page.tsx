@@ -385,7 +385,7 @@ export default async function HeutePage({
         <div className="rounded-card border border-ink-100 bg-surface p-5 shadow-card h-full">
           <h2 className="font-display font-semibold text-ink-900 mb-3">{chart.label}</h2>
           <CustomChart
-            chartType={chart.chartType as "bar" | "line"}
+            chartType={chart.chartType as "bar" | "line" | "pie" | "area"}
             data={chart.data}
             valueSuffix={chart.aggregation === "sum" ? " €" : undefined}
             entity={chart.entity as EntityKey}
