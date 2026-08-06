@@ -32,16 +32,23 @@ export function CustomChart({
   const tooltipFormatter = (value: number) =>
     valueSuffix ? `${value.toLocaleString("de-DE")}${valueSuffix}` : String(value);
 
-  function handleBarClick(_: unknown, index: number) {
-    const point = data[index];
-    if (!entity || !point?.status) return;
+  // Balken/Punkte mit Status fuehren zur entsprechend gefilterten Liste;
+  // Monats-Balken (ohne Status, noch keine Datumsbereichs-Filterung
+  // hinterlegt) fuehren zur ungefilterten Liste des Datentyps -- klickbar
+  // sind so beide Diagrammtypen gleichermassen, nicht nur status-gruppierte
+  // Balken wie zuvor.
+  const clickable = Boolean(entity);
+  function handleChartClick(state: { activeTooltipIndex?: number } | null) {
+    if (!entity || !state || state.activeTooltipIndex == null) return;
+    const point = data[state.activeTooltipIndex];
+    if (!point) return;
     router.push(entityStatusHref(entity, point.status));
   }
 
   if (chartType === "line") {
     return (
       <ResponsiveContainer width="100%" height={240}>
-        <LineChart data={data}>
+        <LineChart data={data} onClick={clickable ? handleChartClick : undefined} className={clickable ? "cursor-pointer" : undefined}>
           <CartesianGrid strokeDasharray="3 3" stroke="#E8EAED" vertical={false} />
           <XAxis dataKey="label" tick={{ fontSize: 12, fill: "#5B636D" }} axisLine={{ stroke: "#E8EAED" }} tickLine={false} />
           <YAxis
@@ -52,17 +59,15 @@ export function CustomChart({
             tickFormatter={tickFormatter}
           />
           <Tooltip formatter={tooltipFormatter} contentStyle={{ borderRadius: 8, border: "1px solid #E8EAED", fontSize: 13 }} />
-          <Line type="monotone" dataKey="value" stroke="#2F5FFF" strokeWidth={2} dot={{ r: 3 }} />
+          <Line type="monotone" dataKey="value" stroke="#2F5FFF" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 5 }} />
         </LineChart>
       </ResponsiveContainer>
     );
   }
 
-  const clickable = Boolean(entity && data.some((d) => d.status));
-
   return (
     <ResponsiveContainer width="100%" height={240}>
-      <BarChart data={data}>
+      <BarChart data={data} onClick={clickable ? handleChartClick : undefined} className={clickable ? "cursor-pointer" : undefined}>
         <CartesianGrid strokeDasharray="3 3" stroke="#E8EAED" vertical={false} />
         <XAxis dataKey="label" tick={{ fontSize: 12, fill: "#5B636D" }} axisLine={{ stroke: "#E8EAED" }} tickLine={false} />
         <YAxis
@@ -73,13 +78,7 @@ export function CustomChart({
           tickFormatter={tickFormatter}
         />
         <Tooltip formatter={tooltipFormatter} contentStyle={{ borderRadius: 8, border: "1px solid #E8EAED", fontSize: 13 }} />
-        <Bar
-          dataKey="value"
-          fill="#2F5FFF"
-          radius={[6, 6, 0, 0]}
-          onClick={clickable ? handleBarClick : undefined}
-          className={clickable ? "cursor-pointer" : undefined}
-        />
+        <Bar dataKey="value" fill="#2F5FFF" radius={[6, 6, 0, 0]} className={clickable ? "cursor-pointer" : undefined} />
       </BarChart>
     </ResponsiveContainer>
   );
