@@ -1,12 +1,23 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { signIn } from "next-auth/react";
+import { Ban, CheckCircle2, LifeBuoy, Trash2 } from "lucide-react";
 import {
   verifyPlatformSecret,
   listInviteCodes,
   createInviteCode,
   deleteInviteCode,
+  listCompaniesOverview,
+  getPlatformStats,
+  suspendCompany,
+  unsuspendCompany,
+  deleteCompanyForAdmin,
+  type CompanyOverview,
+  type PlatformStats,
 } from "@/lib/actions/platform-admin";
+import { CustomChart } from "@/components/charts/custom-chart";
 
 type Code = {
   id: string;
@@ -16,14 +27,302 @@ type Code = {
   usedCount: number;
 };
 
-export default function PlattformAdminPage() {
-  const [secret, setSecret] = useState("");
-  const [unlocked, setUnlocked] = useState(false);
-  const [codes, setCodes] = useState<Code[]>([]);
-  const [error, setError] = useState("");
+type Tab = "codes" | "firmen" | "support";
+
+function InviteCodesTab({
+  secret,
+  codes,
+  refresh,
+}: {
+  secret: string;
+  codes: Code[];
+  refresh: () => void;
+}) {
   const [pending, startTransition] = useTransition();
   const [note, setNote] = useState("");
   const [maxUses, setMaxUses] = useState("1");
+
+  function addCode() {
+    startTransition(async () => {
+      await createInviteCode(secret, { note, maxUses: Number(maxUses) || 1 });
+      setNote("");
+      setMaxUses("1");
+      refresh();
+    });
+  }
+
+  function removeCode(id: string) {
+    startTransition(async () => {
+      await deleteInviteCode(secret, id);
+      refresh();
+    });
+  }
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="font-display font-semibold text-2xl text-ink-900">Einladungscodes</h1>
+        <p className="text-sm text-ink-500 mt-1">
+          Nur mit einem gültigen Code kann sich jemand ein neues Firmenkonto anlegen.
+        </p>
+      </div>
+
+      <div className="bg-surface rounded-card border border-ink-100 shadow-card p-5 space-y-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          <input
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="Notiz, z. B. Tester Max"
+            className="sm:col-span-2 rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500"
+          />
+          <input
+            type="number"
+            value={maxUses}
+            onChange={(e) => setMaxUses(e.target.value)}
+            min={1}
+            placeholder="Nutzungen"
+            className="rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 font-mono"
+          />
+        </div>
+        <button
+          disabled={pending}
+          onClick={addCode}
+          className="rounded-lg bg-brand-500 text-white text-sm font-medium px-4 py-2 hover:bg-brand-600 disabled:opacity-60 transition-colors"
+        >
+          Code erstellen
+        </button>
+      </div>
+
+      <div className="space-y-2">
+        {codes.map((c) => (
+          <div
+            key={c.id}
+            className="flex items-center justify-between bg-surface rounded-lg border border-ink-100 px-4 py-3"
+          >
+            <div>
+              <p className="font-mono text-lg font-semibold text-ink-900">{c.code}</p>
+              <p className="text-xs text-ink-500">
+                {c.note || "—"} · {c.usedCount}/{c.maxUses} verwendet
+              </p>
+            </div>
+            <button disabled={pending} onClick={() => removeCode(c.id)} className="text-xs text-danger hover:underline">
+              Löschen
+            </button>
+          </div>
+        ))}
+        {codes.length === 0 && <p className="text-sm text-ink-500">Noch keine Codes erstellt.</p>}
+      </div>
+    </div>
+  );
+}
+
+function CompanyRow({
+  secret,
+  company,
+  refresh,
+}: {
+  secret: string;
+  company: CompanyOverview;
+  refresh: () => void;
+}) {
+  const [pending, startTransition] = useTransition();
+  const [confirming, setConfirming] = useState(false);
+  const [confirmName, setConfirmName] = useState("");
+  const [error, setError] = useState("");
+
+  function toggleSuspend() {
+    startTransition(async () => {
+      if (company.suspendedAt) {
+        await unsuspendCompany(secret, company.id);
+      } else {
+        await suspendCompany(secret, company.id);
+      }
+      refresh();
+    });
+  }
+
+  function handleDelete() {
+    if (confirmName.trim() !== company.name) return;
+    if (!confirm(`Wirklich ALLE Daten von „${company.name}“ unwiderruflich löschen?`)) return;
+    setError("");
+    startTransition(async () => {
+      const result = await deleteCompanyForAdmin(secret, company.id, confirmName);
+      if (result?.error) {
+        setError(result.error);
+        return;
+      }
+      refresh();
+    });
+  }
+
+  return (
+    <div className="rounded-lg border border-ink-100 bg-surface">
+      <div className="flex items-center justify-between gap-3 px-4 py-3">
+        <div className="min-w-0">
+          <p className="text-sm font-medium text-ink-900 truncate">{company.name}</p>
+          <p className="text-xs text-ink-500">
+            {company.userCount} Nutzer · angemeldet seit {company.createdAt.toLocaleDateString("de-DE")} · letzte
+            Aktivität{" "}
+            {company.lastActivityAt ? company.lastActivityAt.toLocaleDateString("de-DE") : "—"}
+          </p>
+        </div>
+        <div className="flex items-center gap-3 shrink-0">
+          {company.suspendedAt ? (
+            <span className="text-xs font-medium text-danger">Gesperrt</span>
+          ) : (
+            <span className="text-xs font-medium text-success">Aktiv</span>
+          )}
+          <button
+            disabled={pending}
+            onClick={toggleSuspend}
+            className="flex items-center gap-1 text-xs font-medium text-ink-700 hover:text-brand-700 transition-colors"
+          >
+            {company.suspendedAt ? <CheckCircle2 size={13} /> : <Ban size={13} />}
+            {company.suspendedAt ? "Entsperren" : "Sperren"}
+          </button>
+          <button
+            disabled={pending}
+            onClick={() => setConfirming((c) => !c)}
+            className="flex items-center gap-1 text-xs text-ink-500 hover:text-danger transition-colors"
+          >
+            <Trash2 size={13} /> Löschen
+          </button>
+        </div>
+      </div>
+
+      {confirming && (
+        <div className="px-4 pb-4 space-y-2 border-t border-ink-100 pt-3">
+          <label className="block text-xs font-medium text-ink-700">
+            Zum Bestätigen den Firmennamen eingeben: <strong>{company.name}</strong>
+          </label>
+          <div className="flex items-center gap-2">
+            <input
+              value={confirmName}
+              onChange={(e) => setConfirmName(e.target.value)}
+              placeholder={company.name}
+              className="flex-1 max-w-xs rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-danger"
+            />
+            <button
+              disabled={pending || confirmName.trim() !== company.name}
+              onClick={handleDelete}
+              className="rounded-lg bg-danger text-white text-sm font-medium px-4 py-2 hover:opacity-90 disabled:opacity-40 transition-opacity"
+            >
+              {pending ? "Wird gelöscht …" : "Endgültig löschen"}
+            </button>
+          </div>
+          {error && <p className="text-xs text-danger">{error}</p>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CompaniesTab({
+  secret,
+  companies,
+  stats,
+  refresh,
+}: {
+  secret: string;
+  companies: CompanyOverview[];
+  stats: PlatformStats | null;
+  refresh: () => void;
+}) {
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="font-display font-semibold text-2xl text-ink-900">Firmen</h1>
+        <p className="text-sm text-ink-500 mt-1">Alle registrierten Firmenkonten.</p>
+      </div>
+
+      {stats && (
+        <div className="bg-surface rounded-card border border-ink-100 shadow-card p-5 space-y-4">
+          <div className="flex gap-8">
+            <div>
+              <p className="text-xs text-ink-500">Firmen</p>
+              <p className="text-xl font-semibold text-ink-900">{stats.totalCompanies}</p>
+            </div>
+            <div>
+              <p className="text-xs text-ink-500">Nutzer</p>
+              <p className="text-xl font-semibold text-ink-900">{stats.totalUsers}</p>
+            </div>
+          </div>
+          <div>
+            <p className="text-xs text-ink-500 mb-2">Neue Firmen pro Monat</p>
+            <CustomChart chartType="bar" data={stats.companiesByMonth} />
+          </div>
+        </div>
+      )}
+
+      <div className="space-y-2">
+        {companies.map((c) => (
+          <CompanyRow key={c.id} secret={secret} company={c} refresh={refresh} />
+        ))}
+        {companies.length === 0 && <p className="text-sm text-ink-500">Noch keine Firmen registriert.</p>}
+      </div>
+    </div>
+  );
+}
+
+function SupportAccessTab() {
+  const router = useRouter();
+  const [code, setCode] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  async function login() {
+    setError("");
+    setLoading(true);
+    const result = await signIn("support-code", { code, redirect: false });
+    setLoading(false);
+    if (result?.error) {
+      setError(result.error === "CredentialsSignin" ? "Code ungültig oder abgelaufen." : result.error);
+      return;
+    }
+    router.push("/heute");
+  }
+
+  return (
+    <div className="space-y-6 max-w-md">
+      <div>
+        <h1 className="font-display font-semibold text-2xl text-ink-900">Support-Zugriff</h1>
+        <p className="text-sm text-ink-500 mt-1">
+          Der Firmen-Admin erzeugt den Code selbst in seinen Einstellungen und gibt ihn dir weiter. Mit dem
+          Einloggen wird dein Browser für diese eine Sitzung zum Konto dieses Admins — am besten in einem
+          privaten Fenster verwenden.
+        </p>
+      </div>
+
+      <div className="bg-surface rounded-card border border-ink-100 shadow-card p-5 space-y-3">
+        <input
+          value={code}
+          onChange={(e) => setCode(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && login()}
+          placeholder="Support-Code"
+          className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm font-mono tracking-wider outline-none focus:border-brand-500"
+        />
+        {error && <p className="text-sm text-danger">{error}</p>}
+        <button
+          disabled={loading || !code.trim()}
+          onClick={login}
+          className="flex items-center gap-1.5 rounded-lg bg-brand-500 text-white text-sm font-medium px-4 py-2.5 hover:bg-brand-600 disabled:opacity-60 transition-colors"
+        >
+          <LifeBuoy size={15} />
+          {loading ? "Wird geprüft …" : "Einloggen"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+export default function PlattformAdminPage() {
+  const [secret, setSecret] = useState("");
+  const [unlocked, setUnlocked] = useState(false);
+  const [tab, setTab] = useState<Tab>("codes");
+  const [codes, setCodes] = useState<Code[]>([]);
+  const [companies, setCompanies] = useState<CompanyOverview[]>([]);
+  const [stats, setStats] = useState<PlatformStats | null>(null);
+  const [error, setError] = useState("");
 
   async function unlock() {
     setError("");
@@ -33,37 +332,31 @@ export default function PlattformAdminPage() {
       return;
     }
     setUnlocked(true);
-    refresh();
+    refreshCodes();
+    refreshCompanies();
   }
 
-  async function refresh() {
+  async function refreshCodes() {
     try {
-      const list = await listInviteCodes(secret);
-      setCodes(list);
+      setCodes(await listInviteCodes(secret));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Sitzung abgelaufen, bitte Master-Passwort erneut eingeben.");
-      setUnlocked(false);
+      handleSessionError(err);
     }
   }
 
-  function addCode() {
-    startTransition(async () => {
-      try {
-        await createInviteCode(secret, { note, maxUses: Number(maxUses) || 1 });
-        setNote("");
-        setMaxUses("1");
-        await refresh();
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Fehler beim Erstellen.");
-      }
-    });
+  async function refreshCompanies() {
+    try {
+      const [list, platformStats] = await Promise.all([listCompaniesOverview(secret), getPlatformStats(secret)]);
+      setCompanies(list);
+      setStats(platformStats);
+    } catch (err) {
+      handleSessionError(err);
+    }
   }
 
-  function removeCode(id: string) {
-    startTransition(async () => {
-      await deleteInviteCode(secret, id);
-      await refresh();
-    });
+  function handleSessionError(err: unknown) {
+    setError(err instanceof Error ? err.message : "Sitzung abgelaufen, bitte Master-Passwort erneut eingeben.");
+    setUnlocked(false);
   }
 
   if (!unlocked) {
@@ -94,62 +387,31 @@ export default function PlattformAdminPage() {
   return (
     <div className="min-h-screen bg-ink-50 px-4 py-10">
       <div className="max-w-2xl mx-auto space-y-6">
-        <div>
-          <h1 className="font-display font-semibold text-2xl text-ink-900">Einladungscodes</h1>
-          <p className="text-sm text-ink-500 mt-1">
-            Nur mit einem gültigen Code kann sich jemand ein neues Firmenkonto anlegen.
-          </p>
-        </div>
-
-        <div className="bg-surface rounded-card border border-ink-100 shadow-card p-5 space-y-3">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-            <input
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              placeholder="Notiz, z. B. Tester Max"
-              className="sm:col-span-2 rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500"
-            />
-            <input
-              type="number"
-              value={maxUses}
-              onChange={(e) => setMaxUses(e.target.value)}
-              min={1}
-              placeholder="Nutzungen"
-              className="rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 font-mono"
-            />
-          </div>
-          <button
-            disabled={pending}
-            onClick={addCode}
-            className="rounded-lg bg-brand-500 text-white text-sm font-medium px-4 py-2 hover:bg-brand-600 disabled:opacity-60 transition-colors"
-          >
-            Code erstellen
-          </button>
-        </div>
-
-        <div className="space-y-2">
-          {codes.map((c) => (
-            <div
-              key={c.id}
-              className="flex items-center justify-between bg-surface rounded-lg border border-ink-100 px-4 py-3"
+        <div className="flex items-center gap-1 bg-surface rounded-lg border border-ink-100 p-1 w-fit">
+          {(
+            [
+              ["codes", "Einladungscodes"],
+              ["firmen", "Firmen"],
+              ["support", "Support-Zugriff"],
+            ] as [Tab, string][]
+          ).map(([id, label]) => (
+            <button
+              key={id}
+              onClick={() => setTab(id)}
+              className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                tab === id ? "bg-brand-500 text-white" : "text-ink-700 hover:bg-ink-50"
+              }`}
             >
-              <div>
-                <p className="font-mono text-lg font-semibold text-ink-900">{c.code}</p>
-                <p className="text-xs text-ink-500">
-                  {c.note || "—"} · {c.usedCount}/{c.maxUses} verwendet
-                </p>
-              </div>
-              <button
-                disabled={pending}
-                onClick={() => removeCode(c.id)}
-                className="text-xs text-danger hover:underline"
-              >
-                Löschen
-              </button>
-            </div>
+              {label}
+            </button>
           ))}
-          {codes.length === 0 && <p className="text-sm text-ink-500">Noch keine Codes erstellt.</p>}
         </div>
+
+        {tab === "codes" && <InviteCodesTab secret={secret} codes={codes} refresh={refreshCodes} />}
+        {tab === "firmen" && (
+          <CompaniesTab secret={secret} companies={companies} stats={stats} refresh={refreshCompanies} />
+        )}
+        {tab === "support" && <SupportAccessTab />}
       </div>
     </div>
   );

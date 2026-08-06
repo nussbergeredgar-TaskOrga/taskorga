@@ -8,8 +8,10 @@ import { EmailSignatureForm } from "@/components/email-signature-form";
 import { ScheduleManager } from "@/components/schedule-manager";
 import { SettingsSection } from "@/components/settings-section";
 import { DataPrivacySection } from "@/components/data-privacy-section";
+import { SupportAccessGenerator } from "@/components/support-access-generator";
 import { getNavLabels } from "@/lib/actions/nav";
 import { getWorkingHours, getAbsences } from "@/lib/actions/schedule";
+import { getActiveSupportAccessCode } from "@/lib/actions/support-access";
 
 export default async function FirmaSettingsPage({
   searchParams,
@@ -18,7 +20,7 @@ export default async function FirmaSettingsPage({
 }) {
   const admin = await requireAdmin();
 
-  const [company, users, navLabels, nonAdminRoles] = await Promise.all([
+  const [company, users, navLabels, nonAdminRoles, activeSupportAccessCode] = await Promise.all([
     prisma.company.findUniqueOrThrow({ where: { id: admin.companyId } }),
     prisma.user.findMany({
       where: { companyId: admin.companyId },
@@ -30,6 +32,7 @@ export default async function FirmaSettingsPage({
       where: { companyId: admin.companyId, name: { not: "Admin" } },
       orderBy: { name: "asc" },
     }),
+    getActiveSupportAccessCode(),
   ]);
 
   const validUserIds = new Set(users.map((u) => u.id));
@@ -112,6 +115,13 @@ export default async function FirmaSettingsPage({
           }))}
           absences={absences}
         />
+      </SettingsSection>
+
+      <SettingsSection
+        title="Support-Zugang"
+        description="Vorübergehenden, zeitlich begrenzten Zugriff für den TaskOrga-Support freigeben."
+      >
+        <SupportAccessGenerator initialCode={activeSupportAccessCode} />
       </SettingsSection>
 
       <SettingsSection

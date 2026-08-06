@@ -2,35 +2,14 @@
 
 import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
-
-const MAX_ATTEMPTS = 5;
-const LOCK_DURATION_MS = 15 * 60 * 1000;
-
-// Dieser Zugang ist ohne Login-Account per Master-Passwort erreichbar und war
-// bisher beliebig oft ausprobierbar -- ein direktes Einfallstor fuer Brute-Force.
-// Da es keinen Nutzer-Account gibt, an den ein Lockout gebunden werden koennte,
-// sperrt dies global fuer alle nach zu vielen Fehlversuchen (analog zum
-// Login-Lockout in lib/auth.ts, nur ohne Nutzerbezug).
-async function assertNotLocked() {
-  const since = new Date(Date.now() - LOCK_DURATION_MS);
-  const recentAttempts = await prisma.platformAdminAttempt.findMany({
-    where: { createdAt: { gte: since } },
-    orderBy: { createdAt: "desc" },
-    take: MAX_ATTEMPTS,
-  });
-  if (recentAttempts.length < MAX_ATTEMPTS) return;
-  const oldest = recentAttempts[recentAttempts.length - 1].createdAt;
-  const minutesLeft = Math.ceil((oldest.getTime() + LOCK_DURATION_MS - Date.now()) / 60000);
-  throw new Error(
-    `Zu viele Fehlversuche. Bitte in ${minutesLeft} Minute${minutesLeft === 1 ? "" : "n"} erneut versuchen.`
-  );
-}
+import { assertNotLocked, recordFailedAttempt } from "@/lib/platform-lockout";
+import { deleteCompanyData } from "@/lib/company-deletion";
 
 async function checkSecret(secret: string) {
   await assertNotLocked();
   const expected = process.env.PLATFORM_ADMIN_SECRET;
   if (!expected || secret !== expected) {
-    await prisma.platformAdminAttempt.create({ data: {} });
+    await recordFailedAttempt();
     throw new Error("Falsches Master-Passwort.");
   }
 }
@@ -70,4 +49,107 @@ export async function createInviteCode(
 export async function deleteInviteCode(secret: string, id: string) {
   await checkSecret(secret);
   await prisma.inviteCode.delete({ where: { id } });
+}
+
+export type CompanyOverview = {
+  id: string;
+  name: string;
+  userCount: number;
+  createdAt: Date;
+  lastActivityAt: Date | null;
+  suspendedAt: Date | null;
+};
+
+export async function listCompaniesOverview(secret: string): Promise<CompanyOverview[]> {
+  await checkSecret(secret);
+
+  const [companies, lastActivity] = await Promise.all([
+    prisma.company.findMany({
+      include: { _count: { select: { users: true } } },
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.activity.groupBy({ by: ["companyId"], _max: { createdAt: true } }),
+  ]);
+
+  const lastActivityByCompany = new Map(lastActivity.map((a) => [a.companyId, a._max.createdAt]));
+
+  return companies.map((c) => ({
+    id: c.id,
+    name: c.name,
+    userCount: c._count.users,
+    createdAt: c.createdAt,
+    lastActivityAt: lastActivityByCompany.get(c.id) ?? null,
+    suspendedAt: c.suspendedAt,
+  }));
+}
+
+export type PlatformStats = {
+  totalCompanies: number;
+  totalUsers: number;
+  companiesByMonth: { label: string; value: number }[];
+};
+
+function monthLabel(date: Date) {
+  return date.toLocaleDateString("de-DE", { month: "short", year: "2-digit" });
+}
+
+export async function getPlatformStats(secret: string): Promise<PlatformStats> {
+  await checkSecret(secret);
+
+  const monthRanges: { label: string; gte: Date; lte: Date }[] = [];
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date();
+    d.setMonth(d.getMonth() - i);
+    monthRanges.push({
+      label: monthLabel(d),
+      gte: new Date(d.getFullYear(), d.getMonth(), 1),
+      lte: new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59, 999),
+    });
+  }
+
+  const [totalCompanies, totalUsers, companiesByMonth] = await Promise.all([
+    prisma.company.count(),
+    prisma.user.count(),
+    Promise.all(
+      monthRanges.map((r) => prisma.company.count({ where: { createdAt: { gte: r.gte, lte: r.lte } } }))
+    ),
+  ]);
+
+  return {
+    totalCompanies,
+    totalUsers,
+    companiesByMonth: monthRanges.map((r, i) => ({ label: r.label, value: companiesByMonth[i] })),
+  };
+}
+
+export async function suspendCompany(secret: string, companyId: string) {
+  await checkSecret(secret);
+  await prisma.company.update({ where: { id: companyId }, data: { suspendedAt: new Date() } });
+}
+
+export async function unsuspendCompany(secret: string, companyId: string) {
+  await checkSecret(secret);
+  await prisma.company.update({ where: { id: companyId }, data: { suspendedAt: null } });
+}
+
+export async function deleteCompanyForAdmin(
+  secret: string,
+  companyId: string,
+  confirmName: string
+): Promise<{ error?: string; success?: boolean }> {
+  await checkSecret(secret);
+
+  const company = await prisma.company.findUnique({ where: { id: companyId } });
+  if (!company) return { error: "Firma nicht gefunden." };
+  if (confirmName.trim() !== company.name) {
+    return { error: "Der eingegebene Name stimmt nicht mit dem Firmennamen überein." };
+  }
+
+  try {
+    await deleteCompanyData(companyId);
+  } catch {
+    return { error: "Löschen fehlgeschlagen. Es wurde nichts geändert." };
+  }
+
+  return { success: true };
 }

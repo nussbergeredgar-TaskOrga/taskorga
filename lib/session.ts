@@ -23,6 +23,10 @@ export async function getCurrentCompany() {
     redirect("/login");
   }
 
+  if (company.suspendedAt) {
+    redirect("/login?suspended=1");
+  }
+
   return company;
 }
 

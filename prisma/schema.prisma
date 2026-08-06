@@ -62,10 +62,14 @@ model Company {
   navLabels           Json? // { [navItemId]: "Eigener Menütext" }
   customerTabsConfig  Json? // [{ id, visible, order }] für den Kundenstamm
 
+  // Von der Plattform-Verwaltung gesetzt (nicht vom Firmen-Admin selbst) -- null = aktiv
+  suspendedAt DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   users       User[]
+  supportAccessCodes SupportAccessCode[]
   customers   Customer[]
   inquiries   Inquiry[]
   quotes      Quote[]
@@ -144,6 +148,26 @@ model PlatformAdminAttempt {
   @@index([createdAt])
 }
 
+// Von einem Firmen-Admin selbst erzeugter, kurzlebiger Code, der der
+// Plattform-Verwaltung einmalig erlaubt, sich als dieser Admin einzuloggen
+// (Support-Zugriff). Bewusst opt-in: die Plattform kann diesen Zugriff nicht
+// erzwingen, nur ein Admin der jeweiligen Firma kann den Code erzeugen.
+model SupportAccessCode {
+  id        String   @id @default(cuid())
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id])
+
+  code            String    @unique
+  createdByUserId String
+  createdBy       User      @relation(fields: [createdByUserId], references: [id])
+  expiresAt       DateTime
+  usedAt          DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([companyId])
+}
+
 // Protokolliert fehlgeschlagene Einladungscode-Versuche bei der Registrierung
 // (falscher/abgelaufener/verbrauchter Code). Verhindert, dass ein gueltiger
 // Code per Ausprobieren erraten werden kann -- analog zum Login-Lockout,
@@ -198,6 +222,7 @@ model User {
   comments        Comment[]
   activities      Activity[]
   dashboards      Dashboard[]
+  supportAccessCodesCreated SupportAccessCode[]
   passwordResetTokens PasswordResetToken[]
   emailVerificationTokens EmailVerificationToken[]
   timeEntries         TimeEntry[]

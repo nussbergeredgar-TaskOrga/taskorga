@@ -156,6 +156,12 @@ function LoginForm() {
             </p>
           )}
 
+          {searchParams.get("suspended") && (
+            <p className="text-sm text-danger bg-danger/10 rounded-lg px-3 py-2">
+              Dieses Konto wurde deaktiviert. Bitte an den Support wenden.
+            </p>
+          )}
+
           {error && <p className="text-sm text-danger">{error}</p>}
 
           <button
