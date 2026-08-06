@@ -9,6 +9,8 @@ import { ChartManager } from "@/components/chart-manager";
 import { RevenueChart } from "@/components/charts/revenue-chart";
 import { PipelineChart } from "@/components/charts/pipeline-chart";
 import { InvoiceStatusChart } from "@/components/charts/invoice-status-chart";
+import Link from "next/link";
+import { FileText } from "lucide-react";
 
 const PIPELINE_LABELS: Record<string, string> = {
   NEW: "Neu",
@@ -80,11 +82,20 @@ export default async function EinblickePage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-ink-900">Einblicke</h1>
-        <p className="text-sm text-ink-500 mt-1">
-          Auswertungen aus deinen Daten, plus eigene Kennzahlen und Diagramme fürs Dashboard.
-        </p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold text-ink-900">Einblicke</h1>
+          <p className="text-sm text-ink-500 mt-1">
+            Auswertungen aus deinen Daten, plus eigene Kennzahlen und Diagramme fürs Dashboard.
+          </p>
+        </div>
+        <Link
+          href="/berichte/dashboard"
+          className="flex items-center gap-1.5 shrink-0 rounded-lg border border-ink-100 text-ink-700 text-sm font-medium px-4 py-2.5 hover:bg-ink-50 transition-colors"
+        >
+          <FileText size={15} />
+          Bericht ansehen
+        </Link>
       </div>
 
       <div className="grid lg:grid-cols-2 gap-4">

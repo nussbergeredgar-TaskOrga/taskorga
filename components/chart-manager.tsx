@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Trash2, Plus, LayoutGrid, Pencil, Copy } from "lucide-react";
+import { Trash2, Plus, LayoutGrid, Pencil, Copy, Download } from "lucide-react";
 import {
   createCustomChart,
   updateCustomChart,
@@ -204,6 +204,14 @@ function ChartCard({ chart, onEdit }: { chart: Chart; onEdit: () => void }) {
           >
             <LayoutGrid size={15} />
           </button>
+          <a
+            href={`/api/einblicke/export?kind=chart&id=${chart.id}`}
+            className="p-1.5 text-ink-300 hover:text-brand-700 transition-colors"
+            aria-label="Als CSV exportieren"
+            title="Datensätze als CSV exportieren"
+          >
+            <Download size={15} />
+          </a>
           <button onClick={onEdit} className="p-1.5 text-ink-300 hover:text-brand-700 transition-colors" aria-label="Bearbeiten">
             <Pencil size={15} />
           </button>
