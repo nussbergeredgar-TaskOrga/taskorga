@@ -4,6 +4,7 @@ type Item = { description: string; quantity: number; unit: string; unitPrice: nu
 
 type CompanyInfo = {
   name: string;
+  email?: string | null;
   address?: string | null;
   zip?: string | null;
   city?: string | null;
@@ -17,6 +18,8 @@ type CompanyInfo = {
   showVatOnDocuments?: boolean;
   documentAccentColor?: string | null;
 };
+
+export type LogoPosition = "TOP_LEFT" | "TOP_RIGHT" | "TOP_CENTER" | "HIDDEN";
 
 type CustomerInfo = {
   name: string;
@@ -43,6 +46,10 @@ export function DocumentPdf({
   footerTextOverride,
   showVatOverride,
   accentColorOverride,
+  logoPosition = "TOP_RIGHT",
+  showSenderLine = false,
+  showBankDetails = true,
+  showCompanyEmail = false,
 }: {
   kind: "Angebot" | "Rechnung";
   number: string;
@@ -61,11 +68,18 @@ export function DocumentPdf({
   footerTextOverride?: string | null;
   showVatOverride?: boolean;
   accentColorOverride?: string | null;
+  logoPosition?: LogoPosition;
+  showSenderLine?: boolean;
+  showBankDetails?: boolean;
+  showCompanyEmail?: boolean;
 }) {
   const accent = accentColorOverride || company.documentAccentColor || "#2F5FFF";
   const showVat = showVatOverride ?? company.showVatOnDocuments !== false;
   const introText = introTextOverride;
   const footerText = footerTextOverride ?? company.invoiceFooterText;
+  const senderLine = [company.name, company.address, [company.zip, company.city].filter(Boolean).join(" ")]
+    .filter(Boolean)
+    .join(" · ");
 
   // Netto/MwSt je Steuersatz gruppieren (Positionen können unterschiedliche Sätze haben)
   const netBeforeDiscount = items.reduce((sum, i) => sum + i.quantity * i.unitPrice, 0);
@@ -92,12 +106,22 @@ export function DocumentPdf({
 
   const styles = StyleSheet.create({
     page: { padding: 40, fontSize: 10, fontFamily: "Helvetica", color: "#1C2128" },
-    headerRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 25 },
-    logo: { width: 70, height: 70, objectFit: "contain" },
+    headerRow:
+      logoPosition === "TOP_CENTER"
+        ? { flexDirection: "column", alignItems: "center", marginBottom: 25 }
+        : {
+            flexDirection: logoPosition === "TOP_LEFT" ? "row-reverse" : "row",
+            justifyContent: "space-between",
+            alignItems: "flex-start",
+            marginBottom: 25,
+          },
+    logo: logoPosition === "TOP_CENTER" ? { width: 70, height: 70, objectFit: "contain", marginBottom: 8 } : { width: 70, height: 70, objectFit: "contain" },
     companyName: { fontSize: 13, fontWeight: 700, color: "#1C2128", marginBottom: 3 },
     companyBlock: { fontSize: 9, color: "#5B636D" },
+    companyBlockCenter: { fontSize: 9, color: "#5B636D", textAlign: "center" },
     title: { fontSize: 18, fontWeight: 700, marginBottom: 4, color: accent },
     meta: { fontSize: 9, color: "#5B636D", marginBottom: 20 },
+    senderLine: { fontSize: 7, color: "#A8AFB8", marginBottom: 4 },
     customerBlock: { marginBottom: 20, fontSize: 10 },
     intro: { fontSize: 10, marginBottom: 15, lineHeight: 1.4 },
     subject: { fontSize: 11, fontWeight: 700, marginBottom: 10 },
@@ -156,17 +180,20 @@ export function DocumentPdf({
       <Page size="A4" style={styles.page}>
         <View style={styles.headerRow}>
           <View>
-            <Text style={styles.companyName}>{company.name}</Text>
-            <View style={styles.companyBlock}>
+            <Text style={logoPosition === "TOP_CENTER" ? [styles.companyName, { textAlign: "center" }] : styles.companyName}>
+              {company.name}
+            </Text>
+            <View style={logoPosition === "TOP_CENTER" ? styles.companyBlockCenter : styles.companyBlock}>
               {company.address && <Text>{company.address}</Text>}
               {(company.zip || company.city) && (
                 <Text>{[company.zip, company.city].filter(Boolean).join(" ")}</Text>
               )}
               {company.taxNumber && <Text>Steuernummer: {company.taxNumber}</Text>}
               {company.vatId && <Text>USt-IdNr.: {company.vatId}</Text>}
+              {showCompanyEmail && company.email && <Text>{company.email}</Text>}
             </View>
           </View>
-          {company.logoUrl && <Image src={company.logoUrl} style={styles.logo} />}
+          {logoPosition !== "HIDDEN" && company.logoUrl && <Image src={company.logoUrl} style={styles.logo} />}
         </View>
 
         <Text style={styles.title}>
@@ -178,6 +205,8 @@ export function DocumentPdf({
             ? `   ${kind === "Angebot" ? "Gültig bis" : "Fällig am"}: ${validUntilOrDue}`
             : ""}
         </Text>
+
+        {showSenderLine && senderLine && <Text style={styles.senderLine}>{senderLine}</Text>}
 
         <View style={styles.customerBlock}>
           <Text>{customer.name}</Text>
@@ -264,9 +293,10 @@ export function DocumentPdf({
           {footerText && <Text style={{ marginBottom: 4 }}>{footerText}</Text>}
           <Text>
             {company.name}
-            {company.bankName ? `   ·   ${company.bankName}` : ""}
-            {company.iban ? `   ·   IBAN: ${company.iban}` : ""}
-            {company.bic ? `   ·   BIC: ${company.bic}` : ""}
+            {showCompanyEmail && company.email ? `   ·   ${company.email}` : ""}
+            {showBankDetails && company.bankName ? `   ·   ${company.bankName}` : ""}
+            {showBankDetails && company.iban ? `   ·   IBAN: ${company.iban}` : ""}
+            {showBankDetails && company.bic ? `   ·   BIC: ${company.bic}` : ""}
           </Text>
         </View>
       </Page>

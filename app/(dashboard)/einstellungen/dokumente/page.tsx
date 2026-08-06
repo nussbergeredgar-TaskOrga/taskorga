@@ -79,6 +79,10 @@ export default async function DokumenteSettingsPage() {
             footerText: t.footerText,
             showVat: t.showVat,
             accentColor: t.accentColor,
+            logoPosition: t.logoPosition,
+            showSenderLine: t.showSenderLine,
+            showBankDetails: t.showBankDetails,
+            showCompanyEmail: t.showCompanyEmail,
           }))}
         />
       </SettingsSection>

@@ -860,6 +860,11 @@ model DocumentTemplate {
   showVat     Boolean @default(true)
   accentColor String  @default("#2F5FFF")
 
+  logoPosition      LogoPosition @default(TOP_RIGHT)
+  showSenderLine    Boolean      @default(false) // Absenderzeile über der Empfängeradresse (DIN 5008 Fensterumschlag)
+  showBankDetails   Boolean      @default(true)
+  showCompanyEmail  Boolean      @default(false)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -869,6 +874,13 @@ model DocumentTemplate {
 enum DocumentTemplateType {
   QUOTE
   INVOICE
+}
+
+enum LogoPosition {
+  TOP_LEFT
+  TOP_RIGHT
+  TOP_CENTER
+  HIDDEN
 }
 
 // Vom Admin frei definierbare Mahnstufen (Standard: 3 Beispielstufen, siehe Seed).

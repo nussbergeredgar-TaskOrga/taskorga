@@ -72,6 +72,10 @@ export async function GET(request: Request, { params }: { params: { id: string }
       footerTextOverride={template?.footerText ? resolvePlaceholders(template.footerText, context) : undefined}
       showVatOverride={template?.showVat}
       accentColorOverride={template?.accentColor}
+      logoPosition={template?.logoPosition}
+      showSenderLine={template?.showSenderLine}
+      showBankDetails={template?.showBankDetails}
+      showCompanyEmail={template?.showCompanyEmail}
     />
   );
 

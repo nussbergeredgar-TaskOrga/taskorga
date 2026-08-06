@@ -2,15 +2,10 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, Star, ChevronDown } from "lucide-react";
-import {
-  createDocumentTemplate,
-  updateDocumentTemplate,
-  setDefaultTemplate,
-  deleteDocumentTemplate,
-} from "@/lib/actions/document-templates";
-import { PlaceholderTextarea } from "@/components/placeholder-textarea";
-import type { DocumentTemplateType } from "@prisma/client";
+import { Plus, Trash2, Star, Pencil } from "lucide-react";
+import { createDocumentTemplate, setDefaultTemplate, deleteDocumentTemplate } from "@/lib/actions/document-templates";
+import { DocumentTemplateEditorModal } from "@/components/document-template-editor-modal";
+import type { DocumentTemplateType, LogoPosition } from "@prisma/client";
 
 type Template = {
   id: string;
@@ -21,127 +16,70 @@ type Template = {
   footerText: string | null;
   showVat: boolean;
   accentColor: string;
+  logoPosition: LogoPosition;
+  showSenderLine: boolean;
+  showBankDetails: boolean;
+  showCompanyEmail: boolean;
 };
 
-function TemplateEditor({ template }: { template: Template }) {
+function TemplateRow({ template }: { template: Template }) {
   const router = useRouter();
-  const [open, setOpen] = useState(false);
-  const [name, setName] = useState(template.name);
-  const [introText, setIntroText] = useState(template.introText ?? "");
-  const [footerText, setFooterText] = useState(template.footerText ?? "");
-  const [showVat, setShowVat] = useState(template.showVat);
-  const [accentColor, setAccentColor] = useState(template.accentColor);
+  const [editing, setEditing] = useState(false);
   const [pending, startTransition] = useTransition();
-  const [saved, setSaved] = useState(false);
-
-  function save() {
-    startTransition(async () => {
-      await updateDocumentTemplate(template.id, { name, introText, footerText, showVat, accentColor });
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2000);
-      router.refresh();
-    });
-  }
 
   return (
-    <div className="rounded-lg border border-ink-100 bg-ink-50 overflow-hidden">
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        className="w-full flex items-center justify-between gap-2 px-4 py-3 text-left hover:bg-ink-100 transition-colors"
-      >
-        <span className="font-medium text-sm text-ink-900 truncate">{name}</span>
-        <div className="flex items-center gap-2 shrink-0">
-          {template.isDefault && (
-            <span className="flex items-center gap-1 text-xs font-medium text-brand-700 whitespace-nowrap">
-              <Star size={13} fill="currentColor" /> Standard
-            </span>
-          )}
-          <ChevronDown size={16} className={`text-ink-300 transition-transform ${open ? "rotate-180" : ""}`} />
-        </div>
-      </button>
-
-      {open && (
-        <div className="px-4 pb-4 space-y-3">
-          <div className="flex items-center justify-between gap-2">
-            <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="flex-1 rounded-lg border border-ink-100 px-3 py-2 text-sm font-medium outline-none focus:border-brand-500 bg-surface"
-            />
-            {!template.isDefault && (
-              <button
-                onClick={() =>
-                  startTransition(async () => {
-                    await setDefaultTemplate(template.id, template.type);
-                    router.refresh();
-                  })
-                }
-                className="text-xs text-ink-500 hover:text-brand-700 transition-colors whitespace-nowrap"
-              >
-                Als Standard festlegen
-              </button>
-            )}
-          </div>
-
-      <div>
-        <label className="block text-xs text-ink-500 mb-1">
-          Einleitungstext (über der Positionstabelle) – Platzhalter anklicken zum Einfügen
-        </label>
-        <PlaceholderTextarea
-          value={introText}
-          onChange={setIntroText}
-          placeholder="z. B. Vielen Dank für Ihre Anfrage, {{kunde.name}}. Hiermit unterbreiten wir Ihnen folgendes Angebot:"
-        />
-      </div>
-
-      <div>
-        <label className="block text-xs text-ink-500 mb-1">Fußzeilentext</label>
-        <PlaceholderTextarea
-          value={footerText}
-          onChange={setFooterText}
-          placeholder="z. B. Zahlbar innerhalb 14 Tagen ohne Abzug auf das Konto {{firma.iban}}."
-        />
-      </div>
-
-      <div className="flex items-center gap-6">
-        <label className="flex items-center gap-2 text-sm text-ink-700">
-          <input type="checkbox" checked={showVat} onChange={(e) => setShowVat(e.target.checked)} className="accent-brand-500" />
-          MwSt. ausweisen
-        </label>
-        <div className="flex items-center gap-2">
-          <label className="text-sm text-ink-700">Akzentfarbe</label>
-          <input
-            type="color"
-            value={accentColor}
-            onChange={(e) => setAccentColor(e.target.value)}
-            className="h-8 w-14 rounded border border-ink-100 bg-surface cursor-pointer"
-          />
-        </div>
-      </div>
-
-      <div className="flex items-center gap-3 pt-1">
+    <div className="flex items-center justify-between gap-2 rounded-lg border border-ink-100 bg-ink-50 px-4 py-3">
+      <span className="font-medium text-sm text-ink-900 truncate">{template.name}</span>
+      <div className="flex items-center gap-3 shrink-0">
+        {template.isDefault ? (
+          <span className="flex items-center gap-1 text-xs font-medium text-brand-700 whitespace-nowrap">
+            <Star size={13} fill="currentColor" /> Standard
+          </span>
+        ) : (
+          <button
+            disabled={pending}
+            onClick={() =>
+              startTransition(async () => {
+                await setDefaultTemplate(template.id, template.type);
+                router.refresh();
+              })
+            }
+            className="text-xs text-ink-500 hover:text-brand-700 transition-colors whitespace-nowrap"
+          >
+            Als Standard festlegen
+          </button>
+        )}
         <button
-          disabled={pending}
-          onClick={save}
-          className="rounded-lg bg-brand-500 text-white text-sm font-medium px-4 py-2 hover:bg-brand-600 disabled:opacity-60 transition-colors"
+          onClick={() => setEditing(true)}
+          className="flex items-center gap-1 text-xs font-medium text-ink-700 hover:text-brand-700 transition-colors"
         >
-          {pending ? "Wird gespeichert …" : "Speichern"}
+          <Pencil size={13} /> Bearbeiten
         </button>
-        {saved && <span className="text-sm text-success">Gespeichert.</span>}
         <button
           disabled={pending}
           onClick={() => {
             if (confirm(`Vorlage „${template.name}“ wirklich löschen?`)) {
-              startTransition(async () => { await deleteDocumentTemplate(template.id); router.refresh(); });
+              startTransition(async () => {
+                await deleteDocumentTemplate(template.id);
+                router.refresh();
+              });
             }
           }}
-          className="ml-auto flex items-center gap-1 text-xs text-ink-500 hover:text-danger transition-colors"
+          className="flex items-center gap-1 text-xs text-ink-500 hover:text-danger transition-colors"
         >
           <Trash2 size={13} /> Löschen
         </button>
       </div>
-        </div>
+
+      {editing && (
+        <DocumentTemplateEditorModal
+          template={template}
+          onClose={() => setEditing(false)}
+          onSaved={() => {
+            setEditing(false);
+            router.refresh();
+          }}
+        />
       )}
     </div>
   );
@@ -170,7 +108,7 @@ function TemplateSection({ type, title, templates }: { type: DocumentTemplateTyp
       ) : (
         <div className="space-y-3">
           {templates.map((t) => (
-            <TemplateEditor key={t.id} template={t} />
+            <TemplateRow key={t.id} template={t} />
           ))}
         </div>
       )}

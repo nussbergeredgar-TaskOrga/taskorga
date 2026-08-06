@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin, getCurrentCompany } from "@/lib/session";
-import type { DocumentTemplateType } from "@prisma/client";
+import type { DocumentTemplateType, LogoPosition } from "@prisma/client";
 
 export async function getDocumentTemplates() {
   const company = await getCurrentCompany();
@@ -41,6 +41,10 @@ export async function updateDocumentTemplate(
     footerText?: string;
     showVat: boolean;
     accentColor: string;
+    logoPosition: LogoPosition;
+    showSenderLine: boolean;
+    showBankDetails: boolean;
+    showCompanyEmail: boolean;
   }
 ) {
   const admin = await requireAdmin();
@@ -52,6 +56,10 @@ export async function updateDocumentTemplate(
       footerText: data.footerText || null,
       showVat: data.showVat,
       accentColor: data.accentColor || "#2F5FFF",
+      logoPosition: data.logoPosition,
+      showSenderLine: data.showSenderLine,
+      showBankDetails: data.showBankDetails,
+      showCompanyEmail: data.showCompanyEmail,
     },
   });
   revalidatePath("/einstellungen");
