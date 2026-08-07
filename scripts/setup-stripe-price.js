@@ -32,8 +32,7 @@ const stripe = new Stripe(secretKey, { apiVersion: "2026-07-29.dahlia" });
 const TIERS = [
   { up_to: 4, unit_amount: 1900 },
   { up_to: 10, unit_amount: 1400 },
-  { up_to: 25, unit_amount: 900 },
-  { up_to: "inf", unit_amount: 400 },
+  { up_to: "inf", unit_amount: 900 },
 ];
 
 (async () => {
