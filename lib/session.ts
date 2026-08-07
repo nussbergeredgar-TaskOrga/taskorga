@@ -27,6 +27,15 @@ export async function getCurrentCompany() {
     redirect("/login?suspended=1");
   }
 
+  const billingBlocked =
+    !company.billingExempt &&
+    (company.subscriptionStatus === "PAST_DUE" ||
+      company.subscriptionStatus === "CANCELED" ||
+      company.subscriptionStatus === "INCOMPLETE");
+  if (billingBlocked) {
+    redirect("/abrechnung-erforderlich");
+  }
+
   return company;
 }
 

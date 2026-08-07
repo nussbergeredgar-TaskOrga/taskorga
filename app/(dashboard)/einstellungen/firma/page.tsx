@@ -9,6 +9,7 @@ import { ScheduleManager } from "@/components/schedule-manager";
 import { SettingsSection } from "@/components/settings-section";
 import { DataPrivacySection } from "@/components/data-privacy-section";
 import { SupportAccessGenerator } from "@/components/support-access-generator";
+import { BillingOverview } from "@/components/billing-overview";
 import { getNavLabels } from "@/lib/actions/nav";
 import { getWorkingHours, getAbsences } from "@/lib/actions/schedule";
 import { getActiveSupportAccessCode } from "@/lib/actions/support-access";
@@ -114,6 +115,20 @@ export default async function FirmaSettingsPage({
             isWorkingDay: h.isWorkingDay,
           }))}
           absences={absences}
+        />
+      </SettingsSection>
+
+      <SettingsSection
+        title="Abrechnung"
+        description="Status des Abos und Zahlungsmethode."
+      >
+        <BillingOverview
+          subscriptionStatus={company.subscriptionStatus}
+          trialEndsAt={company.trialEndsAt}
+          billingExempt={company.billingExempt}
+          hasStripeCustomer={Boolean(company.stripeCustomerId)}
+          seatCount={users.length}
+          returnUrl={`${process.env.NEXTAUTH_URL || "http://localhost:3000"}/einstellungen/firma`}
         />
       </SettingsSection>
 

@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
-import { Ban, CheckCircle2, LifeBuoy, Trash2 } from "lucide-react";
+import { Ban, CheckCircle2, Gift, LifeBuoy, Trash2 } from "lucide-react";
 import {
   verifyPlatformSecret,
   listInviteCodes,
@@ -13,6 +13,7 @@ import {
   getPlatformStats,
   suspendCompany,
   unsuspendCompany,
+  toggleBillingExempt,
   deleteCompanyForAdmin,
   type CompanyOverview,
   type PlatformStats,
@@ -28,6 +29,14 @@ type Code = {
 };
 
 type Tab = "codes" | "firmen" | "support";
+
+const BILLING_STATUS_LABELS: Record<string, string> = {
+  TRIALING: "Testphase",
+  ACTIVE: "Zahlt",
+  PAST_DUE: "Zahlung fehlgeschlagen",
+  CANCELED: "Gekündigt",
+  INCOMPLETE: "Unvollständig",
+};
 
 function InviteCodesTab({
   secret,
@@ -141,6 +150,13 @@ function CompanyRow({
     });
   }
 
+  function toggleFreeAccess() {
+    startTransition(async () => {
+      await toggleBillingExempt(secret, company.id, !company.billingExempt);
+      refresh();
+    });
+  }
+
   function handleDelete() {
     if (confirmName.trim() !== company.name) return;
     if (!confirm(`Wirklich ALLE Daten von „${company.name}“ unwiderruflich löschen?`)) return;
@@ -172,6 +188,13 @@ function CompanyRow({
           ) : (
             <span className="text-xs font-medium text-success">Aktiv</span>
           )}
+          {company.billingExempt ? (
+            <span className="text-xs font-medium text-brand-700">Kostenloser Zugriff</span>
+          ) : (
+            <span className="text-xs font-medium text-ink-500">
+              {BILLING_STATUS_LABELS[company.subscriptionStatus] ?? company.subscriptionStatus}
+            </span>
+          )}
           <button
             disabled={pending}
             onClick={toggleSuspend}
@@ -179,6 +202,14 @@ function CompanyRow({
           >
             {company.suspendedAt ? <CheckCircle2 size={13} /> : <Ban size={13} />}
             {company.suspendedAt ? "Entsperren" : "Sperren"}
+          </button>
+          <button
+            disabled={pending}
+            onClick={toggleFreeAccess}
+            className="flex items-center gap-1 text-xs font-medium text-ink-700 hover:text-brand-700 transition-colors"
+          >
+            <Gift size={13} />
+            {company.billingExempt ? "Kostenlosen Zugriff entziehen" : "Kostenlosen Zugriff gewähren"}
           </button>
           <button
             disabled={pending}

@@ -58,6 +58,9 @@ export type CompanyOverview = {
   createdAt: Date;
   lastActivityAt: Date | null;
   suspendedAt: Date | null;
+  subscriptionStatus: string;
+  trialEndsAt: Date | null;
+  billingExempt: boolean;
 };
 
 export async function listCompaniesOverview(secret: string): Promise<CompanyOverview[]> {
@@ -80,6 +83,9 @@ export async function listCompaniesOverview(secret: string): Promise<CompanyOver
     createdAt: c.createdAt,
     lastActivityAt: lastActivityByCompany.get(c.id) ?? null,
     suspendedAt: c.suspendedAt,
+    subscriptionStatus: c.subscriptionStatus,
+    trialEndsAt: c.trialEndsAt,
+    billingExempt: c.billingExempt,
   }));
 }
 
@@ -130,6 +136,11 @@ export async function suspendCompany(secret: string, companyId: string) {
 export async function unsuspendCompany(secret: string, companyId: string) {
   await checkSecret(secret);
   await prisma.company.update({ where: { id: companyId }, data: { suspendedAt: null } });
+}
+
+export async function toggleBillingExempt(secret: string, companyId: string, exempt: boolean) {
+  await checkSecret(secret);
+  await prisma.company.update({ where: { id: companyId }, data: { billingExempt: exempt } });
 }
 
 export async function deleteCompanyForAdmin(

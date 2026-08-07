@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/session";
 import { sendTeamInviteEmail } from "@/lib/email";
+import { syncSeatCount } from "@/lib/actions/subscription";
 import type { Permissions } from "@/lib/permissions";
 
 export type CreateUserState = { error?: string; success?: boolean };
@@ -81,6 +82,8 @@ export async function createUser(
     // (noch) nicht eingerichtet ist -- Admin teilt Zugangsdaten dann manuell mit.
   }
 
+  await syncSeatCount(admin.companyId);
+
   revalidatePath("/einstellungen");
   return { success: true };
 }
@@ -131,6 +134,8 @@ export async function deleteUser(userId: string) {
       message: `Teammitglied „${target.name}“ (${target.email}) wurde entfernt.`,
     },
   });
+
+  await syncSeatCount(admin.companyId);
 
   revalidatePath("/einstellungen");
 }

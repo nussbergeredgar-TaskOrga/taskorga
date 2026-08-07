@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { sendInitialVerificationEmail } from "@/lib/actions/email-verification";
+import { createSubscriptionForCompany } from "@/lib/actions/subscription";
 
 const MAX_INVITE_CODE_ATTEMPTS_PER_HOUR = 10;
 
@@ -79,6 +80,8 @@ export async function signUp(_prevState: SignupState, formData: FormData): Promi
   const company = await prisma.company.create({
     data: { name: parsed.data.companyName },
   });
+
+  await createSubscriptionForCompany(company.id, parsed.data.companyName, parsed.data.email);
 
   const adminRole = await prisma.role.create({
     data: { companyId: company.id, name: "Admin", permissions: {} },
