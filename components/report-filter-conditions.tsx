@@ -1,9 +1,21 @@
 "use client";
 
 import { Plus, X } from "lucide-react";
-import { NUMBER_OPERATORS, TEXT_OPERATORS, type ReportFilterCondition } from "@/lib/report-filters";
+import { NUMBER_OPERATORS, TEXT_OPERATORS, DATE_OPERATORS, type ReportFilterCondition } from "@/lib/report-filters";
 
-type FilterableField = { key: string; label: string; type: "number" | "text" };
+type FilterableField = { key: string; label: string; type: "number" | "text" | "date" };
+
+function operatorsFor(type: FilterableField["type"]) {
+  if (type === "number") return NUMBER_OPERATORS;
+  if (type === "date") return DATE_OPERATORS;
+  return TEXT_OPERATORS;
+}
+
+function defaultOperatorFor(type: FilterableField["type"]): ReportFilterCondition["operator"] {
+  if (type === "number") return "gt";
+  if (type === "date") return "eq";
+  return "eq";
+}
 
 // Kleiner, fester Bedingungs-Editor fuer eigene Kennzahlen/Diagramme (Feld +
 // Operator + Wert, mehrere Zeilen = UND-Verknuepft). Bewusst kein Nachbau des
@@ -28,7 +40,7 @@ export function ReportFilterConditionsEditor({
     const field = fields[0];
     onChange([
       ...conditions,
-      { field: field.key, fieldType: field.type, operator: field.type === "number" ? "gt" : "eq", value: "" },
+      { field: field.key, fieldType: field.type, operator: defaultOperatorFor(field.type), value: "" },
     ]);
   }
 
@@ -50,7 +62,7 @@ export function ReportFilterConditionsEditor({
       </div>
       {conditions.map((c, i) => {
         const field = fields.find((f) => f.key === c.field) ?? fields[0];
-        const operators = field.type === "number" ? NUMBER_OPERATORS : TEXT_OPERATORS;
+        const operators = operatorsFor(field.type);
         return (
           <div key={i} className="flex items-center gap-1.5">
             <select
@@ -60,7 +72,7 @@ export function ReportFilterConditionsEditor({
                 updateCondition(i, {
                   field: nextField.key,
                   fieldType: nextField.type,
-                  operator: nextField.type === "number" ? "gt" : "eq",
+                  operator: defaultOperatorFor(nextField.type),
                 });
               }}
               className="flex-1 rounded-lg border border-ink-100 px-2 py-1.5 text-xs outline-none focus:border-brand-500 bg-surface"
@@ -83,9 +95,10 @@ export function ReportFilterConditionsEditor({
               ))}
             </select>
             <input
+              type={field.type === "date" ? "date" : "text"}
               value={c.value}
               onChange={(e) => updateCondition(i, { value: e.target.value })}
-              placeholder={field.type === "number" ? "Zahl" : "Text"}
+              placeholder={field.type === "number" ? "Zahl" : field.type === "date" ? undefined : "Text"}
               className="flex-1 min-w-0 rounded-lg border border-ink-100 px-2 py-1.5 text-xs outline-none focus:border-brand-500 bg-surface"
             />
             <button

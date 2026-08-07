@@ -4,13 +4,13 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { toCsv, csvNum, csvResponseHeaders } from "@/lib/csv";
 import { applyFilterConditions, type ReportFilterCondition } from "@/lib/report-filters";
-import { ENTITY_META, DATE_FIELD_BY_ENTITY, type EntityKey } from "@/lib/custom-kpi";
+import { DATE_FIELD_BY_ENTITY, statusOptionsFor, type EntityKey } from "@/lib/custom-kpi";
 
 const MAX_ROWS = 5000;
 
 function statusLabel(entity: EntityKey, status: string | null) {
   if (!status) return "";
-  return ENTITY_META[entity].statusOptions.find((o) => o.value === status)?.label ?? status;
+  return statusOptionsFor(entity).find((o) => o.value === status)?.label ?? status;
 }
 
 function resolveDateRange(type: string, from: Date | null, to: Date | null): { gte?: Date; lte?: Date } | null {
@@ -195,7 +195,7 @@ export async function GET(request: Request) {
     label = kpi.label;
     if (kpi.statusValue) where.status = kpi.statusValue;
     const dateFilter = resolveDateRange(kpi.dateRangeType, kpi.dateFrom, kpi.dateTo);
-    if (dateFilter) where[DATE_FIELD_BY_ENTITY[entity]] = dateFilter;
+    if (dateFilter) where[kpi.dateField || DATE_FIELD_BY_ENTITY[entity]] = dateFilter;
     applyFilterConditions(where, kpi.filterConditions as ReportFilterCondition[] | null);
   } else {
     const chart = await prisma.customChart.findFirst({ where: { id, companyId } });

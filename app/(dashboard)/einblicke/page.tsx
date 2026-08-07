@@ -118,8 +118,9 @@ export default async function EinblickePage() {
       <div className="rounded-card border border-ink-100 bg-surface p-6 shadow-card max-w-2xl">
         <h2 className="font-display font-semibold text-ink-900 mb-1">Kennzahlen</h2>
         <p className="text-sm text-ink-500 mb-4">
-          Wähle einen Datentyp, eine Berechnung (Anzahl oder Betrag) und optional einen
-          Status-Filter. Über „Zum Dashboard hinzufügen" erscheint die Kachel auf „Heute".
+          Wähle einen Datentyp, eine Berechnung (Anzahl oder Betrag eines beliebigen Feldes) und
+          optional einen Status-/Zeitraum-Filter. Über „Zum Dashboard hinzufügen" erscheint die
+          Kachel auf „Heute".
         </p>
         <KpiManager
           kpis={kpis.map((k) => ({
@@ -127,10 +128,12 @@ export default async function EinblickePage() {
             label: k.label,
             entity: k.entity,
             aggregation: k.aggregation,
+            sumField: k.sumField,
             statusValue: k.statusValue,
             dateRangeType: k.dateRangeType,
             dateFrom: k.dateFrom,
             dateTo: k.dateTo,
+            dateField: k.dateField,
             filterConditions: k.filterConditions,
             value: k.value,
             onDashboard: onDashboardIds.has(`custom:${k.id}`),
@@ -141,9 +144,10 @@ export default async function EinblickePage() {
       <div className="rounded-card border border-ink-100 bg-surface p-6 shadow-card">
         <h2 className="font-display font-semibold text-ink-900 mb-1">Eigene Diagramme</h2>
         <p className="text-sm text-ink-500 mb-4">
-          Wähle einen Datentyp, einen Diagrammtyp (Balken/Linie/Fläche/Kreis) und eine Gruppierung
-          (nach Status, freiem Feld oder Verlauf pro Monat) -- optional mit weiteren Bedingungen.
-          Über das Raster-Symbol erscheint das Diagramm auch auf „Heute".
+          Wähle einen Datentyp, einen Diagrammtyp (Balken/Linie/Fläche/Kreis) und ein beliebiges
+          Feld zum Gruppieren -- bei Datum mit wählbarer Granularität/Zeitraum, bei Zahlen mit
+          wählbaren Wertebereichen -- optional mit weiteren Bedingungen. Über das Raster-Symbol
+          erscheint das Diagramm auch auf „Heute".
         </p>
         <ChartManager
           charts={customCharts.map((c) => ({
@@ -151,9 +155,10 @@ export default async function EinblickePage() {
             label: c.label,
             entity: c.entity,
             chartType: c.chartType,
-            groupBy: c.groupBy,
             groupByField: c.groupByField,
+            groupByConfig: c.groupByConfig,
             aggregation: c.aggregation,
+            sumField: c.sumField,
             filterConditions: c.filterConditions,
             data: c.data,
             onDashboard: onDashboardIds.has(`chart:${c.id}`),

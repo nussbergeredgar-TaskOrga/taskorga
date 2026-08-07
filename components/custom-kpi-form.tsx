@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Plus } from "lucide-react";
 import { createCustomKpi } from "@/lib/actions/custom-kpi";
-import { ENTITY_META, ENTITY_KEYS, type EntityKey } from "@/lib/custom-kpi";
+import { ENTITY_META, ENTITY_KEYS, numberFieldsFor, statusOptionsFor, type EntityKey } from "@/lib/custom-kpi";
 
 export function CustomKpiForm() {
   const router = useRouter();
@@ -12,10 +12,12 @@ export function CustomKpiForm() {
   const [label, setLabel] = useState("");
   const [entity, setEntity] = useState<EntityKey>("inquiries");
   const [aggregation, setAggregation] = useState<"count" | "sum">("count");
+  const [sumField, setSumField] = useState<string>(numberFieldsFor("inquiries")[0]?.key ?? "");
   const [statusValue, setStatusValue] = useState("");
   const [pending, startTransition] = useTransition();
 
-  const meta = ENTITY_META[entity];
+  const numberFields = numberFieldsFor(entity);
+  const statusOptions = statusOptionsFor(entity);
 
   function submit() {
     if (!label.trim()) return;
@@ -23,8 +25,8 @@ export function CustomKpiForm() {
       await createCustomKpi({
         label,
         entity,
-        aggregation: aggregation === "sum" && meta.sumFields.length > 0 ? "sum" : "count",
-        sumField: meta.sumFields[0]?.key,
+        aggregation: aggregation === "sum" && numberFields.length > 0 ? "sum" : "count",
+        sumField: sumField || undefined,
         statusValue: statusValue || undefined,
       });
       setLabel("");
@@ -59,9 +61,11 @@ export function CustomKpiForm() {
         <select
           value={entity}
           onChange={(e) => {
-            setEntity(e.target.value as EntityKey);
+            const next = e.target.value as EntityKey;
+            setEntity(next);
             setStatusValue("");
             setAggregation("count");
+            setSumField(numberFieldsFor(next)[0]?.key ?? "");
           }}
           className="rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface"
         >
@@ -80,26 +84,53 @@ export function CustomKpiForm() {
           className="rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface"
         >
           <option value="count">Anzahl zählen</option>
-          {meta.sumFields.length > 0 && (
-            <option value="sum">{meta.sumFields[0].label} summieren</option>
-          )}
+          {numberFields.length > 0 && <option value="sum">Betrag summieren</option>}
         </select>
 
-        {meta.statusOptions.length > 0 && (
+        {aggregation === "sum" && numberFields.length > 0 ? (
           <select
-            value={statusValue}
-            onChange={(e) => setStatusValue(e.target.value)}
+            value={sumField}
+            onChange={(e) => setSumField(e.target.value)}
             className="rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface"
           >
-            <option value="">Alle Status</option>
-            {meta.statusOptions.map((s) => (
-              <option key={s.value} value={s.value}>
-                {s.label}
+            {numberFields.map((f) => (
+              <option key={f.key} value={f.key}>
+                {f.label}
               </option>
             ))}
           </select>
+        ) : (
+          statusOptions.length > 0 && (
+            <select
+              value={statusValue}
+              onChange={(e) => setStatusValue(e.target.value)}
+              className="rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface"
+            >
+              <option value="">Alle Status</option>
+              {statusOptions.map((s) => (
+                <option key={s.value} value={s.value}>
+                  {s.label}
+                </option>
+              ))}
+            </select>
+          )
         )}
       </div>
+
+      {aggregation === "sum" && numberFields.length > 0 && statusOptions.length > 0 && (
+        <select
+          value={statusValue}
+          onChange={(e) => setStatusValue(e.target.value)}
+          className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface"
+        >
+          <option value="">Alle Status</option>
+          {statusOptions.map((s) => (
+            <option key={s.value} value={s.value}>
+              {s.label}
+            </option>
+          ))}
+        </select>
+      )}
 
       <div className="flex gap-2">
         <button

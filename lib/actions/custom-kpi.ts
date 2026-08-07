@@ -18,6 +18,9 @@ export type CustomKpiInput = {
   dateRangeType?: string;
   dateFrom?: string;
   dateTo?: string;
+  // Auf welches Datumsfeld sich dateRangeType bezieht -- leer = Standardfeld
+  // aus DATE_FIELD_BY_ENTITY.
+  dateField?: string;
   filterConditions?: ReportFilterCondition[];
 };
 
@@ -36,6 +39,7 @@ export async function createCustomKpi(data: CustomKpiInput) {
       dateRangeType: data.dateRangeType || "ALL",
       dateFrom: data.dateRangeType === "CUSTOM" && data.dateFrom ? new Date(data.dateFrom) : null,
       dateTo: data.dateRangeType === "CUSTOM" && data.dateTo ? new Date(data.dateTo) : null,
+      dateField: data.dateField || null,
       filterConditions: data.filterConditions && data.filterConditions.length > 0 ? data.filterConditions : undefined,
     },
   });
@@ -62,6 +66,7 @@ export async function duplicateCustomKpi(id: string) {
       dateRangeType: original.dateRangeType,
       dateFrom: original.dateFrom,
       dateTo: original.dateTo,
+      dateField: original.dateField,
       filterConditions: original.filterConditions ?? undefined,
     },
   });
@@ -85,6 +90,7 @@ export async function updateCustomKpi(id: string, data: CustomKpiInput) {
       dateRangeType: data.dateRangeType || "ALL",
       dateFrom: data.dateRangeType === "CUSTOM" && data.dateFrom ? new Date(data.dateFrom) : null,
       dateTo: data.dateRangeType === "CUSTOM" && data.dateTo ? new Date(data.dateTo) : null,
+      dateField: data.dateField || null,
       filterConditions:
         data.filterConditions && data.filterConditions.length > 0 ? data.filterConditions : Prisma.JsonNull,
     },
@@ -174,14 +180,64 @@ function resolveDateRange(
   return null; // ALL: kein Zeitfilter
 }
 
+async function countFor(entity: EntityKey, where: Record<string, unknown>): Promise<number> {
+  switch (entity) {
+    case "customers":
+      return prisma.customer.count({ where });
+    case "inquiries":
+      return prisma.inquiry.count({ where });
+    case "quotes":
+      return prisma.quote.count({ where });
+    case "projects":
+      return prisma.project.count({ where });
+    case "invoices":
+      return prisma.invoice.count({ where });
+    case "appointments":
+      return prisma.appointment.count({ where });
+    case "expenses":
+      return prisma.expense.count({ where });
+  }
+}
+
+async function sumFor(entity: EntityKey, where: Record<string, unknown>, sumField: string): Promise<number> {
+  const args = { where, _sum: { [sumField]: true } };
+  let result: Record<string, unknown>;
+  switch (entity) {
+    case "customers":
+      result = await (prisma.customer.aggregate as (a: unknown) => Promise<Record<string, unknown>>)(args);
+      break;
+    case "inquiries":
+      result = await (prisma.inquiry.aggregate as (a: unknown) => Promise<Record<string, unknown>>)(args);
+      break;
+    case "quotes":
+      result = await (prisma.quote.aggregate as (a: unknown) => Promise<Record<string, unknown>>)(args);
+      break;
+    case "projects":
+      result = await (prisma.project.aggregate as (a: unknown) => Promise<Record<string, unknown>>)(args);
+      break;
+    case "invoices":
+      result = await (prisma.invoice.aggregate as (a: unknown) => Promise<Record<string, unknown>>)(args);
+      break;
+    case "appointments":
+      result = await (prisma.appointment.aggregate as (a: unknown) => Promise<Record<string, unknown>>)(args);
+      break;
+    case "expenses":
+      result = await (prisma.expense.aggregate as (a: unknown) => Promise<Record<string, unknown>>)(args);
+      break;
+  }
+  return Number((result._sum as Record<string, unknown> | undefined)?.[sumField] ?? 0);
+}
+
 async function computeValue(
   companyId: string,
   entity: EntityKey,
   aggregation: "count" | "sum",
+  sumField: string | null,
   statusValue: string | null,
   dateRangeType: string,
   dateFrom: Date | null,
   dateTo: Date | null,
+  dateField: string | null,
   filterConditions?: ReportFilterCondition[] | null
 ): Promise<number> {
   const where: Record<string, unknown> = { companyId };
@@ -189,49 +245,15 @@ async function computeValue(
 
   const dateFilter = resolveDateRange(dateRangeType, dateFrom, dateTo);
   if (dateFilter) {
-    where[DATE_FIELD_BY_ENTITY[entity]] = dateFilter;
+    where[dateField || DATE_FIELD_BY_ENTITY[entity]] = dateFilter;
   }
 
   applyFilterConditions(where, filterConditions);
 
-  switch (entity) {
-    case "customers":
-      return prisma.customer.count({ where });
-    case "inquiries":
-      if (aggregation === "sum") {
-        const agg = await prisma.inquiry.aggregate({ where, _sum: { amount: true } });
-        return Number(agg._sum.amount ?? 0);
-      }
-      return prisma.inquiry.count({ where });
-    case "quotes":
-      if (aggregation === "sum") {
-        const agg = await prisma.quote.aggregate({ where, _sum: { totalGross: true } });
-        return Number(agg._sum.totalGross ?? 0);
-      }
-      return prisma.quote.count({ where });
-    case "projects":
-      return prisma.project.count({ where });
-    case "invoices":
-      if (aggregation === "sum") {
-        const agg = await prisma.invoice.aggregate({ where, _sum: { totalGross: true } });
-        return Number(agg._sum.totalGross ?? 0);
-      }
-      return prisma.invoice.count({ where });
-    case "appointments":
-      if (aggregation === "sum") {
-        const agg = await prisma.appointment.aggregate({ where, _sum: { amount: true } });
-        return Number(agg._sum.amount ?? 0);
-      }
-      return prisma.appointment.count({ where });
-    case "expenses":
-      if (aggregation === "sum") {
-        const agg = await prisma.expense.aggregate({ where, _sum: { amount: true } });
-        return Number(agg._sum.amount ?? 0);
-      }
-      return prisma.expense.count({ where });
-    default:
-      return 0;
+  if (aggregation === "sum" && sumField) {
+    return sumFor(entity, where, sumField);
   }
+  return countFor(entity, where);
 }
 
 export async function getCustomKpiValues() {
@@ -248,10 +270,12 @@ export async function getCustomKpiValues() {
         company.id,
         kpi.entity as EntityKey,
         kpi.aggregation as "count" | "sum",
+        kpi.sumField,
         kpi.statusValue,
         kpi.dateRangeType,
         kpi.dateFrom,
         kpi.dateTo,
+        kpi.dateField,
         kpi.filterConditions as ReportFilterCondition[] | null
       ),
     }))

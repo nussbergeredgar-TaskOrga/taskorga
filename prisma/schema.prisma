@@ -845,6 +845,9 @@ model CustomKpi {
   dateRangeType String  @default("ALL") // ALL | TODAY | THIS_WEEK | THIS_MONTH | THIS_YEAR | CUSTOM
   dateFrom      DateTime?
   dateTo        DateTime?
+  // Auf welches Datumsfeld sich dateRangeType bezieht -- null = Standardfeld
+  // aus lib/custom-kpi.ts DATE_FIELD_BY_ENTITY.
+  dateField     String?
   // Zusaetzliche, frei kombinierbare Bedingungen (Feld+Operator+Wert, UND-
   // verknuepft) ueber den Status-/Zeitraum-Filter hinaus -- siehe
   // lib/report-filters.ts fuer die genaue Form.
@@ -867,8 +870,14 @@ model CustomChart {
   label       String
   entity      String // siehe EntityKey in lib/custom-kpi.ts
   chartType   String // "bar" | "line" | "pie" | "area"
-  groupBy     String // "status" | "month" | "field"
-  groupByField String? // wenn groupBy = "field": welches ENTITY_META.groupableFields-Feld
+  // Immer gesetzt -- welches Feld aus lib/custom-kpi.ts ENTITY_META gruppiert
+  // wird (auch fuer Status: dort schlicht "status"). Die Feld-Art (enum/text/
+  // number/date/relation) wird beim Lesen aus dem Katalog nachgeschlagen,
+  // nicht hier gespeichert.
+  groupByField String
+  // Zusatzkonfiguration je nach Feld-Art: bei Datum {granularity,windowCount},
+  // bei Zahl {bucketCount}, sonst null. Siehe GroupByConfig in lib/custom-kpi.ts.
+  groupByConfig Json?
   aggregation String // "count" | "sum"
   sumField    String?
   // Wie bei CustomKpi: zusaetzliche Bedingungen, siehe lib/report-filters.ts

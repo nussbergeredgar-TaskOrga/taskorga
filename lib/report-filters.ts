@@ -8,7 +8,7 @@ export type ReportFilterOperator = "eq" | "gt" | "gte" | "lt" | "lte" | "contain
 
 export type ReportFilterCondition = {
   field: string;
-  fieldType: "number" | "text";
+  fieldType: "number" | "text" | "date";
   operator: ReportFilterOperator;
   value: string;
 };
@@ -24,6 +24,14 @@ export const NUMBER_OPERATORS: { value: ReportFilterOperator; label: string }[] 
 export const TEXT_OPERATORS: { value: ReportFilterOperator; label: string }[] = [
   { value: "eq", label: "ist genau" },
   { value: "contains", label: "enthält" },
+];
+
+export const DATE_OPERATORS: { value: ReportFilterOperator; label: string }[] = [
+  { value: "eq", label: "am" },
+  { value: "gt", label: "nach dem" },
+  { value: "gte", label: "ab dem" },
+  { value: "lt", label: "vor dem" },
+  { value: "lte", label: "bis zum" },
 ];
 
 // Baut die Bedingungen (UND-verknuepft) in ein bestehendes Prisma-where-
@@ -46,6 +54,19 @@ export function applyFilterConditions<T extends Record<string, unknown>>(
       const numeric = Number(c.value.replace(",", "."));
       if (!Number.isFinite(numeric)) continue;
       target[c.field] = c.operator === "eq" ? numeric : { [c.operator]: numeric };
+    } else if (c.fieldType === "date") {
+      // "YYYY-MM-DD" von Hand zerlegen statt new Date(value) -- vermeidet, dass
+      // der Datums-String als UTC-Mitternacht interpretiert und beim Auslesen
+      // der lokalen Komponenten (Server-Zeitzone) auf den Vortag verschoben wird.
+      const [y, m, d] = c.value.split("-").map(Number);
+      if (!y || !m || !d) continue;
+      const startOfDay = new Date(y, m - 1, d);
+      const endOfDay = new Date(y, m - 1, d, 23, 59, 59, 999);
+      if (c.operator === "eq") target[c.field] = { gte: startOfDay, lte: endOfDay };
+      else if (c.operator === "gt") target[c.field] = { gt: endOfDay };
+      else if (c.operator === "gte") target[c.field] = { gte: startOfDay };
+      else if (c.operator === "lt") target[c.field] = { lt: startOfDay };
+      else target[c.field] = { lte: endOfDay };
     } else {
       target[c.field] =
         c.operator === "contains" ? { contains: c.value.trim(), mode: "insensitive" } : c.value.trim();

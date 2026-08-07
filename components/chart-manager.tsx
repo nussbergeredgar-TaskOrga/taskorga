@@ -10,11 +10,30 @@ import {
   duplicateCustomChart,
   toggleChartOnDashboard,
   type ChartType,
-  type ChartGroupBy,
 } from "@/lib/actions/custom-chart";
 import { CustomChart } from "@/components/charts/custom-chart";
 import { ReportFilterConditionsEditor } from "@/components/report-filter-conditions";
-import { ENTITY_META, ENTITY_KEYS, filterableFieldsFor, type EntityKey } from "@/lib/custom-kpi";
+import {
+  ENTITY_META,
+  ENTITY_KEYS,
+  fieldFor,
+  enumFieldsFor,
+  textFieldsFor,
+  numberFieldsFor,
+  dateFieldsFor,
+  relationFieldsFor,
+  defaultGroupByFieldFor,
+  filterableFieldsFor,
+  GRANULARITY_LABELS,
+  DEFAULT_WINDOW_COUNT,
+  MAX_WINDOW_COUNT,
+  DEFAULT_BUCKET_COUNT,
+  MIN_BUCKET_COUNT,
+  MAX_BUCKET_COUNT,
+  type EntityKey,
+  type DateGranularity,
+  type GroupByConfig,
+} from "@/lib/custom-kpi";
 import type { ReportFilterCondition } from "@/lib/report-filters";
 
 type Chart = {
@@ -22,9 +41,10 @@ type Chart = {
   label: string;
   entity: string;
   chartType: string;
-  groupBy: string;
-  groupByField: string | null;
+  groupByField: string;
+  groupByConfig: unknown;
   aggregation: string;
+  sumField: string | null;
   filterConditions: unknown;
   data: { label: string; value: number; status?: string }[];
   onDashboard: boolean;
@@ -37,17 +57,24 @@ const CHART_TYPE_LABELS: Record<ChartType, string> = {
   area: "Flächendiagramm",
 };
 
+const GRANULARITIES = Object.keys(GRANULARITY_LABELS) as DateGranularity[];
+
 function describeChart(chart: Chart) {
-  const meta = ENTITY_META[chart.entity as EntityKey];
+  const entity = chart.entity as EntityKey;
+  const meta = ENTITY_META[entity];
   const chartLabel = CHART_TYPE_LABELS[chart.chartType as ChartType] ?? chart.chartType;
-  const groupField = meta?.groupableFields.find((f) => f.key === chart.groupByField);
-  const groupLabel =
-    chart.groupBy === "status"
-      ? "nach Status"
-      : chart.groupBy === "field"
-        ? `nach ${groupField?.label ?? "Feld"}`
-        : "Verlauf pro Monat (6 Monate)";
-  const aggLabel = chart.aggregation === "sum" ? `${meta?.sumFields[0]?.label ?? "Betrag"} summiert` : "Anzahl";
+  const field = fieldFor(entity, chart.groupByField);
+  const config = chart.groupByConfig as GroupByConfig;
+
+  let groupLabel = field ? `nach ${field.label}` : "nach unbekanntem Feld";
+  if (field?.kind === "date" && config && "granularity" in config) {
+    groupLabel = `${field.label}: ${GRANULARITY_LABELS[config.granularity]}, letzte ${config.windowCount}`;
+  } else if (field?.kind === "number" && config && "bucketCount" in config) {
+    groupLabel = `${field.label} in ${config.bucketCount} Bereichen`;
+  }
+
+  const sumFieldEntry = chart.sumField ? fieldFor(entity, chart.sumField) : undefined;
+  const aggLabel = chart.aggregation === "sum" ? `${sumFieldEntry?.label ?? "Betrag"} summiert` : "Anzahl";
   const conditions = (chart.filterConditions as ReportFilterCondition[] | null) ?? [];
   const filterSuffix = conditions.length > 0 ? ` · ${conditions.length} Bedingung${conditions.length !== 1 ? "en" : ""}` : "";
   return `${meta?.label ?? chart.entity} · ${chartLabel} · ${groupLabel} · ${aggLabel}${filterSuffix}`;
@@ -66,31 +93,74 @@ function ChartForm({
   const [label, setLabel] = useState(initial?.label ?? "");
   const [entity, setEntity] = useState<EntityKey>((initial?.entity as EntityKey) ?? "invoices");
   const [chartType, setChartType] = useState<ChartType>((initial?.chartType as ChartType) ?? "bar");
-  const [groupBy, setGroupBy] = useState<ChartGroupBy>((initial?.groupBy as ChartGroupBy) ?? "status");
+  const [groupByField, setGroupByField] = useState<string>(
+    initial?.groupByField ?? defaultGroupByFieldFor((initial?.entity as EntityKey) ?? "invoices")
+  );
+  const initialConfig = (initial?.groupByConfig as GroupByConfig) ?? null;
+  const [dateGranularity, setDateGranularity] = useState<DateGranularity>(
+    initialConfig && "granularity" in initialConfig ? initialConfig.granularity : "month"
+  );
+  const [dateWindowCount, setDateWindowCount] = useState<number>(
+    initialConfig && "windowCount" in initialConfig ? initialConfig.windowCount : DEFAULT_WINDOW_COUNT.month
+  );
+  const [numberBucketCount, setNumberBucketCount] = useState<number>(
+    initialConfig && "bucketCount" in initialConfig ? initialConfig.bucketCount : DEFAULT_BUCKET_COUNT
+  );
   const [aggregation, setAggregation] = useState((initial?.aggregation as "count" | "sum") ?? "count");
+  const [sumField, setSumField] = useState<string>(
+    initial?.sumField ?? numberFieldsFor((initial?.entity as EntityKey) ?? "invoices")[0]?.key ?? ""
+  );
   const [conditions, setConditions] = useState<ReportFilterCondition[]>(
     (initial?.filterConditions as ReportFilterCondition[] | null) ?? []
   );
   const [pending, startTransition] = useTransition();
 
-  const meta = ENTITY_META[entity];
-  const canGroupByStatus = meta.statusOptions.length > 0;
-  const canGroupByField = meta.groupableFields.length > 0;
-  const canSum = meta.sumFields.length > 0;
   const filterFields = filterableFieldsFor(entity);
+  const selectedField = fieldFor(entity, groupByField);
+  const canSum = numberFieldsFor(entity).length > 0;
+
+  function handleEntityChange(next: EntityKey) {
+    setEntity(next);
+    setGroupByField(defaultGroupByFieldFor(next));
+    setSumField(numberFieldsFor(next)[0]?.key ?? "");
+    setAggregation("count");
+  }
+
+  function handleGroupByFieldChange(nextKey: string) {
+    setGroupByField(nextKey);
+    const nextField = fieldFor(entity, nextKey);
+    if (nextField?.kind === "date") {
+      setDateGranularity("month");
+      setDateWindowCount(DEFAULT_WINDOW_COUNT.month);
+    } else if (nextField?.kind === "number") {
+      setNumberBucketCount(DEFAULT_BUCKET_COUNT);
+    }
+  }
+
+  function handleGranularityChange(next: DateGranularity) {
+    setDateGranularity(next);
+    setDateWindowCount(DEFAULT_WINDOW_COUNT[next]);
+  }
 
   function submit() {
-    if (!label.trim()) return;
-    const effectiveGroupBy = groupBy === "status" && !canGroupByStatus ? "month" : groupBy === "field" && !canGroupByField ? "month" : groupBy;
-    const effectiveAggregation = aggregation === "sum" && !canSum ? "count" : aggregation;
+    if (!label.trim() || !groupByField) return;
+    const effectiveAggregation = aggregation === "sum" && canSum ? "sum" : "count";
+
+    let groupByConfig: GroupByConfig = null;
+    if (selectedField?.kind === "date") {
+      groupByConfig = { granularity: dateGranularity, windowCount: dateWindowCount };
+    } else if (selectedField?.kind === "number") {
+      groupByConfig = { bucketCount: numberBucketCount };
+    }
+
     const payload = {
       label,
       entity,
       chartType,
-      groupBy: effectiveGroupBy,
-      groupByField: effectiveGroupBy === "field" ? meta.groupableFields[0]?.key : undefined,
-      aggregation: effectiveAggregation,
-      sumField: meta.sumFields[0]?.key,
+      groupByField,
+      groupByConfig,
+      aggregation: effectiveAggregation as "count" | "sum",
+      sumField: effectiveAggregation === "sum" ? sumField : undefined,
       filterConditions: conditions.filter((c) => c.value.trim()),
     };
     startTransition(async () => {
@@ -114,7 +184,7 @@ function ChartForm({
         />
         <select
           value={entity}
-          onChange={(e) => setEntity(e.target.value as EntityKey)}
+          onChange={(e) => handleEntityChange(e.target.value as EntityKey)}
           className="rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface"
         >
           {ENTITY_KEYS.map((key) => (
@@ -125,7 +195,7 @@ function ChartForm({
         </select>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         <select
           value={chartType}
           onChange={(e) => setChartType(e.target.value as ChartType)}
@@ -137,24 +207,125 @@ function ChartForm({
           <option value="pie">Kreisdiagramm</option>
         </select>
         <select
-          value={(groupBy === "status" && !canGroupByStatus) || (groupBy === "field" && !canGroupByField) ? "month" : groupBy}
-          onChange={(e) => setGroupBy(e.target.value as ChartGroupBy)}
+          value={groupByField}
+          onChange={(e) => handleGroupByFieldChange(e.target.value)}
           className="rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface"
         >
-          {canGroupByStatus && <option value="status">Gruppiert nach Status</option>}
-          {canGroupByField && (
-            <option value="field">Gruppiert nach {meta.groupableFields[0].label}</option>
+          {enumFieldsFor(entity).length > 0 && (
+            <optgroup label="Status/Kategorie">
+              {enumFieldsFor(entity).map((f) => (
+                <option key={f.key} value={f.key}>
+                  {f.label}
+                </option>
+              ))}
+            </optgroup>
           )}
-          <option value="month">Verlauf pro Monat (6 Monate)</option>
+          {textFieldsFor(entity).length > 0 && (
+            <optgroup label="Text">
+              {textFieldsFor(entity).map((f) => (
+                <option key={f.key} value={f.key}>
+                  {f.label}
+                </option>
+              ))}
+            </optgroup>
+          )}
+          {numberFieldsFor(entity).length > 0 && (
+            <optgroup label="Zahl">
+              {numberFieldsFor(entity).map((f) => (
+                <option key={f.key} value={f.key}>
+                  {f.label}
+                </option>
+              ))}
+            </optgroup>
+          )}
+          {dateFieldsFor(entity).length > 0 && (
+            <optgroup label="Datum">
+              {dateFieldsFor(entity).map((f) => (
+                <option key={f.key} value={f.key}>
+                  {f.label}
+                </option>
+              ))}
+            </optgroup>
+          )}
+          {relationFieldsFor(entity).length > 0 && (
+            <optgroup label="Verknüpfung">
+              {relationFieldsFor(entity).map((f) => (
+                <option key={f.key} value={f.key}>
+                  {f.label}
+                </option>
+              ))}
+            </optgroup>
+          )}
         </select>
+      </div>
+
+      {selectedField?.kind === "date" && (
+        <div className="grid grid-cols-2 gap-2">
+          <select
+            value={dateGranularity}
+            onChange={(e) => handleGranularityChange(e.target.value as DateGranularity)}
+            className="rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface"
+          >
+            {GRANULARITIES.map((g) => (
+              <option key={g} value={g}>
+                Pro {GRANULARITY_LABELS[g]}
+              </option>
+            ))}
+          </select>
+          <input
+            type="number"
+            min={2}
+            max={MAX_WINDOW_COUNT[dateGranularity]}
+            value={dateWindowCount}
+            onChange={(e) =>
+              setDateWindowCount(
+                Math.max(2, Math.min(MAX_WINDOW_COUNT[dateGranularity], Number(e.target.value) || 2))
+              )
+            }
+            placeholder="Anzahl Perioden"
+            className="rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface"
+          />
+        </div>
+      )}
+
+      {selectedField?.kind === "number" && (
+        <input
+          type="number"
+          min={MIN_BUCKET_COUNT}
+          max={MAX_BUCKET_COUNT}
+          value={numberBucketCount}
+          onChange={(e) =>
+            setNumberBucketCount(
+              Math.max(MIN_BUCKET_COUNT, Math.min(MAX_BUCKET_COUNT, Number(e.target.value) || DEFAULT_BUCKET_COUNT))
+            )
+          }
+          placeholder="Anzahl Wertebereiche"
+          className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface"
+        />
+      )}
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         <select
           value={canSum ? aggregation : "count"}
           onChange={(e) => setAggregation(e.target.value as "count" | "sum")}
           className="rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface"
         >
           <option value="count">Anzahl zählen</option>
-          {canSum && <option value="sum">{meta.sumFields[0].label} summieren</option>}
+          {canSum && <option value="sum">Betrag summieren</option>}
         </select>
+        {aggregation === "sum" && canSum && (
+          <select
+            value={sumField}
+            onChange={(e) => setSumField(e.target.value)}
+            className="rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface"
+          >
+            {numberFieldsFor(entity).map((f) => (
+              <option key={f.key} value={f.key}>
+                {f.label}
+              </option>
+            ))}
+          </select>
+        )}
       </div>
 
       <ReportFilterConditionsEditor fields={filterFields} conditions={conditions} onChange={setConditions} />

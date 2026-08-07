@@ -10,7 +10,17 @@ import {
   duplicateCustomKpi,
   toggleKpiOnDashboard,
 } from "@/lib/actions/custom-kpi";
-import { ENTITY_META, ENTITY_KEYS, DATE_RANGE_OPTIONS, filterableFieldsFor, type EntityKey } from "@/lib/custom-kpi";
+import {
+  ENTITY_META,
+  ENTITY_KEYS,
+  DATE_RANGE_OPTIONS,
+  filterableFieldsFor,
+  fieldFor,
+  numberFieldsFor,
+  dateFieldsFor,
+  statusOptionsFor,
+  type EntityKey,
+} from "@/lib/custom-kpi";
 import { ReportFilterConditionsEditor } from "@/components/report-filter-conditions";
 import type { ReportFilterCondition } from "@/lib/report-filters";
 
@@ -19,26 +29,30 @@ type Kpi = {
   label: string;
   entity: string;
   aggregation: string;
+  sumField: string | null;
   statusValue: string | null;
   value: number;
   onDashboard: boolean;
   dateRangeType: string;
   dateFrom?: Date | null;
   dateTo?: Date | null;
+  dateField: string | null;
   filterConditions: unknown;
 };
 
 function describeKpi(kpi: Kpi) {
-  const meta = ENTITY_META[kpi.entity as EntityKey];
-  const base = kpi.aggregation === "sum" ? `${meta?.sumFields[0]?.label ?? "Betrag"} summiert` : "Anzahl";
-  const status = kpi.statusValue
-    ? meta?.statusOptions.find((s) => s.value === kpi.statusValue)?.label
-    : null;
+  const entity = kpi.entity as EntityKey;
+  const meta = ENTITY_META[entity];
+  const sumFieldEntry = kpi.sumField ? fieldFor(entity, kpi.sumField) : undefined;
+  const base = kpi.aggregation === "sum" ? `${sumFieldEntry?.label ?? "Betrag"} summiert` : "Anzahl";
+  const status = kpi.statusValue ? statusOptionsFor(entity).find((s) => s.value === kpi.statusValue)?.label : null;
   const rangeLabel = DATE_RANGE_OPTIONS.find((r) => r.value === kpi.dateRangeType)?.label;
   const range = kpi.dateRangeType && kpi.dateRangeType !== "ALL" ? rangeLabel : null;
+  const dateFieldEntry = kpi.dateField ? fieldFor(entity, kpi.dateField) : undefined;
+  const dateFieldSuffix = range && dateFieldEntry ? ` (${dateFieldEntry.label})` : "";
   const conditions = (kpi.filterConditions as ReportFilterCondition[] | null) ?? [];
   const filterSuffix = conditions.length > 0 ? ` · ${conditions.length} Bedingung${conditions.length !== 1 ? "en" : ""}` : "";
-  return `${meta?.label ?? kpi.entity} · ${base}${status ? ` · Status: ${status}` : ""}${range ? ` · ${range}` : ""}${filterSuffix}`;
+  return `${meta?.label ?? kpi.entity} · ${base}${status ? ` · Status: ${status}` : ""}${range ? ` · ${range}${dateFieldSuffix}` : ""}${filterSuffix}`;
 }
 
 function toDateInputValue(d?: Date | null) {
@@ -59,10 +73,14 @@ function KpiForm({
   const [label, setLabel] = useState(initial?.label ?? "");
   const [entity, setEntity] = useState<EntityKey>((initial?.entity as EntityKey) ?? "inquiries");
   const [aggregation, setAggregation] = useState<"count" | "sum">((initial?.aggregation as "count" | "sum") ?? "count");
+  const [sumField, setSumField] = useState<string>(
+    initial?.sumField ?? numberFieldsFor((initial?.entity as EntityKey) ?? "inquiries")[0]?.key ?? ""
+  );
   const [statusValue, setStatusValue] = useState(initial?.statusValue ?? "");
   const [dateRangeType, setDateRangeType] = useState(initial?.dateRangeType ?? "ALL");
   const [dateFrom, setDateFrom] = useState(toDateInputValue(initial?.dateFrom));
   const [dateTo, setDateTo] = useState(toDateInputValue(initial?.dateTo));
+  const [dateField, setDateField] = useState(initial?.dateField ?? "");
   const [conditions, setConditions] = useState<ReportFilterCondition[]>(
     (initial?.filterConditions as ReportFilterCondition[] | null) ?? []
   );
@@ -70,18 +88,22 @@ function KpiForm({
 
   const meta = ENTITY_META[entity];
   const filterFields = filterableFieldsFor(entity);
+  const statusOptions = statusOptionsFor(entity);
+  const numberFields = numberFieldsFor(entity);
+  const dateFields = dateFieldsFor(entity);
 
   function submit() {
     if (!label.trim()) return;
     const payload = {
       label,
       entity,
-      aggregation: (aggregation === "sum" && meta.sumFields.length > 0 ? "sum" : "count") as "count" | "sum",
-      sumField: meta.sumFields[0]?.key,
+      aggregation: (aggregation === "sum" && numberFields.length > 0 ? "sum" : "count") as "count" | "sum",
+      sumField: sumField || undefined,
       statusValue: statusValue || undefined,
       dateRangeType,
       dateFrom: dateRangeType === "CUSTOM" ? dateFrom : undefined,
       dateTo: dateRangeType === "CUSTOM" ? dateTo : undefined,
+      dateField: dateField || undefined,
       filterConditions: conditions.filter((c) => c.value.trim()),
     };
     startTransition(async () => {
@@ -106,9 +128,12 @@ function KpiForm({
         <select
           value={entity}
           onChange={(e) => {
-            setEntity(e.target.value as EntityKey);
+            const next = e.target.value as EntityKey;
+            setEntity(next);
             setStatusValue("");
             setAggregation("count");
+            setSumField(numberFieldsFor(next)[0]?.key ?? "");
+            setDateField("");
           }}
           className="rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface"
         >
@@ -127,39 +152,85 @@ function KpiForm({
           className="rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface"
         >
           <option value="count">Anzahl zählen</option>
-          {meta.sumFields.length > 0 && (
-            <option value="sum">{meta.sumFields[0].label} summieren</option>
-          )}
+          {numberFields.length > 0 && <option value="sum">Betrag summieren</option>}
         </select>
-        {meta.statusOptions.length > 0 && (
+        {aggregation === "sum" && numberFields.length > 0 ? (
           <select
-            value={statusValue}
-            onChange={(e) => setStatusValue(e.target.value)}
+            value={sumField}
+            onChange={(e) => setSumField(e.target.value)}
             className="rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface"
           >
-            <option value="">Alle Status</option>
-            {meta.statusOptions.map((s) => (
-              <option key={s.value} value={s.value}>
-                {s.label}
+            {numberFields.map((f) => (
+              <option key={f.key} value={f.key}>
+                {f.label}
               </option>
             ))}
           </select>
+        ) : (
+          statusOptions.length > 0 && (
+            <select
+              value={statusValue}
+              onChange={(e) => setStatusValue(e.target.value)}
+              className="rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface"
+            >
+              <option value="">Alle Status</option>
+              {statusOptions.map((s) => (
+                <option key={s.value} value={s.value}>
+                  {s.label}
+                </option>
+              ))}
+            </select>
+          )
         )}
       </div>
 
-      <div>
-        <label className="block text-xs text-ink-500 mb-1">Zeitfenster</label>
+      {aggregation === "sum" && numberFields.length > 0 && statusOptions.length > 0 && (
         <select
-          value={dateRangeType}
-          onChange={(e) => setDateRangeType(e.target.value)}
+          value={statusValue}
+          onChange={(e) => setStatusValue(e.target.value)}
           className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface"
         >
-          {DATE_RANGE_OPTIONS.map((r) => (
-            <option key={r.value} value={r.value}>
-              {r.label}
+          <option value="">Alle Status</option>
+          {statusOptions.map((s) => (
+            <option key={s.value} value={s.value}>
+              {s.label}
             </option>
           ))}
         </select>
+      )}
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        <div>
+          <label className="block text-xs text-ink-500 mb-1">Zeitfenster</label>
+          <select
+            value={dateRangeType}
+            onChange={(e) => setDateRangeType(e.target.value)}
+            className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface"
+          >
+            {DATE_RANGE_OPTIONS.map((r) => (
+              <option key={r.value} value={r.value}>
+                {r.label}
+              </option>
+            ))}
+          </select>
+        </div>
+        {dateFields.length > 1 && (
+          <div>
+            <label className="block text-xs text-ink-500 mb-1">Zeitfenster-Feld</label>
+            <select
+              value={dateField}
+              onChange={(e) => setDateField(e.target.value)}
+              className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface"
+            >
+              <option value="">Standard ({dateFields[0]?.label})</option>
+              {dateFields.map((f) => (
+                <option key={f.key} value={f.key}>
+                  {f.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
 
       {dateRangeType === "CUSTOM" && (
