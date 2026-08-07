@@ -86,6 +86,7 @@ export function MobileNav({ config, labels }: { config: NavItemConfig[]; labels?
               <Link
                 key={item.id}
                 href={item.href}
+                data-tour={`nav-${item.id}`}
                 className={cn(
                   "flex-1 flex flex-col items-center justify-center gap-0.5 py-2.5 text-[11px] font-medium transition-colors",
                   active ? "text-brand-600" : "text-ink-300"

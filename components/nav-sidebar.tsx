@@ -28,6 +28,7 @@ export function NavSidebar({ config, labels }: { config: NavItemConfig[]; labels
             <Link
               key={item.id}
               href={item.href}
+              data-tour={`nav-${item.id}`}
               className={cn(
                 "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
                 active

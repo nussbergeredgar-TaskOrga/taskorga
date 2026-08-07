@@ -223,6 +223,14 @@ model User {
   // ist dem Admin schon bekannt), ebenso bereits bestehende Nutzer (siehe Migration).
   emailVerifiedAt DateTime?
 
+  // Pflicht-Einfuehrungstour (siehe lib/onboarding-steps.ts, lib/actions/onboarding.ts).
+  // Laeuft fuer jeden neuen Nutzer beim ersten Login, in zwei Varianten je nach
+  // Rolle. onboardingStep haelt den aktuellen Schritt waehrend der Tour,
+  // onboardingCompletedAt = null bedeutet "Tour noch nicht abgeschlossen".
+  // Bestehende Nutzer werden per Migration auf "abgeschlossen" gesetzt.
+  onboardingStep        Int       @default(0)
+  onboardingCompletedAt DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

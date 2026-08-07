@@ -22,6 +22,7 @@ import {
   type EntityKey,
 } from "@/lib/custom-kpi";
 import { ReportFilterConditionsEditor } from "@/components/report-filter-conditions";
+import { useTour } from "@/components/dashboard-tour";
 import type { ReportFilterCondition } from "@/lib/report-filters";
 
 type Kpi = {
@@ -85,6 +86,7 @@ function KpiForm({
     (initial?.filterConditions as ReportFilterCondition[] | null) ?? []
   );
   const [pending, startTransition] = useTransition();
+  const tour = useTour();
 
   const meta = ENTITY_META[entity];
   const filterFields = filterableFieldsFor(entity);
@@ -111,6 +113,7 @@ function KpiForm({
         await updateCustomKpi(initial.id, payload);
       } else {
         await createCustomKpi(payload);
+        tour.reportAction("kpiCreated");
       }
       onSaved();
     });
@@ -280,6 +283,7 @@ function KpiForm({
 function KpiRow({ kpi, onEdit }: { kpi: Kpi; onEdit: () => void }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const tour = useTour();
 
   return (
     <div className="flex items-center justify-between gap-3 rounded-lg border border-ink-100 px-3 py-2.5">
@@ -292,13 +296,16 @@ function KpiRow({ kpi, onEdit }: { kpi: Kpi; onEdit: () => void }) {
           {kpi.aggregation === "sum" ? `${kpi.value.toLocaleString("de-DE")} €` : kpi.value}
         </span>
         <button
+          data-tour="kpi-dashboard-toggle"
           disabled={pending}
-          onClick={() =>
+          onClick={() => {
+            const addingToDashboard = !kpi.onDashboard;
             startTransition(async () => {
-              await toggleKpiOnDashboard(kpi.id, !kpi.onDashboard);
+              await toggleKpiOnDashboard(kpi.id, addingToDashboard);
+              if (addingToDashboard) tour.reportAction("kpiAddedToDashboard", { id: kpi.id });
               router.refresh();
-            })
-          }
+            });
+          }}
           className={`flex items-center gap-1 text-xs font-medium hover:underline whitespace-nowrap ${
             kpi.onDashboard ? "text-ink-500" : "text-brand-700"
           }`}
@@ -379,6 +386,7 @@ export function KpiManager({ kpis }: { kpis: Kpi[] }) {
 
       {!showCreateForm ? (
         <button
+          data-tour="kpi-create-button"
           onClick={() => setShowCreateForm(true)}
           className="flex items-center gap-1.5 rounded-lg border border-ink-100 text-ink-700 text-sm font-medium px-4 py-2 hover:bg-ink-50 transition-colors"
         >

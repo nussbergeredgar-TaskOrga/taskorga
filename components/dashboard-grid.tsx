@@ -25,6 +25,7 @@ import {
 import { saveDashboardLayout } from "@/lib/actions/dashboard";
 import { KpiCard } from "@/components/kpi-card";
 import { WIDGET_LABELS, ACCENT_OPTIONS, type WidgetConfig, type WidgetSize } from "@/lib/dashboard-widgets";
+import { useTour } from "@/components/dashboard-tour";
 import { cn } from "@/lib/utils";
 
 const SIZE_CLASSES: Record<WidgetSize, string> = {
@@ -66,6 +67,7 @@ export function DashboardGrid({
   widgetNodes: WidgetNodeEntry[];
   dashboardId?: string | null;
 }) {
+  const tour = useTour();
   const [layout, setLayout] = useState(initialLayout);
   const [editing, setEditing] = useState(false);
   const [editingLabelId, setEditingLabelId] = useState<string | null>(null);
@@ -123,6 +125,15 @@ export function DashboardGrid({
     };
   }, [dashboardId]);
 
+  // Setzt die Tour beim Fortsetzen mitten in den Bearbeiten-Schritten fort:
+  // nach einem Reload ist der lokale editing-State wieder false, obwohl der
+  // aktuelle Tour-Schritt ein Zielelement erwartet, das nur im
+  // Bearbeiten-Modus existiert.
+  useEffect(() => {
+    if (tour.pendingEditModeRequest) setEditing(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Hidden-Kacheln bleiben im Layout gespeichert (visible: false), erscheinen
   // aber nicht mehr in der Bearbeiten-Ansicht des Grids selbst -- stattdessen
   // unten in einer eigenen Liste zum Wiederhinzufuegen. So fuehlt sich das
@@ -141,6 +152,7 @@ export function DashboardGrid({
 
   function cycleSize(id: string) {
     setLayout((prev) => prev.map((w) => (w.id === id ? { ...w, size: NEXT_SIZE[w.size] } : w)));
+    tour.reportAction("tileResized", { id });
   }
 
   // Reihenfolge wird ausschliesslich innerhalb der sichtbaren Kacheln
@@ -160,6 +172,7 @@ export function DashboardGrid({
       reordered.splice(toIdx, 0, moved);
       return [...reordered.map((w, i) => ({ ...w, order: i })), ...rest];
     });
+    tour.reportAction("tileMoved", { id: fromId });
   }
 
   function move(id: string, direction: "up" | "down") {
@@ -186,7 +199,14 @@ export function DashboardGrid({
     <div className="space-y-4">
       <div className="flex justify-end">
         <button
-          onClick={() => setEditing((e) => !e)}
+          data-tour="dashboard-edit-toggle"
+          onClick={() => {
+            setEditing((e) => {
+              const next = !e;
+              tour.reportAction(next ? "editModeOn" : "editModeOff");
+              return next;
+            });
+          }}
           className={cn(
             "flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors",
             editing
@@ -249,21 +269,24 @@ export function DashboardGrid({
                         <Pencil size={13} />
                       </button>
                     )}
+                    <span data-tour={`tile-move-${w.id}`} className="flex items-center">
+                      <button
+                        onClick={() => move(w.id, "up")}
+                        className="p-1 text-ink-300 hover:text-ink-700 transition-colors"
+                        aria-label="Nach oben"
+                      >
+                        <ArrowUp size={13} />
+                      </button>
+                      <button
+                        onClick={() => move(w.id, "down")}
+                        className="p-1 text-ink-300 hover:text-ink-700 transition-colors"
+                        aria-label="Nach unten"
+                      >
+                        <ArrowDown size={13} />
+                      </button>
+                    </span>
                     <button
-                      onClick={() => move(w.id, "up")}
-                      className="p-1 text-ink-300 hover:text-ink-700 transition-colors"
-                      aria-label="Nach oben"
-                    >
-                      <ArrowUp size={13} />
-                    </button>
-                    <button
-                      onClick={() => move(w.id, "down")}
-                      className="p-1 text-ink-300 hover:text-ink-700 transition-colors"
-                      aria-label="Nach unten"
-                    >
-                      <ArrowDown size={13} />
-                    </button>
-                    <button
+                      data-tour={`tile-resize-${w.id}`}
                       onClick={() => cycleSize(w.id)}
                       className="flex items-center gap-0.5 p-1 text-ink-300 hover:text-ink-700 transition-colors"
                       title="Größe ändern"

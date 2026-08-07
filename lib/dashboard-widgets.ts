@@ -18,21 +18,17 @@ export const ACCENT_OPTIONS: { value: string; label: string }[] = [
   { value: "border-l-danger", label: "Rot" },
 ];
 
+// Bewusst schlank fuer neue Nutzer -- nur die wichtigsten Zahlen auf den ersten
+// Blick, alle uebrigen Kacheln bleiben ueber "Entfernte Kacheln" im
+// Bearbeiten-Modus jederzeit erreichbar (siehe WIDGET_LABELS unten, deckt
+// weiterhin alle 14 moeglichen Kacheln ab).
 export const DEFAULT_WIDGETS: WidgetConfig[] = [
-  { id: "kpi-offene-aufgaben", visible: true, size: "sm", order: 0 },
-  { id: "kpi-offene-rechnungen", visible: true, size: "sm", order: 1 },
-  { id: "kpi-umsatz-monat", visible: true, size: "sm", order: 2 },
-  { id: "kpi-neue-anfragen", visible: true, size: "sm", order: 3 },
-  { id: "kpi-gewonnen-summe", visible: true, size: "sm", order: 4 },
-  { id: "kpi-verloren-summe", visible: true, size: "sm", order: 5 },
-  { id: "kpi-termine-heute", visible: true, size: "sm", order: 6 },
-  { id: "kpi-termine-ausgemacht", visible: true, size: "sm", order: 7 },
-  { id: "kpi-termine-betrag", visible: true, size: "sm", order: 8 },
-  { id: "kpi-angebote-offen", visible: true, size: "sm", order: 9 },
-  { id: "kpi-angebote-versendet-betrag", visible: true, size: "sm", order: 10 },
-  { id: "widget-offene-aufgaben-liste", visible: true, size: "md", order: 11 },
-  { id: "widget-naechste-termine", visible: true, size: "md", order: 12 },
-  { id: "widget-letzte-aktivitaeten", visible: true, size: "md", order: 13 },
+  { id: "kpi-umsatz-monat", visible: true, size: "sm", order: 0 },
+  { id: "kpi-offene-aufgaben", visible: true, size: "sm", order: 1 },
+  { id: "kpi-neue-anfragen", visible: true, size: "sm", order: 2 },
+  { id: "kpi-angebote-versendet-betrag", visible: true, size: "sm", order: 3 },
+  { id: "widget-offene-aufgaben-liste", visible: true, size: "md", order: 4 },
+  { id: "widget-naechste-termine", visible: true, size: "md", order: 5 },
 ];
 
 export const WIDGET_LABELS: Record<string, string> = {
