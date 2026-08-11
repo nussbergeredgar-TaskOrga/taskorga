@@ -112,7 +112,7 @@ export function TopBar() {
       </Link>
 
       <button
-        onClick={() => signOut({ callbackUrl: "/login" })}
+        onClick={() => signOut({ callbackUrl: process.env.NEXT_PUBLIC_MARKETING_URL || "/login" })}
         className="rounded-lg p-2 text-ink-500 hover:bg-ink-50 hover:text-danger transition-colors"
         aria-label="Abmelden"
         title="Abmelden"

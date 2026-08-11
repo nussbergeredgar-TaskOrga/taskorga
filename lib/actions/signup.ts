@@ -8,7 +8,7 @@ import { prisma } from "@/lib/prisma";
 import { sendInitialVerificationEmail } from "@/lib/actions/email-verification";
 import { createSubscriptionForCompany } from "@/lib/actions/subscription";
 
-const MAX_INVITE_CODE_ATTEMPTS_PER_HOUR = 10;
+const MAX_SIGNUP_ATTEMPTS_PER_HOUR = 10;
 
 // Vercel setzt x-forwarded-for zuverlaessig; ohne vertrauenswuerdigen Proxy
 // waere der Header faelschbar, hier aber ausreichend, um blosses Durchprobieren
@@ -25,7 +25,12 @@ const signupSchema = z.object({
   name: z.string().min(2, "Bitte deinen Namen eingeben"),
   email: z.string().email("Ungültige E-Mail-Adresse"),
   password: z.string().min(8, "Passwort muss mindestens 8 Zeichen haben"),
-  inviteCode: z.string().min(1, "Bitte einen Einladungscode eingeben"),
+  // Optional: Registrierung ist inzwischen fuer alle offen (siehe
+  // taskorga-website), ein Einladungscode wird nur noch geprueft/verbraucht,
+  // wenn tatsaechlich einer mitgeschickt wird (z.B. fuer kuenftige Partner-
+  // /Aktions-Codes). .nullish() statt .optional(): das Feld existiert nicht
+  // mehr im Formular, formData.get() liefert dafuer null (nicht undefined).
+  inviteCode: z.string().nullish(),
 });
 
 export type SignupState = {
@@ -50,25 +55,30 @@ export async function signUp(_prevState: SignupState, formData: FormData): Promi
   const recentAttempts = await prisma.signupAttempt.count({
     where: { ipAddress: ip, createdAt: { gte: new Date(Date.now() - 60 * 60 * 1000) } },
   });
-  if (recentAttempts >= MAX_INVITE_CODE_ATTEMPTS_PER_HOUR) {
+  if (recentAttempts >= MAX_SIGNUP_ATTEMPTS_PER_HOUR) {
     return { message: "Zu viele Versuche. Bitte in einer Stunde erneut versuchen." };
   }
 
-  const invite = await prisma.inviteCode.findUnique({
-    where: { code: parsed.data.inviteCode.trim().toUpperCase() },
-  });
+  const inviteCodeInput = parsed.data.inviteCode?.trim();
+  let inviteId: string | null = null;
+  if (inviteCodeInput) {
+    const invite = await prisma.inviteCode.findUnique({
+      where: { code: inviteCodeInput.toUpperCase() },
+    });
 
-  if (!invite) {
-    await prisma.signupAttempt.create({ data: { ipAddress: ip } });
-    return { message: "Ungültiger Einladungscode." };
-  }
-  if (invite.expiresAt && invite.expiresAt < new Date()) {
-    await prisma.signupAttempt.create({ data: { ipAddress: ip } });
-    return { message: "Dieser Einladungscode ist abgelaufen." };
-  }
-  if (invite.usedCount >= invite.maxUses) {
-    await prisma.signupAttempt.create({ data: { ipAddress: ip } });
-    return { message: "Dieser Einladungscode wurde bereits verwendet." };
+    if (!invite) {
+      await prisma.signupAttempt.create({ data: { ipAddress: ip } });
+      return { message: "Ungültiger Einladungscode." };
+    }
+    if (invite.expiresAt && invite.expiresAt < new Date()) {
+      await prisma.signupAttempt.create({ data: { ipAddress: ip } });
+      return { message: "Dieser Einladungscode ist abgelaufen." };
+    }
+    if (invite.usedCount >= invite.maxUses) {
+      await prisma.signupAttempt.create({ data: { ipAddress: ip } });
+      return { message: "Dieser Einladungscode wurde bereits verwendet." };
+    }
+    inviteId = invite.id;
   }
 
   const existing = await prisma.user.findUnique({ where: { email: parsed.data.email } });
@@ -150,10 +160,12 @@ export async function signUp(_prevState: SignupState, formData: FormData): Promi
     ],
   });
 
-  await prisma.inviteCode.update({
-    where: { id: invite.id },
-    data: { usedCount: { increment: 1 } },
-  });
+  if (inviteId) {
+    await prisma.inviteCode.update({
+      where: { id: inviteId },
+      data: { usedCount: { increment: 1 } },
+    });
+  }
 
   redirect("/login?registered=1");
 }
