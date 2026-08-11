@@ -173,10 +173,14 @@ function TourBubbleOverlay({
   }
 
   if (!rect) {
-    // Zielelement (noch) nicht im DOM -- z.B. Bearbeiten-Modus noch nicht aktiv.
-    // DashboardGrid schaltet ihn beim Mounten via pendingEditModeRequest selbst
-    // scharf; bis dahin nur ein dezenter Vollflaechen-Dim ohne Loch.
-    return <div className="fixed inset-0 z-[100] bg-black/60" />;
+    // Zielelement (noch) nicht im DOM -- z.B. Bearbeiten-Modus noch nicht aktiv,
+    // oder (Kennzahl-Schritt) das Zielelement selbst wurde durch den Klick
+    // darauf ersetzt (Button -> Formular). Bewusst NICHTS rendern statt eines
+    // Vollflaechen-Dims: ein blockierendes Overlay ohne Erklaerung wuerde genau
+    // die Eingabe verhindern, die als Naechstes noetig ist. Die Tour taucht
+    // automatisch wieder auf, sobald das Zielelement erneut gefunden wird oder
+    // die erforderliche Aktion (reportAction) den Schritt abschliesst.
+    return null;
   }
 
   const pad = 6;
