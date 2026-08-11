@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Space_Grotesk, Inter, JetBrains_Mono } from "next/font/google";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import { PwaRegister } from "@/components/pwa-register";
 import { Providers } from "@/components/providers";
 import { ThemeScript } from "@/components/theme-script";
@@ -69,6 +70,7 @@ export default function RootLayout({
         <ThemeScript />
         <Providers>{children}</Providers>
         <PwaRegister />
+        <SpeedInsights />
       </body>
     </html>
   );
