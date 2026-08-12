@@ -74,7 +74,7 @@ export async function createUser(
     await sendTeamInviteEmail({
       to: newUser.email,
       name: newUser.name,
-      companyName: company.name,
+      company,
       loginUrl: `${baseUrl}/login`,
     });
   } catch {

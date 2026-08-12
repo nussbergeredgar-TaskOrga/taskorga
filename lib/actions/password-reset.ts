@@ -8,7 +8,7 @@ import { sendPasswordResetEmail } from "@/lib/email";
 const MAX_RESET_REQUESTS_PER_HOUR = 3;
 
 export async function requestPasswordReset(email: string): Promise<{ success: boolean; error?: string }> {
-  const user = await prisma.user.findUnique({ where: { email } });
+  const user = await prisma.user.findUnique({ where: { email }, include: { company: true } });
 
   // Immer dieselbe Rückmeldung, egal ob die E-Mail existiert (kein Hinweis für Angreifer,
   // welche E-Mail-Adressen bei uns registriert sind).
@@ -33,7 +33,7 @@ export async function requestPasswordReset(email: string): Promise<{ success: bo
   const resetUrl = `${baseUrl}/passwort-zuruecksetzen?token=${token}`;
 
   try {
-    await sendPasswordResetEmail(user.email, resetUrl);
+    await sendPasswordResetEmail(user.email, resetUrl, user.company);
   } catch (err) {
     return { success: false, error: err instanceof Error ? err.message : "E-Mail-Versand fehlgeschlagen." };
   }

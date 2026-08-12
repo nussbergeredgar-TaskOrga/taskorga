@@ -16,9 +16,14 @@ async function issueVerificationToken(userId: string, email: string) {
     data: { userId, token, expiresAt },
   });
 
+  const { company } = await prisma.user.findUniqueOrThrow({
+    where: { id: userId },
+    include: { company: true },
+  });
+
   const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
   const verifyUrl = `${baseUrl}/email-verifizieren?token=${token}`;
-  await sendEmailVerificationEmail(email, verifyUrl);
+  await sendEmailVerificationEmail(email, verifyUrl, company);
 }
 
 // Wird direkt nach der Selbstregistrierung aufgerufen (kein eingeloggter

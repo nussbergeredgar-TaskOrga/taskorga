@@ -14,7 +14,7 @@ function brandedFrom(companyName: string): string {
   return `${companyName} (über TaskOrga) <${address}>`;
 }
 
-export async function sendPasswordResetEmail(to: string, resetUrl: string) {
+export async function sendPasswordResetEmail(to: string, resetUrl: string, company: SignatureCompany) {
   if (!resend) {
     throw new Error(
       "E-Mail-Versand ist noch nicht eingerichtet. Bitte einen Admin bitten, das Passwort manuell zurückzusetzen (Einstellungen → Benutzerverwaltung)."
@@ -30,11 +30,12 @@ export async function sendPasswordResetEmail(to: string, resetUrl: string) {
       <p>klicke auf den folgenden Link, um dein TaskOrga-Passwort zurückzusetzen:</p>
       <p><a href="${resetUrl}">${resetUrl}</a></p>
       <p>Der Link ist eine Stunde lang gültig. Falls du das nicht angefordert hast, kannst du diese E-Mail ignorieren.</p>
+      ${buildSignatureHtml(company)}
     `,
   });
 }
 
-export async function sendEmailVerificationEmail(to: string, verifyUrl: string) {
+export async function sendEmailVerificationEmail(to: string, verifyUrl: string, company: SignatureCompany) {
   if (!resend) {
     throw new Error(
       "E-Mail-Versand ist noch nicht eingerichtet. Bitte einen Admin bitten, die Adresse manuell zu bestätigen."
@@ -50,6 +51,7 @@ export async function sendEmailVerificationEmail(to: string, verifyUrl: string) 
       <p>bitte bestätige deine E-Mail-Adresse, um dein TaskOrga-Konto vollständig zu aktivieren:</p>
       <p><a href="${verifyUrl}">${verifyUrl}</a></p>
       <p>Der Link ist 24 Stunden lang gültig. Falls du dieses Konto nicht erstellt hast, kannst du diese E-Mail ignorieren.</p>
+      ${buildSignatureHtml(company)}
     `,
   });
 }
@@ -57,12 +59,12 @@ export async function sendEmailVerificationEmail(to: string, verifyUrl: string) 
 export async function sendTeamInviteEmail({
   to,
   name,
-  companyName,
+  company,
   loginUrl,
 }: {
   to: string;
   name: string;
-  companyName: string;
+  company: SignatureCompany;
   loginUrl: string;
 }) {
   if (!resend) {
@@ -74,15 +76,16 @@ export async function sendTeamInviteEmail({
   await resend.emails.send({
     from: process.env.EMAIL_FROM || "TaskOrga <onboarding@resend.dev>",
     to,
-    subject: `Dein TaskOrga-Zugang für ${companyName}`,
+    subject: `Dein TaskOrga-Zugang für ${company.name}`,
     html: `
       <p>Hallo ${name},</p>
-      <p>für dich wurde ein TaskOrga-Konto für <strong>${companyName}</strong> angelegt.</p>
+      <p>für dich wurde ein TaskOrga-Konto für <strong>${company.name}</strong> angelegt.</p>
       <p>Melde dich mit dieser E-Mail-Adresse und dem Startpasswort an, das dir von deinem Admin
       mitgeteilt wurde:</p>
       <p><a href="${loginUrl}">${loginUrl}</a></p>
       <p>Falls du kein Startpasswort erhalten hast, kannst du auf der Login-Seite über
       „Passwort vergessen?“ selbst eines vergeben.</p>
+      ${buildSignatureHtml(company)}
     `,
   });
 }
