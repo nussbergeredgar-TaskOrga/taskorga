@@ -94,6 +94,16 @@ export default function RegistrierenPage() {
           Dein Firmenkonto ist komplett von allen anderen Firmen getrennt. 14 Tage kostenlos testen,
           danach jederzeit kündbar.
         </p>
+
+        <p className="text-center text-xs text-ink-300 mt-3 space-x-2">
+          <Link href="/impressum" className="hover:underline">
+            Impressum
+          </Link>
+          <span>·</span>
+          <Link href="/datenschutz" className="hover:underline">
+            Datenschutz
+          </Link>
+        </p>
       </div>
     </div>
   );

@@ -193,6 +193,16 @@ function LoginForm() {
             Jetzt kostenlos registrieren
           </Link>
         </p>
+
+        <p className="text-center text-xs text-ink-300 mt-3 space-x-2">
+          <Link href="/impressum" className="hover:underline">
+            Impressum
+          </Link>
+          <span>·</span>
+          <Link href="/datenschutz" className="hover:underline">
+            Datenschutz
+          </Link>
+        </p>
       </div>
     </div>
   );
