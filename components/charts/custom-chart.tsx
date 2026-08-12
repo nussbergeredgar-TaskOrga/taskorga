@@ -1,5 +1,6 @@
 "use client";
 
+import { useId } from "react";
 import { useRouter } from "next/navigation";
 import {
   ResponsiveContainer,
@@ -37,6 +38,8 @@ export function CustomChart({
   entity?: EntityKey;
 }) {
   const router = useRouter();
+  const gradientId = `customChartBarGradient-${useId()}`;
+  const areaGradientId = `customChartAreaGradient-${useId()}`;
 
   if (data.every((d) => d.value === 0)) {
     return (
@@ -94,6 +97,12 @@ export function CustomChart({
     return (
       <ResponsiveContainer width="100%" height={240}>
         <AreaChart data={data} onClick={clickable ? handleChartClick : undefined} className={clickable ? "cursor-pointer" : undefined}>
+          <defs>
+            <linearGradient id={areaGradientId} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#2F5FFF" stopOpacity={0.35} />
+              <stop offset="100%" stopColor="#0FB9AE" stopOpacity={0.03} />
+            </linearGradient>
+          </defs>
           <CartesianGrid strokeDasharray="3 3" stroke="#E8EAED" vertical={false} />
           <XAxis dataKey="label" tick={{ fontSize: 12, fill: "#5B636D" }} axisLine={{ stroke: "#E8EAED" }} tickLine={false} />
           <YAxis
@@ -104,7 +113,7 @@ export function CustomChart({
             tickFormatter={tickFormatter}
           />
           <Tooltip formatter={tooltipFormatter} contentStyle={{ borderRadius: 8, border: "1px solid #E8EAED", fontSize: 13 }} />
-          <Area type="monotone" dataKey="value" stroke="#2F5FFF" strokeWidth={2} fill="#2F5FFF" fillOpacity={0.15} />
+          <Area type="monotone" dataKey="value" stroke="#2F5FFF" strokeWidth={2} fill={`url(#${areaGradientId})`} />
         </AreaChart>
       </ResponsiveContainer>
     );
@@ -133,6 +142,12 @@ export function CustomChart({
   return (
     <ResponsiveContainer width="100%" height={240}>
       <BarChart data={data} onClick={clickable ? handleChartClick : undefined} className={clickable ? "cursor-pointer" : undefined}>
+        <defs>
+          <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#2F5FFF" />
+            <stop offset="100%" stopColor="#0FB9AE" />
+          </linearGradient>
+        </defs>
         <CartesianGrid strokeDasharray="3 3" stroke="#E8EAED" vertical={false} />
         <XAxis dataKey="label" tick={{ fontSize: 12, fill: "#5B636D" }} axisLine={{ stroke: "#E8EAED" }} tickLine={false} />
         <YAxis
@@ -143,7 +158,7 @@ export function CustomChart({
           tickFormatter={tickFormatter}
         />
         <Tooltip formatter={tooltipFormatter} contentStyle={{ borderRadius: 8, border: "1px solid #E8EAED", fontSize: 13 }} />
-        <Bar dataKey="value" fill="#2F5FFF" radius={[6, 6, 0, 0]} className={clickable ? "cursor-pointer" : undefined} />
+        <Bar dataKey="value" fill={`url(#${gradientId})`} radius={[6, 6, 0, 0]} className={clickable ? "cursor-pointer" : undefined} />
       </BarChart>
     </ResponsiveContainer>
   );

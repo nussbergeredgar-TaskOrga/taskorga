@@ -4,6 +4,7 @@ import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
+import { SplashScreen } from "@/components/splash-screen";
 
 // Erlaubt nur relative Pfade innerhalb der App als Redirect-Ziel nach dem Login.
 // callbackUrl kommt aus einem Query-Parameter und ist damit von aussen frei
@@ -24,6 +25,7 @@ function LoginForm() {
   const [needsTwoFactor, setNeedsTwoFactor] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showSplash, setShowSplash] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -59,8 +61,20 @@ function LoginForm() {
       return;
     }
 
-    router.push(safeCallbackUrl(searchParams.get("callbackUrl")));
-    router.refresh();
+    // Statt sofort wegzunavigieren: kurze Marken-Ladeseite zeigen, danach
+    // erst weiterleiten (SplashScreen ruft onDone nach ~2s selbst auf).
+    setShowSplash(true);
+  }
+
+  if (showSplash) {
+    return (
+      <SplashScreen
+        onDone={() => {
+          router.push(safeCallbackUrl(searchParams.get("callbackUrl")));
+          router.refresh();
+        }}
+      />
+    );
   }
 
   return (
