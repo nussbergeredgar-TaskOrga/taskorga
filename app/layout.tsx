@@ -4,6 +4,7 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 import { PwaRegister } from "@/components/pwa-register";
 import { Providers } from "@/components/providers";
 import { ThemeScript } from "@/components/theme-script";
+import { SplashScreen } from "@/components/splash-screen";
 import "./globals.css";
 
 const display = Space_Grotesk({
@@ -68,6 +69,7 @@ export default function RootLayout({
     >
       <body>
         <ThemeScript />
+        <SplashScreen />
         <Providers>{children}</Providers>
         <PwaRegister />
         <SpeedInsights />

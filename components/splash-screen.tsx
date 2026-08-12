@@ -12,10 +12,15 @@ const FADE_MS = 400;
 // Warten: T-Badge, "TaskOrga" tippt sich ein, dann kurz die Tagline, dann
 // Uebergabe an onDone (z.B. Weiterleitung ins Dashboard). Gleiche Optik wie
 // auf taskorga.de, damit App und Webseite sich wie aus einem Guss anfuehlen.
+// Blendet sich danach auch ohne onDone selbst aus (done-State) -- so kann die
+// Komponente sowohl gezielt nach dem Login-Submit als auch unconditional im
+// Root-Layout gemountet werden (z.B. fuer den Start der installierten
+// Handy-App, wo die Login-Seite bei bestehender Session uebersprungen wird).
 export function SplashScreen({ onDone }: { onDone?: () => void }) {
   const [typed, setTyped] = useState("");
   const [showTagline, setShowTagline] = useState(false);
   const [fading, setFading] = useState(false);
+  const [done, setDone] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -40,6 +45,7 @@ export function SplashScreen({ onDone }: { onDone?: () => void }) {
       await new Promise((r) => setTimeout(r, FADE_MS));
       if (cancelled) return;
       onDone?.();
+      setDone(true);
     }
     run();
     return () => {
@@ -47,6 +53,8 @@ export function SplashScreen({ onDone }: { onDone?: () => void }) {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  if (done) return null;
 
   return (
     <div
