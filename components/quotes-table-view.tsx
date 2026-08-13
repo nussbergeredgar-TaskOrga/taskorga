@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { ColumnConfigMenu } from "@/components/column-config-menu";
+import { MobileListRow } from "@/components/mobile-list-row";
 import { saveListViewConfig, type ColumnConfig } from "@/lib/actions/list-view";
 import { QUOTE_COLUMN_LABELS, QUOTE_STATUS_LABELS, type QuoteColumnKey } from "@/lib/quote-columns";
 import { statusColor } from "@/lib/utils";
@@ -19,6 +20,25 @@ export type QuoteRow = {
 };
 
 const MIN_WIDTH = 70;
+
+function mobileFieldValue(col: ColumnConfig, q: QuoteRow): string {
+  switch (col.key) {
+    case "customerName":
+      return q.customerName;
+    case "number":
+      return q.number;
+    case "status":
+      return QUOTE_STATUS_LABELS[q.status] ?? q.status;
+    case "totalGross":
+      return `${q.totalGross.toLocaleString("de-DE")} €`;
+    case "validUntil":
+      return q.validUntil ? new Date(q.validUntil).toLocaleDateString("de-DE") : "";
+    case "createdAt":
+      return new Date(q.createdAt).toLocaleDateString("de-DE");
+    default:
+      return "";
+  }
+}
 
 export function QuotesTableView({
   quotes,
@@ -89,7 +109,8 @@ export function QuotesTableView({
           <p className="text-ink-500 text-sm">Keine Angebote mit diesen Filtern.</p>
         </div>
       ) : (
-        <div className="rounded-card border border-ink-100 bg-surface shadow-card overflow-x-auto">
+        <>
+        <div className="hidden rounded-card border border-ink-100 bg-surface shadow-card overflow-x-auto sm:block">
           <table className="w-full text-sm" style={{ tableLayout: "fixed" }}>
             <thead>
               <tr className="border-b border-ink-100">
@@ -142,6 +163,21 @@ export function QuotesTableView({
             </tbody>
           </table>
         </div>
+
+        <div className="rounded-card border border-ink-100 bg-surface shadow-card sm:hidden">
+          {quotes.map((q) => (
+            <MobileListRow
+              key={q.id}
+              href={`/angebote/${q.id}`}
+              title={q.title}
+              fields={visibleColumns.map((col) => ({
+                label: QUOTE_COLUMN_LABELS[col.key as QuoteColumnKey] ?? col.key,
+                value: mobileFieldValue(col, q),
+              }))}
+            />
+          ))}
+        </div>
+        </>
       )}
     </div>
   );

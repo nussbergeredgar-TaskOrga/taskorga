@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Building2, User as UserIcon, Mail, Phone, MapPin, Pencil, ArrowLeft } from "lucide-react";
 import { prisma } from "@/lib/prisma";
-import { Tabs } from "@/components/tabs";
+import { CollapsiblePanel } from "@/components/collapsible-panel";
 import { AddComment } from "@/components/add-comment";
 import { AppointmentTab } from "@/components/appointment-tab";
 import { getAppointmentTypes } from "@/lib/actions/appointment-types";
@@ -75,7 +75,7 @@ export default async function KundeDetailPage({
 
   const totalRevenue = await computeRevenue(customer.companyId, undefined, customer.id);
 
-  const allTabs: Record<string, { label: string; content: React.ReactNode }> = {
+  const allTabs: Record<string, { label: string; badge?: string; content: React.ReactNode }> = {
     uebersicht: {
       label: "Übersicht",
       content: (
@@ -100,6 +100,7 @@ export default async function KundeDetailPage({
     },
     timeline: {
       label: "Timeline",
+      badge: String(customer.activities.length + customer.comments.length),
       content: (
         <div className="space-y-5">
           <AddComment customerId={customer.id} />
@@ -127,6 +128,7 @@ export default async function KundeDetailPage({
     },
     anfragen: {
       label: "Anfragen",
+      badge: String(customer.inquiries.length),
       content: (
         <div>
           <InlineInquiryForm customerId={customer.id} />
@@ -155,6 +157,7 @@ export default async function KundeDetailPage({
     },
     angebote: {
       label: "Angebote",
+      badge: String(customer.quotes.length),
       content:
         customer.quotes.length === 0 ? (
           <Link
@@ -178,6 +181,7 @@ export default async function KundeDetailPage({
     },
     auftraege: {
       label: "Aufträge",
+      badge: String(customer.projects.length),
       content:
         customer.projects.length === 0 ? (
           <Link
@@ -200,6 +204,7 @@ export default async function KundeDetailPage({
     },
     rechnungen: {
       label: "Rechnungen",
+      badge: String(customer.invoices.length),
       content:
         customer.invoices.length === 0 ? (
           <Link
@@ -225,6 +230,7 @@ export default async function KundeDetailPage({
     },
     termine: {
       label: "Termine",
+      badge: String(customer.appointments.length),
       content: (
         <AppointmentTab
           customerId={customer.id}
@@ -239,10 +245,12 @@ export default async function KundeDetailPage({
     },
     dokumente: {
       label: "Dokumente",
+      badge: String(customer.documents.length),
       content: <DocumentTab link={{ customerId: customer.id }} documents={customer.documents} />,
     },
     aufgaben: {
       label: "Aufgaben",
+      badge: String(customer.tasks.length),
       content: (
         <RecordTasks
           link={{ customerId: customer.id }}
@@ -330,9 +338,14 @@ export default async function KundeDetailPage({
         <KpiCard label="Kunde seit" value={customer.customerSince.toLocaleDateString("de-DE", { month: "short", year: "numeric" })} accent="border-l-turquoise-500" />
       </div>
 
-      {/* Tabs */}
-      <div className="rounded-card border border-ink-100 bg-surface p-6 shadow-card">
-        <Tabs tabs={orderedTabs} />
+      {/* Bereiche: gestapelt, standardmäßig eingeklappt -- nur der Bereich, der
+          gerade interessiert (z.B. Termine), wird per Klick geöffnet. */}
+      <div className="space-y-3">
+        {orderedTabs.map((tab) => (
+          <CollapsiblePanel key={tab.label} title={tab.label} badge={tab.badge}>
+            {tab.content}
+          </CollapsiblePanel>
+        ))}
       </div>
     </div>
   );

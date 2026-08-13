@@ -3,6 +3,7 @@ import { Plus, Archive, Download } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { getCurrentCompany } from "@/lib/session";
 import { CustomersView } from "@/components/customers-view";
+import { ListHeaderActions } from "@/components/list-header-actions";
 import { getListViewConfig } from "@/lib/actions/list-view";
 import { getFilterState } from "@/lib/actions/filters";
 import { CUSTOMER_COLUMNS_DEFAULT } from "@/lib/customer-columns";
@@ -47,18 +48,32 @@ export default async function KundenPage({
         <div className="flex items-center gap-2">
           <a
             href={`/api/kunden/export${showArchived ? "?archiviert=1" : ""}`}
-            className="flex items-center gap-1.5 rounded-lg border border-ink-100 text-ink-700 text-sm font-medium px-3 py-2.5 hover:bg-ink-50 transition-colors"
+            className="hidden items-center gap-1.5 rounded-lg border border-ink-100 text-ink-700 text-sm font-medium px-3 py-2.5 hover:bg-ink-50 transition-colors sm:flex"
           >
             <Download size={15} />
             CSV
           </a>
           <Link
             href={showArchived ? "/kunden" : "/kunden?archiviert=1"}
-            className="flex items-center gap-1.5 rounded-lg border border-ink-100 text-ink-700 text-sm font-medium px-3 py-2.5 hover:bg-ink-50 transition-colors"
+            className="hidden items-center gap-1.5 rounded-lg border border-ink-100 text-ink-700 text-sm font-medium px-3 py-2.5 hover:bg-ink-50 transition-colors sm:flex"
           >
             <Archive size={15} />
             {showArchived ? "Aktive anzeigen" : "Archivierte anzeigen"}
           </Link>
+          <ListHeaderActions>
+            <a
+              href={`/api/kunden/export${showArchived ? "?archiviert=1" : ""}`}
+              className="flex items-center gap-2 px-3 py-1.5 text-sm text-ink-700 hover:bg-ink-50 transition-colors"
+            >
+              <Download size={14} /> CSV
+            </a>
+            <Link
+              href={showArchived ? "/kunden" : "/kunden?archiviert=1"}
+              className="flex items-center gap-2 px-3 py-1.5 text-sm text-ink-700 hover:bg-ink-50 transition-colors"
+            >
+              <Archive size={14} /> {showArchived ? "Aktive anzeigen" : "Archivierte anzeigen"}
+            </Link>
+          </ListHeaderActions>
           <Link
             href="/kunden/neu"
             className="flex items-center gap-1.5 rounded-lg bg-brand-500 text-white text-sm font-medium px-4 py-2.5 hover:bg-brand-600 transition-colors"

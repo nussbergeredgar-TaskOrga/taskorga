@@ -6,6 +6,7 @@ import { AnfrageRow } from "@/components/anfrage-row";
 import { AnfrageDecisionRow } from "@/components/anfrage-decision-row";
 import { AnfragenView } from "@/components/anfragen-view";
 import { CollapsiblePanel } from "@/components/collapsible-panel";
+import { ListHeaderActions } from "@/components/list-header-actions";
 import { getListViewConfig } from "@/lib/actions/list-view";
 import { getFilterState } from "@/lib/actions/filters";
 import { INQUIRY_COLUMNS_DEFAULT } from "@/lib/inquiry-columns";
@@ -106,11 +107,19 @@ export default async function AnfragenPage({
         <div className="flex items-center gap-2">
           <a
             href={`/api/anfragen/export${isMonthFilter ? "?range=month" : ""}`}
-            className="flex items-center gap-1.5 rounded-lg border border-ink-100 text-ink-700 text-sm font-medium px-3 py-2.5 hover:bg-ink-50 transition-colors"
+            className="hidden items-center gap-1.5 rounded-lg border border-ink-100 text-ink-700 text-sm font-medium px-3 py-2.5 hover:bg-ink-50 transition-colors sm:flex"
           >
             <Download size={15} />
             CSV
           </a>
+          <ListHeaderActions>
+            <a
+              href={`/api/anfragen/export${isMonthFilter ? "?range=month" : ""}`}
+              className="flex items-center gap-2 px-3 py-1.5 text-sm text-ink-700 hover:bg-ink-50 transition-colors"
+            >
+              <Download size={14} /> CSV
+            </a>
+          </ListHeaderActions>
           <Link
             href="/anfragen/neu"
             className="flex items-center gap-1.5 rounded-lg bg-brand-500 text-white text-sm font-medium px-4 py-2.5 hover:bg-brand-600 transition-colors"

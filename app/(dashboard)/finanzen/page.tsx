@@ -6,6 +6,7 @@ import { KpiCard } from "@/components/kpi-card";
 import { ExpenseForm } from "@/components/expense-form";
 import { ExpensesView } from "@/components/expenses-view";
 import { InvoicesView } from "@/components/invoices-view";
+import { ListHeaderActions } from "@/components/list-header-actions";
 import { markOverdueInvoices } from "@/lib/actions/invoices";
 import { getListViewConfig } from "@/lib/actions/list-view";
 import { getFilterState } from "@/lib/actions/filters";
@@ -92,11 +93,19 @@ export default async function FinanzenPage({
         <div className="flex items-center gap-2">
           <a
             href="/api/finanzen/export?type=invoices"
-            className="flex items-center gap-1.5 rounded-lg border border-ink-100 text-ink-700 text-sm font-medium px-3 py-2.5 hover:bg-ink-50 transition-colors"
+            className="hidden items-center gap-1.5 rounded-lg border border-ink-100 text-ink-700 text-sm font-medium px-3 py-2.5 hover:bg-ink-50 transition-colors sm:flex"
           >
             <Download size={15} />
             Rechnungen als CSV
           </a>
+          <ListHeaderActions>
+            <a
+              href="/api/finanzen/export?type=invoices"
+              className="flex items-center gap-2 px-3 py-1.5 text-sm text-ink-700 hover:bg-ink-50 transition-colors"
+            >
+              <Download size={14} /> Rechnungen als CSV
+            </a>
+          </ListHeaderActions>
           <Link
             href="/finanzen/neu"
             className="flex items-center gap-1.5 rounded-lg bg-brand-500 text-white text-sm font-medium px-4 py-2.5 hover:bg-brand-600 transition-colors"
@@ -199,11 +208,19 @@ export default async function FinanzenPage({
           <div className="flex items-center gap-2">
             <a
               href="/api/finanzen/export?type=expenses"
-              className="flex items-center gap-1.5 rounded-lg border border-ink-100 text-ink-700 text-sm font-medium px-3 py-2 hover:bg-ink-50 transition-colors"
+              className="hidden items-center gap-1.5 rounded-lg border border-ink-100 text-ink-700 text-sm font-medium px-3 py-2 hover:bg-ink-50 transition-colors sm:flex"
             >
               <Download size={14} />
               CSV
             </a>
+            <ListHeaderActions>
+              <a
+                href="/api/finanzen/export?type=expenses"
+                className="flex items-center gap-2 px-3 py-1.5 text-sm text-ink-700 hover:bg-ink-50 transition-colors"
+              >
+                <Download size={14} /> CSV
+              </a>
+            </ListHeaderActions>
             <ExpenseForm projects={projects} />
           </div>
         </div>
