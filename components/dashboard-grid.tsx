@@ -53,7 +53,15 @@ const ICONS: Record<string, typeof ListTodo> = {
 type WidgetNodeEntry = {
   id: string;
   label?: string;
+  // Node-Kacheln (Listen-Widgets, Diagramme): reiner Inhalt ohne eigene
+  // Kartenhuelle/Ueberschrift -- die baut DashboardGrid selbst drumherum, mit
+  // der aktuellen Akzentfarbe/Titel, damit auch diese Kacheln (wie die festen
+  // KPI-Kacheln) im Bearbeiten-Modus umfaerbbar/umbenennbar sind. node bleibt
+  // bewusst ein fertiges ReactNode statt einer Funktion -- Funktionen lassen
+  // sich nicht von der Server- in die Client-Komponente reichen.
   node?: React.ReactNode;
+  headerAction?: React.ReactNode;
+  defaultAccent?: string;
   kpi?: { label: string; value: string; icon?: string; accent: string; href?: string };
 };
 
@@ -327,15 +335,19 @@ export function DashboardGrid({
                     </span>
                   </div>
                   <div className="flex items-center gap-0.5 shrink-0">
-                    {entry.kpi && (
-                      <button
-                        onClick={() => startEditLabel(w, entry.kpi!.label, entry.kpi!.accent)}
-                        className="p-1 text-ink-300 hover:text-ink-700 transition-colors"
-                        aria-label="Bearbeiten"
-                      >
-                        <Pencil size={13} />
-                      </button>
-                    )}
+                    <button
+                      onClick={() =>
+                        startEditLabel(
+                          w,
+                          entry.kpi?.label ?? entry.label ?? WIDGET_LABELS[w.id] ?? w.id,
+                          entry.kpi?.accent ?? entry.defaultAccent ?? "border-l-brand-500"
+                        )
+                      }
+                      className="p-1 text-ink-300 hover:text-ink-700 transition-colors"
+                      aria-label="Bearbeiten"
+                    >
+                      <Pencil size={13} />
+                    </button>
                     <span data-tour={`tile-move-${w.id}`} className="flex items-center">
                       <button
                         onClick={() => move(w.id, "up")}
@@ -416,9 +428,22 @@ export function DashboardGrid({
                   accent={w.accent ?? entry.kpi.accent}
                   href={entry.kpi.href}
                 />
-              ) : (
-                entry.node
-              )}
+              ) : entry.node ? (
+                <div
+                  className={cn(
+                    "rounded-card border-l-4 bg-surface p-5 shadow-card h-full",
+                    w.accent ?? entry.defaultAccent ?? "border-l-brand-500"
+                  )}
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <h2 className="font-display font-semibold text-ink-900">
+                      {w.label ?? entry.label ?? WIDGET_LABELS[w.id] ?? w.id}
+                    </h2>
+                    {entry.headerAction}
+                  </div>
+                  {entry.node}
+                </div>
+              ) : null}
             </div>
           );
         })}

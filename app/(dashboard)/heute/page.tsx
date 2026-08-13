@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { getCurrentCompany, getCurrentUser } from "@/lib/session";
-import { KpiCard } from "@/components/kpi-card";
 import { DashboardGrid } from "@/components/dashboard-grid";
 import { DashboardSwitcher } from "@/components/dashboard-switcher";
 import { OnboardingWelcome } from "@/components/onboarding-welcome";
@@ -148,7 +147,9 @@ export default async function HeutePage({
     id: string;
     label?: string;
     node?: React.ReactNode;
-    kpi?: { label: string; value: string; icon: string; accent: string; href?: string };
+    headerAction?: React.ReactNode;
+    defaultAccent?: string;
+    kpi?: { label: string; value: string; icon?: string; accent: string; href?: string };
   }[] = [
     {
       id: "kpi-offene-aufgaben",
@@ -262,14 +263,15 @@ export default async function HeutePage({
     },
     {
       id: "widget-offene-aufgaben-liste",
+      label: "Offene Aufgaben",
+      defaultAccent: "border-l-brand-500",
+      headerAction: (
+        <Link href="/aufgaben?status=open" className="text-xs text-brand-700 hover:underline">
+          Alle ansehen
+        </Link>
+      ),
       node: (
-        <div className="rounded-card border border-ink-100 bg-surface p-5 shadow-card h-full">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="font-display font-semibold text-ink-900">Offene Aufgaben</h2>
-            <Link href="/aufgaben?status=open" className="text-xs text-brand-700 hover:underline">
-              Alle ansehen
-            </Link>
-          </div>
+        <>
           {openTasks.length === 0 ? (
             <p className="text-sm text-ink-500">Keine offenen Aufgaben. 🎉</p>
           ) : (
@@ -317,19 +319,19 @@ export default async function HeutePage({
               ))}
             </ul>
           )}
-        </div>
+        </>
       ),
     },
     {
       id: "widget-naechste-termine",
+      defaultAccent: "border-l-turquoise-500",
+      headerAction: (
+        <Link href="/termine" className="text-xs text-brand-700 hover:underline">
+          Alle ansehen
+        </Link>
+      ),
       node: (
-        <div className="rounded-card border border-ink-100 bg-surface p-5 shadow-card h-full">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="font-display font-semibold text-ink-900">Nächste Termine</h2>
-            <Link href="/termine" className="text-xs text-brand-700 hover:underline">
-              Alle ansehen
-            </Link>
-          </div>
+        <>
           {upcomingAppointments.length === 0 ? (
             <Link href="/termine" className="text-sm text-brand-700 hover:underline">
               Keine anstehenden Termine — jetzt einen anlegen
@@ -350,47 +352,34 @@ export default async function HeutePage({
               ))}
             </ul>
           )}
-        </div>
+        </>
       ),
     },
     {
       id: "widget-letzte-aktivitaeten",
-      node: (
-        <div className="rounded-card border border-ink-100 bg-surface p-5 shadow-card h-full">
-          <h2 className="font-display font-semibold text-ink-900 mb-3">Letzte Aktivitäten</h2>
-          <ActivityFeed initialItems={recentActivities.items} initialHasMore={recentActivities.hasMore} />
-        </div>
-      ),
+      defaultAccent: "border-l-success",
+      node: <ActivityFeed initialItems={recentActivities.items} initialHasMore={recentActivities.hasMore} />,
     },
     ...customKpis.map((kpi) => ({
       id: `custom:${kpi.id}`,
-      label: kpi.label,
-      node: (
-        <KpiCard
-          label={kpi.label}
-          value={
-            kpi.aggregation === "sum"
-              ? `${kpi.value.toLocaleString("de-DE")} €`
-              : String(kpi.value)
-          }
-          accent={kpi.accent}
-          href={entityStatusHref(kpi.entity as EntityKey, kpi.statusValue)}
-        />
-      ),
+      kpi: {
+        label: kpi.label,
+        value: kpi.aggregation === "sum" ? `${kpi.value.toLocaleString("de-DE")} €` : String(kpi.value),
+        accent: kpi.accent,
+        href: entityStatusHref(kpi.entity as EntityKey, kpi.statusValue),
+      },
     })),
     ...customCharts.map((chart) => ({
       id: `chart:${chart.id}`,
       label: chart.label,
+      defaultAccent: "border-l-brand-500",
       node: (
-        <div className="rounded-card border border-ink-100 bg-surface p-5 shadow-card h-full">
-          <h2 className="font-display font-semibold text-ink-900 mb-3">{chart.label}</h2>
-          <CustomChart
-            chartType={chart.chartType as "bar" | "line" | "pie" | "area"}
-            data={chart.data}
-            valueSuffix={chart.aggregation === "sum" ? " €" : undefined}
-            entity={chart.entity as EntityKey}
-          />
-        </div>
+        <CustomChart
+          chartType={chart.chartType as "bar" | "line" | "pie" | "area"}
+          data={chart.data}
+          valueSuffix={chart.aggregation === "sum" ? " €" : undefined}
+          entity={chart.entity as EntityKey}
+        />
       ),
     })),
   ];

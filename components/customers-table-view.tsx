@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Building2, User as UserIcon } from "lucide-react";
 import { ColumnConfigMenu } from "@/components/column-config-menu";
 import { EditableCell } from "@/components/editable-cell";
+import { MobileListRow } from "@/components/mobile-list-row";
 import { saveListViewConfig, type ColumnConfig } from "@/lib/actions/list-view";
 import { updateCustomerField } from "@/lib/actions/customers";
 import { CUSTOMER_COLUMN_LABELS, type CustomerColumnKey } from "@/lib/customer-columns";
@@ -29,6 +30,31 @@ const TYPE_OPTIONS = [
 ];
 
 const MIN_WIDTH = 70;
+
+function mobileFieldValue(col: ColumnConfig, c: CustomerRow): string {
+  switch (col.key) {
+    case "type":
+      return TYPE_OPTIONS.find((o) => o.value === c.type)?.label ?? c.type;
+    case "email":
+      return c.email ?? "";
+    case "phone":
+      return c.phone ?? "";
+    case "address":
+      return c.address ?? "";
+    case "zip":
+      return c.zip ?? "";
+    case "city":
+      return c.city ?? "";
+    case "customerSince":
+      return new Date(c.customerSince).toLocaleDateString("de-DE");
+    case "projectsCount":
+      return String(c.projectsCount);
+    case "invoicesCount":
+      return String(c.invoicesCount);
+    default:
+      return "";
+  }
+}
 
 export function CustomersTableView({
   customers,
@@ -99,7 +125,8 @@ export function CustomersTableView({
           <p className="text-ink-500 text-sm">Keine Kunden mit diesen Filtern.</p>
         </div>
       ) : (
-        <div className="rounded-card border border-ink-100 bg-surface shadow-card overflow-x-auto">
+        <>
+        <div className="hidden rounded-card border border-ink-100 bg-surface shadow-card overflow-x-auto sm:block">
           <table className="w-full text-sm" style={{ tableLayout: "fixed" }}>
             <thead>
               <tr className="border-b border-ink-100">
@@ -158,6 +185,28 @@ export function CustomersTableView({
             </tbody>
           </table>
         </div>
+
+        <div className="rounded-card border border-ink-100 bg-surface shadow-card sm:hidden">
+          {customers.map((c) => (
+            <MobileListRow
+              key={c.id}
+              href={`/kunden/${c.id}`}
+              title={c.name}
+              icon={
+                c.type === "BUSINESS" ? (
+                  <Building2 size={14} className="shrink-0 text-ink-300" />
+                ) : (
+                  <UserIcon size={14} className="shrink-0 text-ink-300" />
+                )
+              }
+              fields={visibleColumns.map((col) => ({
+                label: CUSTOMER_COLUMN_LABELS[col.key as CustomerColumnKey] ?? col.key,
+                value: mobileFieldValue(col, c),
+              }))}
+            />
+          ))}
+        </div>
+        </>
       )}
     </div>
   );

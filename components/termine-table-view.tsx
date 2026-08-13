@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { ColumnConfigMenu } from "@/components/column-config-menu";
+import { MobileListRow } from "@/components/mobile-list-row";
 import { saveListViewConfig, type ColumnConfig } from "@/lib/actions/list-view";
 import { APPOINTMENT_COLUMN_LABELS, APPOINTMENT_STATUS_LABELS, type AppointmentColumnKey } from "@/lib/appointment-columns";
 
@@ -17,6 +18,31 @@ export type AppointmentRow = {
 };
 
 const MIN_WIDTH = 70;
+
+function mobileFieldValue(col: ColumnConfig, a: AppointmentRow): string {
+  switch (col.key) {
+    case "customerName":
+      return a.customerName ?? "";
+    case "type":
+      return a.type;
+    case "status":
+      return APPOINTMENT_STATUS_LABELS[a.status] ?? a.status;
+    case "scheduledAt":
+      return a.scheduledAt
+        ? new Date(a.scheduledAt).toLocaleString("de-DE", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+          })
+        : "";
+    case "amount":
+      return a.amount != null ? `${a.amount.toLocaleString("de-DE")} €` : "";
+    default:
+      return "";
+  }
+}
 
 export function TermineTableView({
   appointments,
@@ -87,7 +113,8 @@ export function TermineTableView({
           <p className="text-ink-500 text-sm">Keine Termine mit diesen Filtern.</p>
         </div>
       ) : (
-        <div className="rounded-card border border-ink-100 bg-surface shadow-card overflow-x-auto">
+        <>
+        <div className="hidden rounded-card border border-ink-100 bg-surface shadow-card overflow-x-auto sm:block">
           <table className="w-full text-sm" style={{ tableLayout: "fixed" }}>
             <thead>
               <tr className="border-b border-ink-100">
@@ -145,6 +172,21 @@ export function TermineTableView({
             </tbody>
           </table>
         </div>
+
+        <div className="rounded-card border border-ink-100 bg-surface shadow-card sm:hidden">
+          {appointments.map((a) => (
+            <MobileListRow
+              key={a.id}
+              href={`/termine/${a.id}`}
+              title={a.title}
+              fields={visibleColumns.map((col) => ({
+                label: APPOINTMENT_COLUMN_LABELS[col.key as AppointmentColumnKey] ?? col.key,
+                value: mobileFieldValue(col, a),
+              }))}
+            />
+          ))}
+        </div>
+        </>
       )}
     </div>
   );

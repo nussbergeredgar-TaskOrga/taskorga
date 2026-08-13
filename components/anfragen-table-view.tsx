@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { ColumnConfigMenu } from "@/components/column-config-menu";
 import { EditableCell } from "@/components/editable-cell";
+import { MobileListRow } from "@/components/mobile-list-row";
 import { saveListViewConfig, type ColumnConfig } from "@/lib/actions/list-view";
 import { updateInquiryField } from "@/lib/actions/inquiries";
 import { INQUIRY_COLUMN_LABELS, type InquiryColumnKey } from "@/lib/inquiry-columns";
@@ -20,6 +21,25 @@ export type InquiryRow = {
 };
 
 const MIN_WIDTH = 70;
+
+function mobileFieldValue(col: ColumnConfig, i: InquiryRow): string {
+  switch (col.key) {
+    case "customerName":
+      return i.customerName;
+    case "stepLabel":
+      return i.stepLabel;
+    case "status":
+      return i.status;
+    case "source":
+      return i.source ?? "";
+    case "amount":
+      return i.amount != null ? String(i.amount) : "";
+    case "createdAt":
+      return new Date(i.createdAt).toLocaleDateString("de-DE");
+    default:
+      return "";
+  }
+}
 
 export function AnfragenTableView({
   inquiries,
@@ -90,7 +110,8 @@ export function AnfragenTableView({
           <p className="text-ink-500 text-sm">Keine Anfragen mit diesen Filtern.</p>
         </div>
       ) : (
-        <div className="rounded-card border border-ink-100 bg-surface shadow-card overflow-x-auto">
+        <>
+        <div className="hidden rounded-card border border-ink-100 bg-surface shadow-card overflow-x-auto sm:block">
           <table className="w-full text-sm" style={{ tableLayout: "fixed" }}>
             <thead>
               <tr className="border-b border-ink-100">
@@ -146,6 +167,21 @@ export function AnfragenTableView({
             </tbody>
           </table>
         </div>
+
+        <div className="rounded-card border border-ink-100 bg-surface shadow-card sm:hidden">
+          {inquiries.map((i) => (
+            <MobileListRow
+              key={i.id}
+              href={`/anfragen/${i.id}`}
+              title={i.title}
+              fields={visibleColumns.map((col) => ({
+                label: INQUIRY_COLUMN_LABELS[col.key as InquiryColumnKey] ?? col.key,
+                value: mobileFieldValue(col, i),
+              }))}
+            />
+          ))}
+        </div>
+        </>
       )}
     </div>
   );

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { ColumnConfigMenu } from "@/components/column-config-menu";
 import { EditableCell } from "@/components/editable-cell";
+import { MobileListRow } from "@/components/mobile-list-row";
 import { saveListViewConfig, type ColumnConfig } from "@/lib/actions/list-view";
 import { setTaskStatus } from "@/lib/actions/free-tasks";
 import { TASK_COLUMN_LABELS, TASK_PRIORITY_LABELS, TASK_STATUS_LABELS, type TaskColumnKey } from "@/lib/task-columns";
@@ -24,6 +25,23 @@ const MIN_WIDTH = 70;
 
 async function saveStatus(taskId: string, _field: string, value: string) {
   await setTaskStatus(taskId, value as TaskStatus);
+}
+
+function mobileFieldValue(col: ColumnConfig, t: TaskRow): string {
+  switch (col.key) {
+    case "status":
+      return TASK_STATUS_LABELS[t.status] ?? t.status;
+    case "dueDate":
+      return t.dueDate ? new Date(t.dueDate).toLocaleDateString("de-DE") : "";
+    case "assigneeName":
+      return t.assigneeName ?? "";
+    case "priority":
+      return TASK_PRIORITY_LABELS[t.priority] ?? t.priority;
+    case "customerName":
+      return t.customerName ?? "";
+    default:
+      return "";
+  }
 }
 
 export function TasksTableView({
@@ -95,7 +113,8 @@ export function TasksTableView({
           <p className="text-ink-500 text-sm">Keine Aufgaben mit diesen Filtern.</p>
         </div>
       ) : (
-        <div className="rounded-card border border-ink-100 bg-surface shadow-card overflow-x-auto">
+        <>
+        <div className="hidden rounded-card border border-ink-100 bg-surface shadow-card overflow-x-auto sm:block">
           <table className="w-full text-sm" style={{ tableLayout: "fixed" }}>
             <thead>
               <tr className="border-b border-ink-100">
@@ -146,6 +165,22 @@ export function TasksTableView({
             </tbody>
           </table>
         </div>
+
+        <div className="rounded-card border border-ink-100 bg-surface shadow-card sm:hidden">
+          {tasks.map((t) => (
+            <MobileListRow
+              key={t.id}
+              href={`/aufgaben/${t.id}`}
+              title={t.title}
+              titleClassName={t.status === "DONE" ? "line-through text-ink-300" : "font-medium text-ink-900"}
+              fields={visibleColumns.map((col) => ({
+                label: TASK_COLUMN_LABELS[col.key as TaskColumnKey] ?? col.key,
+                value: mobileFieldValue(col, t),
+              }))}
+            />
+          ))}
+        </div>
+        </>
       )}
     </div>
   );
