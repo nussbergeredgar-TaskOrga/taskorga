@@ -107,7 +107,7 @@ export default async function FinanzenPage({
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <KpiCard label="Bezahlt" value={`${paidTotal.toLocaleString("de-DE")} €`} accent="border-l-success" />
         <KpiCard label="Offen" value={`${openTotal.toLocaleString("de-DE")} €`} accent="border-l-warning" />
         <KpiCard label="Überfällig" value={`${overdueTotal.toLocaleString("de-DE")} €`} accent="border-l-danger" />

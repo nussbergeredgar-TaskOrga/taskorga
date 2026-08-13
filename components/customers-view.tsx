@@ -2,13 +2,92 @@
 
 import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
-import { LayoutGrid, Table2, Building2, User as UserIcon } from "lucide-react";
+import { LayoutGrid, Table2, Building2, User as UserIcon, ChevronDown } from "lucide-react";
 import { CustomersTableView } from "@/components/customers-table-view";
 import { FilterSwitcher } from "@/components/filter-switcher";
 import { saveListViewConfig, type ColumnConfig } from "@/lib/actions/list-view";
 import type { FilterEntityState, FilterFieldDef } from "@/lib/actions/filters";
 import { CUSTOMER_COLUMN_LABELS } from "@/lib/customer-columns";
 import { cn } from "@/lib/utils";
+
+function CustomerCard({ customer }: { customer: CustomerRow }) {
+  const [expanded, setExpanded] = useState(false);
+  const details = [
+    customer.phone && { label: "Telefon", value: customer.phone },
+    customer.address &&
+      { label: "Adresse", value: [customer.address, [customer.zip, customer.city].filter(Boolean).join(" ")].filter(Boolean).join(", ") },
+    customer.email && { label: "E-Mail", value: customer.email },
+    { label: "Kunde seit", value: new Date(customer.customerSince).toLocaleDateString("de-DE") },
+  ].filter((d): d is { label: string; value: string } => !!d);
+
+  return (
+    <div className="rounded-card border-l-4 border-l-brand-500 bg-surface shadow-card">
+      {/* Desktop: unveraendert */}
+      <Link
+        href={`/kunden/${customer.id}`}
+        className="hidden p-5 hover:shadow-cardHover transition-shadow sm:block"
+      >
+        <div className="flex items-start justify-between">
+          <div>
+            <h3 className="font-display font-semibold text-ink-900">{customer.name}</h3>
+            <p className="text-sm text-ink-500 mt-0.5">{customer.city || "Ort nicht angegeben"}</p>
+          </div>
+          {customer.type === "BUSINESS" ? (
+            <Building2 size={18} className="text-ink-300 shrink-0" />
+          ) : (
+            <UserIcon size={18} className="text-ink-300 shrink-0" />
+          )}
+        </div>
+        <div className="mt-4 flex gap-4 text-xs text-ink-500 font-mono">
+          <span>{customer.projectsCount} Aufträge</span>
+          <span>{customer.invoicesCount} Rechnungen</span>
+        </div>
+      </Link>
+
+      {/* Mobile: Details per Chevron ausklappbar statt nebeneinander */}
+      <div className="sm:hidden">
+        <div className="flex items-start gap-2 p-4">
+          <Link href={`/kunden/${customer.id}`} className="min-w-0 flex-1">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <h3 className="truncate font-display font-semibold text-ink-900">{customer.name}</h3>
+                <p className="text-sm text-ink-500 mt-0.5">{customer.city || "Ort nicht angegeben"}</p>
+              </div>
+              {customer.type === "BUSINESS" ? (
+                <Building2 size={18} className="shrink-0 text-ink-300" />
+              ) : (
+                <UserIcon size={18} className="shrink-0 text-ink-300" />
+              )}
+            </div>
+            <div className="mt-3 flex gap-4 text-xs text-ink-500 font-mono">
+              <span>{customer.projectsCount} Aufträge</span>
+              <span>{customer.invoicesCount} Rechnungen</span>
+            </div>
+          </Link>
+          {details.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setExpanded((e) => !e)}
+              className="shrink-0 p-1 text-ink-300 hover:text-ink-700 transition-colors"
+              aria-label={expanded ? "Details einklappen" : "Details anzeigen"}
+            >
+              <ChevronDown size={16} className={`transition-transform ${expanded ? "rotate-180" : ""}`} />
+            </button>
+          )}
+        </div>
+        {expanded && details.length > 0 && (
+          <div className="space-y-1 border-t border-ink-100 px-4 py-3">
+            {details.map((d) => (
+              <p key={d.label} className="text-xs text-ink-500">
+                <span className="text-ink-300">{d.label}:</span> {d.value}
+              </p>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 type CustomerRow = {
   id: string;
@@ -162,27 +241,7 @@ export function CustomersView({
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {filtered.map((customer) => (
-            <Link
-              key={customer.id}
-              href={`/kunden/${customer.id}`}
-              className="rounded-card border-l-4 border-l-brand-500 bg-surface p-5 shadow-card hover:shadow-cardHover transition-shadow"
-            >
-              <div className="flex items-start justify-between">
-                <div>
-                  <h3 className="font-display font-semibold text-ink-900">{customer.name}</h3>
-                  <p className="text-sm text-ink-500 mt-0.5">{customer.city || "Ort nicht angegeben"}</p>
-                </div>
-                {customer.type === "BUSINESS" ? (
-                  <Building2 size={18} className="text-ink-300 shrink-0" />
-                ) : (
-                  <UserIcon size={18} className="text-ink-300 shrink-0" />
-                )}
-              </div>
-              <div className="mt-4 flex gap-4 text-xs text-ink-500 font-mono">
-                <span>{customer.projectsCount} Aufträge</span>
-                <span>{customer.invoicesCount} Rechnungen</span>
-              </div>
-            </Link>
+            <CustomerCard key={customer.id} customer={customer} />
           ))}
         </div>
       )}

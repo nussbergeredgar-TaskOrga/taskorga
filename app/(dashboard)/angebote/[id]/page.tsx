@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, FileDown, Eye } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { QuoteActions } from "@/components/quote-actions";
 import { QuoteVersionHistory } from "@/components/quote-version-history";
@@ -48,32 +48,16 @@ export default async function AngebotDetailPage({ params }: { params: { id: stri
         <ArrowLeft size={16} /> Zurück zu Angeboten
       </Link>
 
-      <div className="flex items-start justify-between">
+      <div className="space-y-3">
         <div>
-          <h1 className="text-2xl font-semibold text-ink-900">{quote.title}</h1>
+          <h1 className="text-2xl font-semibold text-ink-900 sm:text-3xl">{quote.title}</h1>
           <p className="text-sm text-ink-500 mt-1">
-            {quote.number} · {quote.customer.name}
+            {quote.number} · {quote.customer.name} · Erstellt am{" "}
+            {quote.createdAt.toLocaleDateString("de-DE")}
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Link
-            href={`/angebote/${quote.id}/vorschau`}
-            className="flex items-center gap-1.5 rounded-lg border border-ink-100 text-ink-700 text-sm font-medium px-3 py-2 hover:bg-ink-50 transition-colors"
-          >
-            <Eye size={15} />
-            Vorschau
-          </Link>
-          <a
-            href={`/api/angebote/${quote.id}/pdf`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1.5 rounded-lg border border-ink-100 text-ink-700 text-sm font-medium px-3 py-2 hover:bg-ink-50 transition-colors"
-          >
-            <FileDown size={15} />
-            PDF
-          </a>
-          <QuoteActions quoteId={quote.id} status={quote.status} hasCustomerEmail={!!quote.customer.email} />
-        </div>
+
+        <QuoteActions quoteId={quote.id} status={quote.status} hasCustomerEmail={!!quote.customer.email} />
       </div>
 
       <div className="rounded-card border border-ink-100 bg-surface overflow-hidden shadow-card">

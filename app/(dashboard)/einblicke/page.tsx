@@ -98,18 +98,18 @@ export default async function EinblickePage() {
         </Link>
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-4">
-        <div className="rounded-card border border-ink-100 bg-surface p-6 shadow-card">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="min-w-0 rounded-card border border-ink-100 bg-surface p-6 shadow-card">
           <h2 className="font-display font-semibold text-ink-900 mb-4">Umsatz (letzte 6 Monate)</h2>
           <RevenueChart data={monthBuckets} />
         </div>
 
-        <div className="rounded-card border border-ink-100 bg-surface p-6 shadow-card">
+        <div className="min-w-0 rounded-card border border-ink-100 bg-surface p-6 shadow-card">
           <h2 className="font-display font-semibold text-ink-900 mb-4">Rechnungen nach Status</h2>
           <InvoiceStatusChart data={invoiceStatusData} />
         </div>
 
-        <div className="rounded-card border border-ink-100 bg-surface p-6 shadow-card lg:col-span-2">
+        <div className="min-w-0 rounded-card border border-ink-100 bg-surface p-6 shadow-card lg:col-span-2">
           <h2 className="font-display font-semibold text-ink-900 mb-4">Anfragen-Pipeline</h2>
           <PipelineChart data={pipelineData} />
         </div>

@@ -19,10 +19,10 @@ export function PipelineChart({ data }: { data: { label: string; anzahl: number 
         <YAxis
           type="category"
           dataKey="label"
-          tick={{ fontSize: 12, fill: "#5B636D" }}
+          tick={{ fontSize: 11, fill: "#5B636D" }}
           axisLine={false}
           tickLine={false}
-          width={120}
+          width={90}
         />
         <Tooltip contentStyle={{ borderRadius: 8, border: "1px solid #E8EAED", fontSize: 13 }} />
         <Bar dataKey="anzahl" fill={`url(#${gradientId})`} radius={[0, 6, 6, 0]} />

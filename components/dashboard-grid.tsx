@@ -4,7 +4,6 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import {
   GripVertical,
-  Eye,
   X,
   ArrowUp,
   ArrowDown,
@@ -57,6 +56,68 @@ type WidgetNodeEntry = {
   node?: React.ReactNode;
   kpi?: { label: string; value: string; icon?: string; accent: string; href?: string };
 };
+
+// Dezentes Punktraster als Ausrichtungshilfe im Bearbeiten-Modus -- reine
+// Optik, keine echten Grid-Linien/Snapping, nur visuelle Orientierung.
+const EDIT_MODE_GRID_STYLE: React.CSSProperties = {
+  backgroundImage: "radial-gradient(circle, #E8EAED 1px, transparent 1px)",
+  backgroundSize: "20px 20px",
+};
+
+function AddKpiTile({
+  hiddenList,
+  labelById,
+  onAdd,
+}: {
+  hiddenList: WidgetConfig[];
+  labelById: Map<string, string | undefined>;
+  onAdd: (id: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  if (hiddenList.length === 0) return null;
+
+  return (
+    <div ref={containerRef} className="relative col-span-1">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="flex h-full min-h-[104px] w-full flex-col items-center justify-center gap-1.5 rounded-card border-2 border-dashed border-ink-100 text-ink-300 hover:border-brand-500 hover:text-brand-700 transition-colors"
+        aria-label="Vorhandene Kennzahl zum Dashboard hinzufügen"
+      >
+        <Plus size={20} />
+        <span className="text-xs font-medium">Kennzahl hinzufügen</span>
+      </button>
+      {open && (
+        <div className="absolute left-0 top-full z-30 mt-1 w-56 rounded-lg border border-ink-100 bg-surface shadow-cardHover py-1">
+          {hiddenList.map((w) => (
+            <button
+              key={w.id}
+              type="button"
+              onClick={() => {
+                onAdd(w.id);
+                setOpen(false);
+              }}
+              className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-ink-700 hover:bg-ink-50 transition-colors"
+            >
+              <Plus size={13} className="shrink-0 text-ink-300" />
+              <span className="truncate">{labelById.get(w.id) ?? WIDGET_LABELS[w.id] ?? w.id}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function DashboardGrid({
   initialLayout,
@@ -219,7 +280,13 @@ export function DashboardGrid({
         </button>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div
+        className={cn(
+          "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4",
+          editing && "rounded-card"
+        )}
+        style={editing ? EDIT_MODE_GRID_STYLE : undefined}
+      >
         {visibleSorted.map((w) => {
           const entry = entryById.get(w.id)!;
           return (
@@ -355,28 +422,8 @@ export function DashboardGrid({
             </div>
           );
         })}
+        {editing && <AddKpiTile hiddenList={hiddenList} labelById={labelById} onAdd={show} />}
       </div>
-
-      {editing && hiddenList.length > 0 && (
-        <div className="rounded-card border border-dashed border-ink-100 p-4">
-          <p className="text-xs font-medium text-ink-500 mb-2.5 flex items-center gap-1.5">
-            <Eye size={13} />
-            Entfernte Kacheln — zum Hinzufügen anklicken
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {hiddenList.map((w) => (
-              <button
-                key={w.id}
-                onClick={() => show(w.id)}
-                className="flex items-center gap-1.5 rounded-lg border border-ink-100 bg-surface text-ink-700 text-xs font-medium px-2.5 py-1.5 hover:bg-ink-50 transition-colors"
-              >
-                <Plus size={12} />
-                {labelById.get(w.id) ?? WIDGET_LABELS[w.id] ?? w.id}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
 
       <p className="text-xs text-ink-300">
         Eigene Kennzahlen-Kacheln erstellst und verwaltest du unter{" "}

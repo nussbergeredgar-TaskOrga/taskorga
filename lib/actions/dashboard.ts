@@ -6,7 +6,7 @@ import { getCurrentUser } from "@/lib/session";
 import { DEFAULT_WIDGETS, type WidgetConfig } from "@/lib/dashboard-widgets";
 import { isUniqueConstraintError } from "@/lib/numbering";
 
-export type DashboardSummary = { id: string | null; name: string };
+export type DashboardSummary = { id: string | null; name: string; isDefault: boolean };
 
 // Liefert alle Dashboards des Nutzers. Existiert noch keins (ganz neues Konto,
 // noch nie etwas angepasst), wird ein virtuelles Standard-Dashboard (id: null)
@@ -19,9 +19,36 @@ export async function getDashboards(): Promise<DashboardSummary[]> {
     orderBy: { id: "asc" },
   });
   if (rows.length === 0) {
-    return [{ id: null, name: "Mein Dashboard" }];
+    return [{ id: null, name: "Mein Dashboard", isDefault: true }];
   }
-  return rows.map((r) => ({ id: r.id, name: r.name }));
+  // Aeltere Konten haben ggf. noch gar kein defaultSlot gesetzt -- fuer die
+  // Stern-Anzeige gilt dann dieselbe Fallback-Regel wie in resolveDashboard()
+  // (aelteste Zeile zaehlt), damit immer genau ein Dashboard markiert ist.
+  const hasExplicitDefault = rows.some((r) => r.defaultSlot === 1);
+  return rows.map((r, i) => ({
+    id: r.id,
+    name: r.name,
+    isDefault: hasExplicitDefault ? r.defaultSlot === 1 : i === 0,
+  }));
+}
+
+// Legt fest, welches Dashboard beim Start automatisch geoeffnet wird (Stern in
+// der Dashboard-Auswahl). defaultSlot ist wegen @@unique([userId, defaultSlot])
+// pro Nutzer nur einmal vergebbar -- die alte Markierung wird deshalb in
+// derselben Transaktion entfernt, bevor die neue gesetzt wird.
+export async function setDefaultDashboard(dashboardId: string) {
+  const user = await getCurrentUser();
+  const target = await prisma.dashboard.findFirst({ where: { id: dashboardId, userId: user.id } });
+  if (!target || target.defaultSlot === 1) return;
+
+  const current = await prisma.dashboard.findFirst({ where: { userId: user.id, defaultSlot: 1 } });
+
+  await prisma.$transaction([
+    ...(current ? [prisma.dashboard.update({ where: { id: current.id }, data: { defaultSlot: null } })] : []),
+    prisma.dashboard.update({ where: { id: dashboardId }, data: { defaultSlot: 1 } }),
+  ]);
+
+  revalidatePath("/heute");
 }
 
 async function resolveDashboard(userId: string, dashboardId?: string | null) {

@@ -123,33 +123,52 @@ export function TermineView({
         </div>
       ) : (
         <div className="space-y-1.5 max-h-[480px] overflow-y-auto">
-          {filtered.map((a) => (
-            <Link
-              key={a.id}
-              href={`/termine/${a.id}`}
-              className="flex items-center justify-between gap-3 rounded-lg border-l-4 border-l-turquoise-500 bg-ink-50 hover:bg-ink-100 px-3 py-2.5 text-sm transition-colors"
-            >
-              <div className="min-w-0">
-                <span className="font-medium text-ink-900">{a.title}</span>
-                {a.customerName && <span className="text-ink-500 ml-2">{a.customerName}</span>}
-              </div>
-              <div className="flex items-center gap-3 shrink-0 text-xs text-ink-500">
-                <span>{a.type}</span>
-                <span className="font-mono">
-                  {a.scheduledAt
-                    ? new Date(a.scheduledAt).toLocaleString("de-DE", {
-                        day: "2-digit",
-                        month: "2-digit",
-                        year: "numeric",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })
-                    : "—"}
-                </span>
-                <span>{APPOINTMENT_STATUS_LABELS[a.status] ?? a.status}</span>
-              </div>
-            </Link>
-          ))}
+          {filtered.map((a) => {
+            const dateLabel = a.scheduledAt
+              ? new Date(a.scheduledAt).toLocaleString("de-DE", {
+                  day: "2-digit",
+                  month: "2-digit",
+                  year: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })
+              : "—";
+            return (
+              <Link
+                key={a.id}
+                href={`/termine/${a.id}`}
+                className="block rounded-lg border-l-4 border-l-turquoise-500 bg-ink-50 hover:bg-ink-100 text-sm transition-colors"
+              >
+                {/* Desktop: unveraendert */}
+                <div className="hidden items-center justify-between gap-3 px-3 py-2.5 sm:flex">
+                  <div className="min-w-0">
+                    <span className="font-medium text-ink-900">{a.title}</span>
+                    {a.customerName && <span className="text-ink-500 ml-2">{a.customerName}</span>}
+                  </div>
+                  <div className="flex items-center gap-3 shrink-0 text-xs text-ink-500">
+                    <span>{a.type}</span>
+                    <span className="font-mono">{dateLabel}</span>
+                    <span>{APPOINTMENT_STATUS_LABELS[a.status] ?? a.status}</span>
+                  </div>
+                </div>
+
+                {/* Mobile: zweizeilig */}
+                <div className="px-3 py-2.5 sm:hidden">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="truncate font-medium text-ink-900">{a.title}</span>
+                    <span className="font-mono text-xs text-ink-500 shrink-0">{dateLabel}</span>
+                  </div>
+                  {(a.customerName || a.type) && (
+                    <p className="mt-0.5 truncate text-xs text-ink-500">
+                      {a.customerName}
+                      {a.customerName && a.type ? " · " : ""}
+                      {a.type}
+                    </p>
+                  )}
+                </div>
+              </Link>
+            );
+          })}
         </div>
       )}
     </div>

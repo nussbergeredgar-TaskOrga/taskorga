@@ -2,8 +2,14 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronDown, Plus, Pencil, Trash2, Check, X } from "lucide-react";
-import { createDashboard, renameDashboard, deleteDashboard, type DashboardSummary } from "@/lib/actions/dashboard";
+import { ChevronDown, Plus, Pencil, Trash2, Check, X, Star } from "lucide-react";
+import {
+  createDashboard,
+  renameDashboard,
+  deleteDashboard,
+  setDefaultDashboard,
+  type DashboardSummary,
+} from "@/lib/actions/dashboard";
 
 export function DashboardSwitcher({
   dashboards,
@@ -56,6 +62,13 @@ export function DashboardSwitcher({
     startTransition(async () => {
       await renameDashboard(id, renameValue.trim());
       setRenamingId(null);
+      router.refresh();
+    });
+  }
+
+  function handleSetDefault(id: string) {
+    startTransition(async () => {
+      await setDefaultDashboard(id);
       router.refresh();
     });
   }
@@ -124,6 +137,21 @@ export function DashboardSwitcher({
                 <button onClick={() => switchTo(d.id)} className="flex-1 text-left truncate">
                   {d.name}
                 </button>
+                {d.id && (
+                  <button
+                    onClick={() => handleSetDefault(d.id!)}
+                    disabled={d.isDefault}
+                    className={`p-1 shrink-0 transition-colors ${
+                      d.isDefault
+                        ? "text-warning"
+                        : "text-ink-200 opacity-0 group-hover:opacity-100 hover:text-warning"
+                    }`}
+                    aria-label={d.isDefault ? "Standard-Dashboard" : "Als Standard-Dashboard festlegen"}
+                    title={d.isDefault ? "Wird beim Start automatisch geöffnet" : "Als Standard festlegen"}
+                  >
+                    <Star size={13} fill={d.isDefault ? "currentColor" : "none"} />
+                  </button>
+                )}
                 <span className="hidden group-hover:flex items-center gap-0.5 shrink-0">
                   {d.id && (
                     <button

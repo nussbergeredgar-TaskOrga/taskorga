@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Trash2, Plus, LayoutGrid, Pencil, Copy, Download } from "lucide-react";
+import { Trash2, Plus, LayoutGrid, Pencil, Copy, Download, ChevronDown, MoreVertical } from "lucide-react";
 import {
   createCustomKpi,
   updateCustomKpi,
@@ -280,83 +280,169 @@ function KpiForm({
   );
 }
 
+function KpiActionsMenu({
+  kpi,
+  pending,
+  onEdit,
+  onDuplicate,
+  onDelete,
+}: {
+  kpi: Kpi;
+  pending: boolean;
+  onEdit: () => void;
+  onDuplicate: () => void;
+  onDelete: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  return (
+    <div ref={containerRef} className="relative shrink-0">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="p-1.5 text-ink-300 hover:text-ink-700 transition-colors"
+        aria-label="Weitere Aktionen"
+      >
+        <MoreVertical size={15} />
+      </button>
+      {open && (
+        <div className="absolute right-0 mt-1 w-44 rounded-lg border border-ink-100 bg-surface shadow-cardHover py-1 z-30">
+          <a
+            href={`/api/einblicke/export?kind=kpi&id=${kpi.id}`}
+            className="flex items-center gap-2 px-3 py-1.5 text-sm text-ink-700 hover:bg-ink-50 transition-colors"
+          >
+            <Download size={14} /> Als CSV exportieren
+          </a>
+          <button
+            onClick={() => {
+              setOpen(false);
+              onEdit();
+            }}
+            className="flex w-full items-center gap-2 px-3 py-1.5 text-sm text-ink-700 hover:bg-ink-50 transition-colors"
+          >
+            <Pencil size={14} /> Bearbeiten
+          </button>
+          <button
+            disabled={pending}
+            onClick={() => {
+              setOpen(false);
+              onDuplicate();
+            }}
+            className="flex w-full items-center gap-2 px-3 py-1.5 text-sm text-ink-700 hover:bg-ink-50 transition-colors"
+          >
+            <Copy size={14} /> Duplizieren
+          </button>
+          <button
+            disabled={pending}
+            onClick={() => {
+              setOpen(false);
+              onDelete();
+            }}
+            className="flex w-full items-center gap-2 px-3 py-1.5 text-sm text-danger hover:bg-danger/5 transition-colors"
+          >
+            <Trash2 size={14} /> Löschen
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function KpiRow({ kpi, onEdit }: { kpi: Kpi; onEdit: () => void }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const tour = useTour();
+  const [expanded, setExpanded] = useState(false);
+
+  const valueText = kpi.aggregation === "sum" ? `${kpi.value.toLocaleString("de-DE")} €` : kpi.value;
+
+  function toggleDashboard() {
+    const addingToDashboard = !kpi.onDashboard;
+    startTransition(async () => {
+      await toggleKpiOnDashboard(kpi.id, addingToDashboard);
+      if (addingToDashboard) tour.reportAction("kpiAddedToDashboard", { id: kpi.id });
+      router.refresh();
+    });
+  }
+
+  function handleDuplicate() {
+    startTransition(async () => {
+      await duplicateCustomKpi(kpi.id);
+      router.refresh();
+    });
+  }
+
+  function handleDelete() {
+    if (confirm(`Kennzahl „${kpi.label}“ wirklich löschen?`)) {
+      startTransition(async () => {
+        await deleteCustomKpi(kpi.id);
+        router.refresh();
+      });
+    }
+  }
+
+  const dashboardToggleButton = (
+    <button
+      data-tour="kpi-dashboard-toggle"
+      disabled={pending}
+      onClick={toggleDashboard}
+      className={`flex items-center gap-1 text-xs font-medium hover:underline whitespace-nowrap ${
+        kpi.onDashboard ? "text-ink-500" : "text-brand-700"
+      }`}
+    >
+      <LayoutGrid size={13} />
+      {kpi.onDashboard ? "Vom Dashboard entfernen" : "Zum Dashboard hinzufügen"}
+    </button>
+  );
 
   return (
-    <div className="flex items-center justify-between gap-3 rounded-lg border border-ink-100 px-3 py-2.5">
-      <div className="min-w-0">
-        <p className="text-sm font-medium text-ink-900 truncate">{kpi.label}</p>
-        <p className="text-xs text-ink-500 truncate">{describeKpi(kpi)}</p>
+    <div className="rounded-lg border border-ink-100">
+      {/* Desktop: unveraendert, immer vollstaendig sichtbar */}
+      <div className="hidden sm:flex items-center justify-between gap-3 px-3 py-2.5">
+        <div className="min-w-0">
+          <p className="text-sm font-medium text-ink-900 truncate">{kpi.label}</p>
+          <p className="text-xs text-ink-500 truncate">{describeKpi(kpi)}</p>
+        </div>
+        <div className="flex items-center gap-3 shrink-0">
+          <span className="font-mono text-sm font-medium text-ink-900">{valueText}</span>
+          {dashboardToggleButton}
+          <KpiActionsMenu kpi={kpi} pending={pending} onEdit={onEdit} onDuplicate={handleDuplicate} onDelete={handleDelete} />
+        </div>
       </div>
-      <div className="flex items-center gap-3 shrink-0">
-        <span className="font-mono text-sm font-medium text-ink-900">
-          {kpi.aggregation === "sum" ? `${kpi.value.toLocaleString("de-DE")} €` : kpi.value}
-        </span>
-        <button
-          data-tour="kpi-dashboard-toggle"
-          disabled={pending}
-          onClick={() => {
-            const addingToDashboard = !kpi.onDashboard;
-            startTransition(async () => {
-              await toggleKpiOnDashboard(kpi.id, addingToDashboard);
-              if (addingToDashboard) tour.reportAction("kpiAddedToDashboard", { id: kpi.id });
-              router.refresh();
-            });
-          }}
-          className={`flex items-center gap-1 text-xs font-medium hover:underline whitespace-nowrap ${
-            kpi.onDashboard ? "text-ink-500" : "text-brand-700"
-          }`}
-        >
-          <LayoutGrid size={13} />
-          {kpi.onDashboard ? "Vom Dashboard entfernen" : "Zum Dashboard hinzufügen"}
-        </button>
-        <a
-          href={`/api/einblicke/export?kind=kpi&id=${kpi.id}`}
-          className="p-1.5 text-ink-300 hover:text-brand-700 transition-colors"
-          aria-label="Als CSV exportieren"
-          title="Datensätze als CSV exportieren"
-        >
-          <Download size={15} />
-        </a>
-        <button
-          onClick={onEdit}
-          className="p-1.5 text-ink-300 hover:text-brand-700 transition-colors"
-          aria-label="Bearbeiten"
-        >
-          <Pencil size={15} />
-        </button>
-        <button
-          disabled={pending}
-          onClick={() =>
-            startTransition(async () => {
-              await duplicateCustomKpi(kpi.id);
-              router.refresh();
-            })
-          }
-          className="p-1.5 text-ink-300 hover:text-brand-700 transition-colors"
-          aria-label="Duplizieren"
-          title="Duplizieren"
-        >
-          <Copy size={15} />
-        </button>
-        <button
-          disabled={pending}
-          onClick={() => {
-            if (confirm(`Kennzahl „${kpi.label}“ wirklich löschen?`)) {
-              startTransition(async () => {
-                await deleteCustomKpi(kpi.id);
-                router.refresh();
-              });
-            }
-          }}
-          className="p-1.5 text-ink-300 hover:text-danger transition-colors"
-          aria-label="Löschen"
-        >
-          <Trash2 size={15} />
-        </button>
+
+      {/* Mobile: eingeklappt (nur Name), per Chevron ausklappbar */}
+      <div className="sm:hidden">
+        <div className="flex items-center justify-between gap-2 px-3 py-2.5">
+          <button
+            type="button"
+            onClick={() => setExpanded((e) => !e)}
+            className="flex min-w-0 flex-1 items-center gap-1.5 text-left"
+          >
+            <ChevronDown
+              size={14}
+              className={`shrink-0 text-ink-300 transition-transform ${expanded ? "rotate-180" : ""}`}
+            />
+            <span className="truncate text-sm font-medium text-ink-900">{kpi.label}</span>
+          </button>
+          <KpiActionsMenu kpi={kpi} pending={pending} onEdit={onEdit} onDuplicate={handleDuplicate} onDelete={handleDelete} />
+        </div>
+        {expanded && (
+          <div className="space-y-2 px-3 pb-3">
+            <p className="text-xs text-ink-500">{describeKpi(kpi)}</p>
+            <div className="flex items-center justify-between gap-2">
+              <span className="font-mono text-sm font-medium text-ink-900">{valueText}</span>
+              {dashboardToggleButton}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

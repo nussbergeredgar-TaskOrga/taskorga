@@ -19,9 +19,9 @@ export function KpiCard({
 }) {
   const content = (
     <>
-      <div className="flex items-start justify-between">
-        <span className="text-sm font-medium text-ink-500">{label}</span>
-        {Icon && <Icon size={18} className="text-ink-300" />}
+      <div className="flex items-start justify-between gap-2">
+        <span className="min-w-0 truncate text-sm font-medium text-ink-500">{label}</span>
+        {Icon && <Icon size={18} className="shrink-0 text-ink-300" />}
       </div>
       <div className="mt-2 flex items-baseline gap-2">
         <span className="font-mono text-2xl font-medium text-ink-900">

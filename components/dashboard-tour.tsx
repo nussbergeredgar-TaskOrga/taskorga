@@ -27,8 +27,16 @@ type Rect = { top: number; left: number; width: number; height: number };
 
 function findTarget(target: string): HTMLElement | null {
   if (target === "kpi-dashboard-toggle") {
-    const all = document.querySelectorAll<HTMLElement>(`[data-tour="${target}"]`);
-    return all.length ? all[all.length - 1] : null;
+    // Kann mehrfach im DOM vorkommen: einmal pro Kennzahlen-Zeile, und seit den
+    // responsiven Mobile-/Desktop-Varianten von KpiRow zusaetzlich doppelt pro
+    // Zeile (nur eine der beiden per CSS sichtbar). offsetParent ist null bei
+    // display:none -- so landet der Spotlight zuverlaessig auf der zuletzt
+    // gerenderten UND tatsaechlich sichtbaren Variante, nicht auf einer
+    // ausgeblendeten.
+    const all = Array.from(document.querySelectorAll<HTMLElement>(`[data-tour="${target}"]`));
+    const visible = all.filter((el) => el.offsetParent !== null);
+    const pool = visible.length ? visible : all;
+    return pool.length ? pool[pool.length - 1] : null;
   }
   return document.querySelector<HTMLElement>(`[data-tour="${target}"]`);
 }

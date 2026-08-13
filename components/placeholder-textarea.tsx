@@ -1,6 +1,7 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
+import { ChevronDown } from "lucide-react";
 import { PLACEHOLDER_GROUPS } from "@/lib/document-placeholders";
 
 export function PlaceholderTextarea({
@@ -15,6 +16,7 @@ export function PlaceholderTextarea({
   rows?: number;
 }) {
   const ref = useRef<HTMLTextAreaElement>(null);
+  const [openGroup, setOpenGroup] = useState<string | null>(null);
 
   function insert(token: string) {
     const el = ref.current;
@@ -45,23 +47,40 @@ export function PlaceholderTextarea({
         className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface resize-none font-mono"
       />
       <div className="mt-1.5 space-y-1">
-        {PLACEHOLDER_GROUPS.map((group) => (
-          <div key={group.label} className="flex flex-wrap items-center gap-1">
-            <span className="text-[10px] uppercase text-ink-300 mr-1">{group.label}:</span>
-            {group.tokens.map((t) => (
+        {PLACEHOLDER_GROUPS.map((group) => {
+          const open = openGroup === group.label;
+          return (
+            <div key={group.label} className="rounded-lg border border-ink-100 overflow-hidden">
               <button
-                key={t.token}
                 type="button"
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={() => insert(t.token)}
-                className="rounded bg-ink-50 hover:bg-ink-100 text-ink-700 text-[11px] px-1.5 py-0.5 font-mono transition-colors"
-                title={t.label}
+                onClick={() => setOpenGroup(open ? null : group.label)}
+                className="flex w-full items-center justify-between gap-1 px-2 py-1 text-left hover:bg-ink-50 transition-colors"
               >
-                {`{{${t.token}}}`}
+                <span className="text-[10px] uppercase text-ink-300">{group.label}</span>
+                <ChevronDown
+                  size={12}
+                  className={`shrink-0 text-ink-300 transition-transform ${open ? "rotate-180" : ""}`}
+                />
               </button>
-            ))}
-          </div>
-        ))}
+              {open && (
+                <div className="flex flex-wrap items-center gap-1 px-2 pb-1.5">
+                  {group.tokens.map((t) => (
+                    <button
+                      key={t.token}
+                      type="button"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => insert(t.token)}
+                      className="rounded bg-ink-50 hover:bg-ink-100 text-ink-700 text-[11px] px-1.5 py-0.5 font-mono transition-colors"
+                      title={t.label}
+                    >
+                      {`{{${t.token}}}`}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );

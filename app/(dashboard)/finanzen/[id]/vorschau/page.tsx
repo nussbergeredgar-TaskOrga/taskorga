@@ -39,10 +39,11 @@ export default async function RechnungVorschauPage({ params }: { params: { id: s
         </p>
       </div>
 
-      <div className="rounded-card border border-ink-100 bg-surface p-2 shadow-card">
+      <div className="mx-auto max-w-3xl rounded-card border border-ink-100 bg-surface p-2 shadow-card">
         <iframe
           src={`/api/rechnungen/${invoice.id}/pdf`}
-          className="w-full h-[75vh] rounded-lg"
+          className="w-full rounded-lg"
+          style={{ aspectRatio: "210 / 297" }}
           title={`Vorschau Rechnung ${invoice.number}`}
         />
       </div>

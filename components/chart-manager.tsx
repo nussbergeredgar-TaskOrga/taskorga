@@ -354,7 +354,7 @@ function ChartCard({ chart, onEdit }: { chart: Chart; onEdit: () => void }) {
   const [pending, startTransition] = useTransition();
 
   return (
-    <div className="rounded-card border border-ink-100 bg-surface p-5 shadow-card space-y-3">
+    <div className="min-w-0 rounded-card border border-ink-100 bg-surface p-5 shadow-card space-y-3">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h3 className="font-display font-semibold text-ink-900 truncate">{chart.label}</h3>
@@ -440,7 +440,7 @@ export function ChartManager({ charts }: { charts: Chart[] }) {
 
   return (
     <div className="space-y-4">
-      <div className="grid lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {charts.map((chart) =>
           editingId === chart.id ? (
             <div key={chart.id} className="lg:col-span-2">

@@ -67,9 +67,9 @@ export default async function DashboardBerichtPage() {
           )}
 
           {selectedCharts.length > 0 && (
-            <div className="grid sm:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               {selectedCharts.map((chart) => (
-                <div key={chart.id} className="rounded-card border border-ink-100 p-4 print:break-inside-avoid">
+                <div key={chart.id} className="min-w-0 rounded-card border border-ink-100 p-4 print:break-inside-avoid">
                   <h2 className="font-display font-semibold text-ink-900 mb-2">{chart.label}</h2>
                   <CustomChart
                     chartType={chart.chartType as "bar" | "line" | "pie" | "area"}

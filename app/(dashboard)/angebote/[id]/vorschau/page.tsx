@@ -39,10 +39,11 @@ export default async function AngebotVorschauPage({ params }: { params: { id: st
         </p>
       </div>
 
-      <div className="rounded-card border border-ink-100 bg-surface p-2 shadow-card">
+      <div className="mx-auto max-w-3xl rounded-card border border-ink-100 bg-surface p-2 shadow-card">
         <iframe
           src={`/api/angebote/${quote.id}/pdf`}
-          className="w-full h-[75vh] rounded-lg"
+          className="w-full rounded-lg"
+          style={{ aspectRatio: "210 / 297" }}
           title={`Vorschau Angebot ${quote.number}`}
         />
       </div>

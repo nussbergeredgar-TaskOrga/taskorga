@@ -120,23 +120,43 @@ export function AnfragenView({
         </div>
       ) : (
         <div className="space-y-1.5 max-h-[480px] overflow-y-auto">
-          {filtered.map((i) => (
-            <Link
-              key={i.id}
-              href={`/anfragen/${i.id}`}
-              className="flex items-center justify-between gap-3 rounded-lg border-l-4 border-l-brand-500 bg-ink-50 hover:bg-ink-100 px-3 py-2.5 text-sm transition-colors"
-            >
-              <div className="min-w-0">
-                <span className="font-medium text-ink-900">{i.title}</span>
-                <span className="text-ink-500 ml-2">{i.customerName}</span>
-              </div>
-              <div className="flex items-center gap-3 shrink-0 text-xs text-ink-500">
-                <span>{i.stepLabel}</span>
-                <span className="font-mono">{new Date(i.createdAt).toLocaleDateString("de-DE")}</span>
-                {i.amount != null && <span className="font-mono">{i.amount.toLocaleString("de-DE")} €</span>}
-              </div>
-            </Link>
-          ))}
+          {filtered.map((i) => {
+            const dateLabel = new Date(i.createdAt).toLocaleDateString("de-DE");
+            return (
+              <Link
+                key={i.id}
+                href={`/anfragen/${i.id}`}
+                className="block rounded-lg border-l-4 border-l-brand-500 bg-ink-50 hover:bg-ink-100 text-sm transition-colors"
+              >
+                {/* Desktop: unveraendert */}
+                <div className="hidden items-center justify-between gap-3 px-3 py-2.5 sm:flex">
+                  <div className="min-w-0">
+                    <span className="font-medium text-ink-900">{i.title}</span>
+                    <span className="text-ink-500 ml-2">{i.customerName}</span>
+                  </div>
+                  <div className="flex items-center gap-3 shrink-0 text-xs text-ink-500">
+                    <span>{i.stepLabel}</span>
+                    <span className="font-mono">{dateLabel}</span>
+                    {i.amount != null && <span className="font-mono">{i.amount.toLocaleString("de-DE")} €</span>}
+                  </div>
+                </div>
+
+                {/* Mobile: zweizeilig */}
+                <div className="px-3 py-2.5 sm:hidden">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="truncate font-medium text-ink-900">{i.title}</span>
+                    <span className="font-mono text-xs text-ink-500 shrink-0">{dateLabel}</span>
+                  </div>
+                  <p className="mt-0.5 truncate text-xs text-ink-500">
+                    {i.customerName}
+                    {i.customerName && i.stepLabel ? " · " : ""}
+                    {i.stepLabel}
+                    {i.amount != null ? ` · ${i.amount.toLocaleString("de-DE")} €` : ""}
+                  </p>
+                </div>
+              </Link>
+            );
+          })}
         </div>
       )}
     </div>
