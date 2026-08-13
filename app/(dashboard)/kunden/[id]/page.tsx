@@ -312,7 +312,7 @@ export default async function KundeDetailPage({
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex flex-col items-stretch gap-2 shrink-0 sm:flex-row sm:items-center">
           <Link
             href={`/kunden/${customer.id}/bearbeiten`}
             className="flex items-center gap-1.5 rounded-lg border border-ink-100 text-ink-700 text-sm font-medium px-3 py-2 hover:bg-ink-50 transition-colors"
