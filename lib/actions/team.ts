@@ -40,6 +40,18 @@ export async function createUser(
     return { error: "Diese E-Mail-Adresse wird bereits verwendet." };
   }
 
+  // Nur gesetzt, wenn die Firma ueber eine E-Mail-Einladung mit begrenzter
+  // Platzanzahl entstanden ist (siehe lib/actions/platform-admin.ts).
+  const company = await prisma.company.findUniqueOrThrow({ where: { id: admin.companyId } });
+  if (company.maxUsers != null) {
+    const currentCount = await prisma.user.count({ where: { companyId: admin.companyId } });
+    if (currentCount >= company.maxUsers) {
+      return {
+        error: `Nutzerlimit erreicht (${currentCount}/${company.maxUsers}). Bitte an den Support wenden, um weitere Plätze freizuschalten.`,
+      };
+    }
+  }
+
   const role = await prisma.role.findFirst({
     where: { companyId: admin.companyId, name: parsed.data.roleName },
   });
@@ -69,7 +81,6 @@ export async function createUser(
   });
 
   try {
-    const company = await prisma.company.findUniqueOrThrow({ where: { id: admin.companyId } });
     const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
     await sendTeamInviteEmail({
       to: newUser.email,

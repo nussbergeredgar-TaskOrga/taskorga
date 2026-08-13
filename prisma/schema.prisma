@@ -71,6 +71,12 @@ model Company {
   stripeSubscriptionItemId String?
   subscriptionStatus       SubscriptionStatus @default(TRIALING)
   trialEndsAt              DateTime?
+  // Nur gesetzt, wenn die Firma ueber eine E-Mail-Einladung mit begrenzter
+  // Platzanzahl entstanden ist (siehe EmailInvite unten) -- null bedeutet
+  // unbegrenzt (regulaere Selbstregistrierung, Kosten regeln sich ueber die
+  // pro Sitzplatz abgerechnete Stripe-Menge). Wird beim Anlegen weiterer
+  // Teammitglieder in lib/actions/team.ts durchgesetzt.
+  maxUsers                 Int?
   // Manuell (Plattform-Verwaltung) oder automatisch (kein Stripe-Schluessel bei
   // der Registrierung, oder Bestandsfirma vor Einfuehrung dieser Funktion)
   // gesetzter dauerhafter kostenloser Zugriff -- unabhaengig vom Stripe-Status.
@@ -146,6 +152,26 @@ model InviteCode {
   maxUses   Int       @default(1)
   usedCount Int       @default(0)
   expiresAt DateTime?
+  createdAt DateTime  @default(now())
+}
+
+// Persoenliche, an eine bestimmte E-Mail-Adresse gebundene Einladung
+// (Plattform-Verwaltung -> "Per E-Mail einladen"), anders als InviteCode
+// oben mit einer selbst waehlbaren Testdauer statt der Standard-14-Tage.
+// expiresAt betrifft nur die Gueltigkeit des Links selbst, trialDays die
+// spaeter beim Einloesen gewaehrte Testphase.
+model EmailInvite {
+  id        String    @id @default(cuid())
+  email     String
+  token     String    @unique
+  trialDays Int
+  // Meist registriert sich der Geschaeftsfuehrer zuerst und nimmt sein Team
+  // erst danach ueber die Benutzerverwaltung mit -- maxUsers begrenzt, wie
+  // viele Personen diese eingeladene Firma insgesamt anlegen darf (siehe
+  // Company.maxUsers, wird bei Registrierung ueber diesen Link uebernommen).
+  maxUsers  Int
+  usedAt    DateTime?
+  expiresAt DateTime
   createdAt DateTime  @default(now())
 }
 
@@ -230,6 +256,11 @@ model User {
   // Bestehende Nutzer werden per Migration auf "abgeschlossen" gesetzt.
   onboardingStep        Int       @default(0)
   onboardingCompletedAt DateTime?
+
+  // Zuletzt erfolgreich angemeldet -- fuer die Personen-Uebersicht in
+  // /plattform-admin. Nur beim regulaeren Passwort-Login gesetzt, nicht bei
+  // Support-Zugriff (das ist keine Anmeldung dieser Person selbst).
+  lastLoginAt DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

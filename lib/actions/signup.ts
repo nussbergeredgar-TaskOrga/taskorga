@@ -31,7 +31,22 @@ const signupSchema = z.object({
   // /Aktions-Codes). .nullish() statt .optional(): das Feld existiert nicht
   // mehr im Formular, formData.get() liefert dafuer null (nicht undefined).
   inviteCode: z.string().nullish(),
+  // Persoenliche E-Mail-Einladung aus der Plattform-Verwaltung (siehe
+  // lib/actions/platform-admin.ts), unabhaengig vom oben stehenden, anonymen
+  // Einladungscode-System -- bestimmt bei Gueltigkeit die Testdauer.
+  invite: z.string().nullish(),
 });
+
+// Fuer die Registrierungsseite: liefert die hinterlegte E-Mail-Adresse einer
+// noch gueltigen (nicht verwendeten, nicht abgelaufenen) Einladung, damit das
+// Formular sie vorausfuellen kann. Bewusst ohne Master-Passwort erreichbar --
+// der Token selbst ist die Berechtigung, wie bei Passwort-Reset-/Verifizierungs-Links.
+export async function getInvitePreview(token: string): Promise<{ email: string; trialDays: number } | null> {
+  if (!token) return null;
+  const invite = await prisma.emailInvite.findUnique({ where: { token } });
+  if (!invite || invite.usedAt || invite.expiresAt < new Date()) return null;
+  return { email: invite.email, trialDays: invite.trialDays };
+}
 
 export type SignupState = {
   errors?: Record<string, string[]>;
@@ -45,6 +60,7 @@ export async function signUp(_prevState: SignupState, formData: FormData): Promi
     email: formData.get("email"),
     password: formData.get("password"),
     inviteCode: formData.get("inviteCode"),
+    invite: formData.get("invite"),
   });
 
   if (!parsed.success) {
@@ -81,17 +97,40 @@ export async function signUp(_prevState: SignupState, formData: FormData): Promi
     inviteId = invite.id;
   }
 
+  // Persoenliche E-Mail-Einladung: bestimmt bei Gueltigkeit die Testdauer.
+  // Die E-Mail-Adresse wird serverseitig gegen die hinterlegte geprueft --
+  // das Formularfeld ist zwar vorausgefuellt/gesperrt, liesse sich aber ohne
+  // diese Pruefung durch manipulierte Requests umgehen.
+  const emailInviteToken = parsed.data.invite?.trim();
+  let emailInviteId: string | null = null;
+  let trialDays: number | undefined;
+  let maxUsersFromInvite: number | undefined;
+  if (emailInviteToken) {
+    const emailInvite = await prisma.emailInvite.findUnique({ where: { token: emailInviteToken } });
+    if (
+      emailInvite &&
+      !emailInvite.usedAt &&
+      emailInvite.expiresAt >= new Date() &&
+      emailInvite.email === parsed.data.email.trim().toLowerCase()
+    ) {
+      emailInviteId = emailInvite.id;
+      trialDays = emailInvite.trialDays;
+      maxUsersFromInvite = emailInvite.maxUsers;
+    }
+  }
+
   const existing = await prisma.user.findUnique({ where: { email: parsed.data.email } });
   if (existing) {
     return { message: "Diese E-Mail-Adresse wird bereits verwendet." };
   }
 
-  // Neue, komplett von allen anderen Firmen getrennte Firma anlegen
+  // Neue, komplett von allen anderen Firmen getrennte Firma anlegen. maxUsers
+  // bleibt ohne Einladung leer (unbegrenzt, siehe Company.maxUsers).
   const company = await prisma.company.create({
-    data: { name: parsed.data.companyName },
+    data: { name: parsed.data.companyName, maxUsers: maxUsersFromInvite },
   });
 
-  await createSubscriptionForCompany(company.id, parsed.data.companyName, parsed.data.email);
+  await createSubscriptionForCompany(company.id, parsed.data.companyName, parsed.data.email, trialDays);
 
   const adminRole = await prisma.role.create({
     data: { companyId: company.id, name: "Admin", permissions: {} },
@@ -164,6 +203,13 @@ export async function signUp(_prevState: SignupState, formData: FormData): Promi
     await prisma.inviteCode.update({
       where: { id: inviteId },
       data: { usedCount: { increment: 1 } },
+    });
+  }
+
+  if (emailInviteId) {
+    await prisma.emailInvite.update({
+      where: { id: emailInviteId },
+      data: { usedAt: new Date() },
     });
   }
 

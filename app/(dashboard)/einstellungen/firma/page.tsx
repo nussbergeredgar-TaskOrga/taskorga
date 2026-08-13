@@ -61,6 +61,7 @@ export default async function FirmaSettingsPage({
       >
         <TeamManager
           currentUserId={admin.id}
+          maxUsers={company.maxUsers}
           users={users.map((u) => ({
             id: u.id,
             name: u.name,

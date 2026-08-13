@@ -56,6 +56,29 @@ export async function sendEmailVerificationEmail(to: string, verifyUrl: string, 
   });
 }
 
+// Persoenliche Einladung aus der Plattform-Verwaltung, ein neues Firmenkonto
+// mit einer selbst gewaehlten Testdauer anzulegen (siehe lib/actions/platform-admin.ts).
+// Ohne Firmenkontext (die Firma existiert ja noch nicht) -- daher keine
+// Firmen-Signatur wie bei den anderen System-Mails.
+export async function sendPlatformInviteEmail(to: string, registerUrl: string, trialDays: number) {
+  if (!resend) {
+    throw new Error("E-Mail-Versand ist noch nicht eingerichtet.");
+  }
+
+  await resend.emails.send({
+    from: process.env.EMAIL_FROM || "TaskOrga <onboarding@resend.dev>",
+    to,
+    subject: "Du bist eingeladen: TaskOrga kostenlos testen",
+    html: `
+      <p>Hallo,</p>
+      <p>du wurdest eingeladen, TaskOrga ${trialDays} Tage lang kostenlos zu testen.</p>
+      <p><a href="${registerUrl}">${registerUrl}</a></p>
+      <p>Der Link ist 14 Tage lang gültig. Beim Registrieren legst du dein eigenes,
+      komplett von anderen Firmen getrenntes Konto an.</p>
+    `,
+  });
+}
+
 export async function sendTeamInviteEmail({
   to,
   name,

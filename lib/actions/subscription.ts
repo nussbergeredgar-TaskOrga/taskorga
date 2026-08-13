@@ -15,7 +15,8 @@ const TRIAL_DAYS = 14;
 export async function createSubscriptionForCompany(
   companyId: string,
   companyName: string,
-  billingEmail: string
+  billingEmail: string,
+  trialDays: number = TRIAL_DAYS
 ): Promise<void> {
   const priceId = process.env.STRIPE_PRICE_ID;
   if (!stripe || !priceId) {
@@ -33,7 +34,7 @@ export async function createSubscriptionForCompany(
     const subscription = await stripe.subscriptions.create({
       customer: customer.id,
       items: [{ price: priceId, quantity: 1 }],
-      trial_period_days: TRIAL_DAYS,
+      trial_period_days: trialDays,
     });
 
     const item = subscription.items.data[0];

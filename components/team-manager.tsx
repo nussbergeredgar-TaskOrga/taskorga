@@ -197,10 +197,19 @@ function UserRow({ user, currentUserId }: { user: TeamUser; currentUserId: strin
   );
 }
 
-export function TeamManager({ users, currentUserId }: { users: TeamUser[]; currentUserId: string }) {
+export function TeamManager({
+  users,
+  currentUserId,
+  maxUsers,
+}: {
+  users: TeamUser[];
+  currentUserId: string;
+  maxUsers?: number | null;
+}) {
   const [showForm, setShowForm] = useState(false);
   const [state, formAction] = useFormState(createUser, initialState);
   const newPasswordRef = useRef<HTMLInputElement>(null);
+  const limitReached = maxUsers != null && users.length >= maxUsers;
 
   return (
     <div>
@@ -210,10 +219,17 @@ export function TeamManager({ users, currentUserId }: { users: TeamUser[]; curre
         ))}
       </div>
 
+      {maxUsers != null && (
+        <p className="text-xs text-ink-300 mt-3">
+          {users.length}/{maxUsers} Plätze belegt.
+        </p>
+      )}
+
       {!showForm ? (
         <button
           onClick={() => setShowForm(true)}
-          className="flex items-center gap-1.5 mt-4 rounded-lg border border-ink-100 text-ink-700 text-sm font-medium px-4 py-2 hover:bg-ink-50 transition-colors"
+          disabled={limitReached}
+          className="flex items-center gap-1.5 mt-2 rounded-lg border border-ink-100 text-ink-700 text-sm font-medium px-4 py-2 hover:bg-ink-50 disabled:opacity-40 disabled:hover:bg-transparent transition-colors"
         >
           <UserPlus size={15} />
           Nutzer einladen

@@ -4,6 +4,9 @@ import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
 import { assertNotLocked, recordFailedAttempt } from "@/lib/platform-lockout";
 import { deleteCompanyData } from "@/lib/company-deletion";
+import { sendPlatformInviteEmail } from "@/lib/email";
+
+const EMAIL_INVITE_LINK_TTL_MS = 14 * 24 * 60 * 60 * 1000;
 
 async function checkSecret(secret: string) {
   await assertNotLocked();
@@ -51,6 +54,13 @@ export async function deleteInviteCode(secret: string, id: string) {
   await prisma.inviteCode.delete({ where: { id } });
 }
 
+export type CompanyPerson = {
+  id: string;
+  name: string;
+  email: string;
+  lastLoginAt: Date | null;
+};
+
 export type CompanyOverview = {
   id: string;
   name: string;
@@ -61,6 +71,7 @@ export type CompanyOverview = {
   subscriptionStatus: string;
   trialEndsAt: Date | null;
   billingExempt: boolean;
+  users: CompanyPerson[];
 };
 
 export async function listCompaniesOverview(secret: string): Promise<CompanyOverview[]> {
@@ -68,7 +79,13 @@ export async function listCompaniesOverview(secret: string): Promise<CompanyOver
 
   const [companies, lastActivity] = await Promise.all([
     prisma.company.findMany({
-      include: { _count: { select: { users: true } } },
+      include: {
+        _count: { select: { users: true } },
+        users: {
+          select: { id: true, name: true, email: true, lastLoginAt: true },
+          orderBy: { name: "asc" },
+        },
+      },
       orderBy: { createdAt: "desc" },
     }),
     prisma.activity.groupBy({ by: ["companyId"], _max: { createdAt: true } }),
@@ -86,7 +103,67 @@ export async function listCompaniesOverview(secret: string): Promise<CompanyOver
     subscriptionStatus: c.subscriptionStatus,
     trialEndsAt: c.trialEndsAt,
     billingExempt: c.billingExempt,
+    users: c.users,
   }));
+}
+
+export type EmailInviteOverview = {
+  id: string;
+  email: string;
+  trialDays: number;
+  maxUsers: number;
+  usedAt: Date | null;
+  expiresAt: Date;
+  createdAt: Date;
+};
+
+export async function listEmailInvites(secret: string): Promise<EmailInviteOverview[]> {
+  await checkSecret(secret);
+  return prisma.emailInvite.findMany({ orderBy: { createdAt: "desc" } });
+}
+
+export async function createEmailInvite(
+  secret: string,
+  email: string,
+  trialDays: number,
+  maxUsers: number
+): Promise<{ error?: string }> {
+  await checkSecret(secret);
+
+  const cleanEmail = email.trim().toLowerCase();
+  if (!cleanEmail || !cleanEmail.includes("@")) {
+    return { error: "Bitte eine gültige E-Mail-Adresse eingeben." };
+  }
+  if (!Number.isInteger(maxUsers) || maxUsers < 1) {
+    return { error: "Bitte eine gültige maximale Nutzeranzahl (mindestens 1) angeben." };
+  }
+  const existingUser = await prisma.user.findUnique({ where: { email: cleanEmail } });
+  if (existingUser) {
+    return { error: "Für diese E-Mail-Adresse existiert bereits ein Konto." };
+  }
+
+  const token = crypto.randomBytes(32).toString("hex");
+  const expiresAt = new Date(Date.now() + EMAIL_INVITE_LINK_TTL_MS);
+
+  await prisma.emailInvite.create({
+    data: { email: cleanEmail, token, trialDays, maxUsers, expiresAt },
+  });
+
+  const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
+  const registerUrl = `${baseUrl}/registrieren?invite=${token}`;
+
+  try {
+    await sendPlatformInviteEmail(cleanEmail, registerUrl, trialDays);
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "E-Mail-Versand fehlgeschlagen." };
+  }
+
+  return {};
+}
+
+export async function deleteEmailInvite(secret: string, id: string) {
+  await checkSecret(secret);
+  await prisma.emailInvite.delete({ where: { id } });
 }
 
 export type PlatformStats = {
