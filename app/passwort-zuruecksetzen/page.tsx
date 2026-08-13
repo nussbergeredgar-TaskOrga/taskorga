@@ -4,6 +4,7 @@ import { Suspense, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { resetPasswordWithToken } from "@/lib/actions/password-reset";
+import { PasswordInput } from "@/components/password-input";
 
 function ResetForm() {
   const params = useSearchParams();
@@ -58,8 +59,7 @@ function ResetForm() {
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
         <label className="block text-sm font-medium text-ink-700 mb-1.5">Neues Passwort</label>
-        <input
-          type="password"
+        <PasswordInput
           required
           value={password}
           onChange={(e) => setPassword(e.target.value)}
@@ -68,8 +68,7 @@ function ResetForm() {
       </div>
       <div>
         <label className="block text-sm font-medium text-ink-700 mb-1.5">Passwort wiederholen</label>
-        <input
-          type="password"
+        <PasswordInput
           required
           value={password2}
           onChange={(e) => setPassword2(e.target.value)}

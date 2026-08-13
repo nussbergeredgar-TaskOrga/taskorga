@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useFormState, useFormStatus } from "react-dom";
 import { updateOwnName, changeOwnPassword, type ProfileState } from "@/lib/actions/profile";
+import { PasswordInput } from "@/components/password-input";
 
 const initialState: ProfileState = {};
 
@@ -62,21 +63,18 @@ export function ProfileForm({ name, email }: { name: string; email: string }) {
       <div className="border-t border-ink-100 pt-5">
         <h3 className="text-sm font-medium text-ink-700 mb-3">Passwort ändern</h3>
         <form action={pwAction} className="space-y-3 max-w-sm">
-          <input
+          <PasswordInput
             name="currentPassword"
-            type="password"
             placeholder="Aktuelles Passwort"
             className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface"
           />
-          <input
+          <PasswordInput
             name="newPassword"
-            type="password"
             placeholder="Neues Passwort (mind. 8 Zeichen)"
             className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface"
           />
-          <input
+          <PasswordInput
             name="confirmPassword"
-            type="password"
             placeholder="Neues Passwort wiederholen"
             className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface"
           />

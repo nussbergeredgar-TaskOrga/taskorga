@@ -21,8 +21,10 @@ import {
   type CompanyOverview,
   type PlatformStats,
   type EmailInviteOverview,
+  resetUserPasswordForAdmin,
 } from "@/lib/actions/platform-admin";
 import { CustomChart } from "@/components/charts/custom-chart";
+import { PasswordInput } from "@/components/password-input";
 
 type Code = {
   id: string;
@@ -256,6 +258,76 @@ function InvitesTab({
   );
 }
 
+function PersonRow({ secret, person }: { secret: string; person: CompanyOverview["users"][number] }) {
+  const [pending, startTransition] = useTransition();
+  const [resetting, setResetting] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [error, setError] = useState("");
+  const [done, setDone] = useState(false);
+
+  function submit() {
+    setError("");
+    startTransition(async () => {
+      const result = await resetUserPasswordForAdmin(secret, person.id, newPassword);
+      if (result?.error) {
+        setError(result.error);
+        return;
+      }
+      setDone(true);
+      setNewPassword("");
+      setTimeout(() => {
+        setResetting(false);
+        setDone(false);
+      }, 1500);
+    });
+  }
+
+  return (
+    <div className="text-xs">
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <span className="font-medium text-ink-900">{person.name}</span>{" "}
+          <span className="text-ink-500">{person.email}</span>
+        </div>
+        <div className="flex items-center gap-3 shrink-0">
+          <span className="text-ink-300">
+            Letzter Login: {person.lastLoginAt ? person.lastLoginAt.toLocaleString("de-DE") : "noch nie"}
+          </span>
+          <button
+            onClick={() => setResetting((r) => !r)}
+            className="text-brand-700 hover:underline"
+          >
+            Passwort zurücksetzen
+          </button>
+        </div>
+      </div>
+      {resetting && (
+        <div className="flex items-center gap-2 mt-1.5">
+          <PasswordInput
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && submit()}
+            placeholder="Neues Passwort (mind. 8 Zeichen)"
+            className="flex-1 rounded-lg border border-ink-100 px-2.5 py-1.5 text-xs outline-none focus:border-brand-500 bg-surface"
+          />
+          <button
+            disabled={pending || newPassword.length < 8}
+            onClick={submit}
+            className="text-brand-700 hover:underline disabled:opacity-50 whitespace-nowrap"
+          >
+            {pending ? "…" : "Setzen"}
+          </button>
+          <button onClick={() => setResetting(false)} className="text-ink-500 hover:text-danger transition-colors">
+            Abbrechen
+          </button>
+          {error && <span className="text-danger whitespace-nowrap">{error}</span>}
+          {done && <span className="text-success whitespace-nowrap">Gesetzt.</span>}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function CompanyRow({
   secret,
   company,
@@ -370,15 +442,7 @@ function CompanyRow({
           ) : (
             <div className="space-y-1.5">
               {company.users.map((u) => (
-                <div key={u.id} className="flex items-center justify-between gap-3 text-xs">
-                  <div className="min-w-0">
-                    <span className="font-medium text-ink-900">{u.name}</span>{" "}
-                    <span className="text-ink-500">{u.email}</span>
-                  </div>
-                  <span className="shrink-0 text-ink-300">
-                    Letzter Login: {u.lastLoginAt ? u.lastLoginAt.toLocaleString("de-DE") : "noch nie"}
-                  </span>
-                </div>
+                <PersonRow key={u.id} secret={secret} person={u} />
               ))}
             </div>
           )}
@@ -569,8 +633,7 @@ export default function PlattformAdminPage() {
       <div className="min-h-screen flex items-center justify-center bg-ink-50 px-4">
         <div className="w-full max-w-sm bg-surface rounded-card border border-ink-100 shadow-card p-6 space-y-4">
           <h1 className="font-display font-semibold text-xl text-ink-900">Plattform-Verwaltung</h1>
-          <input
-            type="password"
+          <PasswordInput
             value={secret}
             onChange={(e) => setSecret(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && unlock()}

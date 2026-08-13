@@ -1,6 +1,7 @@
 "use server";
 
 import crypto from "crypto";
+import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { assertNotLocked, recordFailedAttempt } from "@/lib/platform-lockout";
 import { deleteCompanyData } from "@/lib/company-deletion";
@@ -238,6 +239,31 @@ export async function deleteCompanyForAdmin(
   } catch {
     return { error: "Löschen fehlgeschlagen. Es wurde nichts geändert." };
   }
+
+  return { success: true };
+}
+
+// Direkter Passwort-Reset durch die Plattform-Verwaltung, ohne dass die Firma
+// dafuer erst einen Support-Zugriffscode erzeugen muss (siehe lib/actions/support-access.ts
+// fuer den bestehenden, firmen-initiierten Weg). Setzt zugleich fehlgeschlagene
+// Login-Versuche/Sperre zurueck, damit ein gesperrtes Konto danach sofort nutzbar ist.
+export async function resetUserPasswordForAdmin(
+  secret: string,
+  userId: string,
+  newPassword: string
+): Promise<{ error?: string; success?: boolean }> {
+  await checkSecret(secret);
+
+  if (newPassword.length < 8) {
+    return { error: "Passwort muss mindestens 8 Zeichen haben." };
+  }
+
+  const passwordHash = await bcrypt.hash(newPassword, 10);
+  const { count } = await prisma.user.updateMany({
+    where: { id: userId },
+    data: { passwordHash, failedLoginAttempts: 0, lockedUntil: null },
+  });
+  if (count === 0) return { error: "Nutzer nicht gefunden." };
 
   return { success: true };
 }

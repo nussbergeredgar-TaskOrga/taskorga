@@ -7,6 +7,7 @@ import {
   disableTwoFactor,
   regenerateBackupCodes,
 } from "@/lib/actions/two-factor";
+import { PasswordInput } from "@/components/password-input";
 
 type Step = "idle" | "setup" | "done";
 
@@ -212,8 +213,7 @@ export function TwoFactorSettings({ initialEnabled }: { initialEnabled: boolean 
       {(showDisable || showRegenerate) && (
         <div className="space-y-2">
           <label className="block text-xs text-ink-500 mb-1">Passwort zur Bestätigung</label>
-          <input
-            type="password"
+          <PasswordInput
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface"

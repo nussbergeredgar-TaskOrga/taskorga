@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { SplashScreen } from "@/components/splash-screen";
+import { PasswordInput } from "@/components/password-input";
 
 // Erlaubt nur relative Pfade innerhalb der App als Redirect-Ziel nach dem Login.
 // callbackUrl kommt aus einem Query-Parameter und ist damit von aussen frei
@@ -146,9 +147,8 @@ function LoginForm() {
                     Passwort vergessen?
                   </Link>
                 </div>
-                <input
+                <PasswordInput
                   id="password"
-                  type="password"
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}

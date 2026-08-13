@@ -3,6 +3,7 @@
 import { useFormState, useFormStatus } from "react-dom";
 import Link from "next/link";
 import { signUp, type SignupState } from "@/lib/actions/signup";
+import { PasswordInput } from "@/components/password-input";
 
 const initialState: SignupState = {};
 
@@ -91,9 +92,8 @@ export function RegistrierenForm({
 
           <div>
             <label className="block text-sm font-medium text-ink-700 mb-1.5">Passwort</label>
-            <input
+            <PasswordInput
               name="password"
-              type="password"
               required
               className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500"
             />
