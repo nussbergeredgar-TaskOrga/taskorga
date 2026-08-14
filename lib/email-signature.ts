@@ -100,23 +100,28 @@ function renderEmailShell({
               </td>
             </tr>
             <tr>
-              <td style="padding:20px 32px;border-top:3px solid ${accentColor};">
+              <td style="background-color:${accentColor};padding:16px 32px;">
                 <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
                   <tr>
-                    <td style="vertical-align:middle;font-size:12.5px;color:#5B636D;line-height:1.5;width:34%;">
-                      ${footerName ? `<strong style="color:#1C2128;">${footerName}</strong>` : ""}
+                    <td style="vertical-align:middle;font-size:12.5px;color:#FFFFFF;line-height:1.5;width:34%;">
+                      ${footerName ? `<strong style="color:#FFFFFF;">${footerName}</strong>` : ""}
                       ${footerName && footerRole ? "<br/>" : ""}
                       ${footerRole ?? ""}
                     </td>
                     <td style="vertical-align:middle;text-align:center;width:32%;">
                       ${
                         footerLogoUrl
-                          ? `<img src="${footerLogoUrl}" width="28" height="28" alt="${footerOrgName}" style="display:inline-block;border-radius:6px;" />`
+                          ? `<img src="${footerLogoUrl}" width="56" height="56" alt="${footerOrgName}" style="display:inline-block;border-radius:12px;" />`
                           : ""
                       }
                     </td>
-                    <td style="vertical-align:middle;text-align:right;font-size:12.5px;color:#5B636D;line-height:1.5;width:34%;">
-                      ${footerOrgName}${addressLines.length ? "<br/>" + addressLines.join("<br/>") : ""}
+                    <td style="vertical-align:middle;text-align:right;font-size:12.5px;color:#FFFFFF;line-height:1.5;width:34%;">
+                      ${footerOrgName ? `<strong style="color:#FFFFFF;">${footerOrgName}</strong>` : ""}
+                      ${
+                        addressLines.length
+                          ? `<div style="margin-top:2px;font-size:10.5px;color:#DCE4FF;line-height:1.4;">${addressLines.join("<br/>")}</div>`
+                          : ""
+                      }
                     </td>
                   </tr>
                 </table>
