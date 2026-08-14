@@ -178,6 +178,42 @@ model EmailInvite {
   createdAt DateTime  @default(now())
 }
 
+// Global editierbare Inhalte der vier System-Mails (Registrierung, Passwort,
+// Team-/Plattform-Einladung) -- Signatur/Header gelten fuer alle vier
+// gemeinsam, Betreff/Text-vor-Link/Text-nach-Link je Mail einzeln. Es gibt
+// immer genau eine Zeile (Singleton, siehe lib/system-email-settings.ts).
+model SystemEmailSettings {
+  id String @id @default(cuid())
+
+  signatureName     String  @default("Edgar Nussberger")
+  signatureRole     String  @default("Gründer")
+  signatureOrgName  String  @default("TaskOrga")
+  signatureAddress1 String? @default("In der Mudersbach 6")
+  signatureAddress2 String? @default("55469 Mutterschied")
+  headerSlogan      String  @default("Weniger Büro. Mehr Business.")
+
+  resetSubject String @default("Passwort zurücksetzen – TaskOrga")
+  resetIntro   String @default("klicke auf den folgenden Link, um dein TaskOrga-Passwort zurückzusetzen:")
+  resetOutro   String @default("Der Link ist eine Stunde lang gültig. Falls du das nicht angefordert hast, kannst du diese E-Mail ignorieren.")
+
+  verifySubject String @default("Bitte E-Mail-Adresse bestätigen – TaskOrga")
+  verifyIntro   String @default("bitte bestätige deine E-Mail-Adresse, um dein TaskOrga-Konto vollständig zu aktivieren:")
+  verifyOutro   String @default("Der Link ist 24 Stunden lang gültig. Falls du dieses Konto nicht erstellt hast, kannst du diese E-Mail ignorieren.")
+
+  // {{firma}} wird beim Versand durch den Firmennamen ersetzt.
+  teamInviteSubject String @default("Dein TaskOrga-Zugang für {{firma}}")
+  teamInviteIntro   String @default("für dich wurde ein TaskOrga-Konto für {{firma}} angelegt.\nMelde dich mit dieser E-Mail-Adresse und dem Startpasswort an, das dir von deinem Admin mitgeteilt wurde:")
+  teamInviteOutro   String @default("Falls du kein Startpasswort erhalten hast, kannst du auf der Login-Seite über „Passwort vergessen?“ selbst eines vergeben.")
+
+  // {{tage}} wird beim Versand durch die gewaehlte Testdauer ersetzt.
+  platformInviteSubject String @default("Du bist eingeladen: TaskOrga kostenlos testen")
+  platformInviteIntro   String @default("du wurdest eingeladen, TaskOrga {{tage}} Tage lang kostenlos zu testen.")
+  platformInviteOutro   String @default("Der Link ist 14 Tage lang gültig. Beim Registrieren legst du dein eigenes, komplett von anderen Firmen getrenntes Konto an.")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 // Protokolliert fehlgeschlagene Master-Passwort-Versuche fuer /plattform-admin.
 // Da dieser Zugang ohne Login-Account funktioniert, gibt es keinen Nutzer, an
 // den ein Lockout gebunden werden koennte -- daher global statt pro Nutzer.

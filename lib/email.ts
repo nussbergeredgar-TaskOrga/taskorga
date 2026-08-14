@@ -1,5 +1,6 @@
 import { Resend } from "resend";
 import { renderSystemEmail, renderCompanyEmail, type SignatureCompany } from "@/lib/email-signature";
+import { getSystemEmailSettings, resolveEmailPlaceholders, textToParagraphs } from "@/lib/system-email-settings";
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
@@ -21,16 +22,19 @@ export async function sendPasswordResetEmail(to: string, resetUrl: string, name:
     );
   }
 
+  const settings = await getSystemEmailSettings();
+
   await resend.emails.send({
     from: process.env.EMAIL_FROM || "TaskOrga <onboarding@resend.dev>",
     to,
-    subject: "Passwort zurücksetzen – TaskOrga",
+    subject: settings.resetSubject,
     html: renderSystemEmail({
+      branding: settings,
       greetingName: name,
       bodyHtml: `
-        <p style="margin:0 0 14px;">klicke auf den folgenden Link, um dein TaskOrga-Passwort zurückzusetzen:</p>
+        ${textToParagraphs(settings.resetIntro)}
         <p style="margin:0 0 14px;"><a href="${resetUrl}" style="color:#2F5FFF;">${resetUrl}</a></p>
-        <p style="margin:0 0 14px;">Der Link ist eine Stunde lang gültig. Falls du das nicht angefordert hast, kannst du diese E-Mail ignorieren.</p>
+        ${textToParagraphs(settings.resetOutro)}
       `,
     }),
   });
@@ -43,16 +47,19 @@ export async function sendEmailVerificationEmail(to: string, verifyUrl: string, 
     );
   }
 
+  const settings = await getSystemEmailSettings();
+
   await resend.emails.send({
     from: process.env.EMAIL_FROM || "TaskOrga <onboarding@resend.dev>",
     to,
-    subject: "Bitte E-Mail-Adresse bestätigen – TaskOrga",
+    subject: settings.verifySubject,
     html: renderSystemEmail({
+      branding: settings,
       greetingName: name,
       bodyHtml: `
-        <p style="margin:0 0 14px;">bitte bestätige deine E-Mail-Adresse, um dein TaskOrga-Konto vollständig zu aktivieren:</p>
+        ${textToParagraphs(settings.verifyIntro)}
         <p style="margin:0 0 14px;"><a href="${verifyUrl}" style="color:#2F5FFF;">${verifyUrl}</a></p>
-        <p style="margin:0 0 14px;">Der Link ist 24 Stunden lang gültig. Falls du dieses Konto nicht erstellt hast, kannst du diese E-Mail ignorieren.</p>
+        ${textToParagraphs(settings.verifyOutro)}
       `,
     }),
   });
@@ -65,16 +72,20 @@ export async function sendPlatformInviteEmail(to: string, registerUrl: string, t
     throw new Error("E-Mail-Versand ist noch nicht eingerichtet.");
   }
 
+  const settings = await getSystemEmailSettings();
+  const context = { tage: String(trialDays) };
+
   await resend.emails.send({
     from: process.env.EMAIL_FROM || "TaskOrga <onboarding@resend.dev>",
     to,
-    subject: "Du bist eingeladen: TaskOrga kostenlos testen",
+    subject: resolveEmailPlaceholders(settings.platformInviteSubject, context),
     html: renderSystemEmail({
+      branding: settings,
       greetingName: name,
       bodyHtml: `
-        <p style="margin:0 0 14px;">du wurdest eingeladen, TaskOrga ${trialDays} Tage lang kostenlos zu testen.</p>
+        ${textToParagraphs(resolveEmailPlaceholders(settings.platformInviteIntro, context))}
         <p style="margin:0 0 14px;"><a href="${registerUrl}" style="color:#2F5FFF;">${registerUrl}</a></p>
-        <p style="margin:0 0 14px;">Der Link ist 14 Tage lang gültig. Beim Registrieren legst du dein eigenes, komplett von anderen Firmen getrenntes Konto an.</p>
+        ${textToParagraphs(resolveEmailPlaceholders(settings.platformInviteOutro, context))}
       `,
     }),
   });
@@ -97,17 +108,20 @@ export async function sendTeamInviteEmail({
     );
   }
 
+  const settings = await getSystemEmailSettings();
+  const context = { firma: company.name };
+
   await resend.emails.send({
     from: process.env.EMAIL_FROM || "TaskOrga <onboarding@resend.dev>",
     to,
-    subject: `Dein TaskOrga-Zugang für ${company.name}`,
+    subject: resolveEmailPlaceholders(settings.teamInviteSubject, context),
     html: renderSystemEmail({
+      branding: settings,
       greetingName: name,
       bodyHtml: `
-        <p style="margin:0 0 14px;">für dich wurde ein TaskOrga-Konto für <strong>${company.name}</strong> angelegt.</p>
-        <p style="margin:0 0 14px;">Melde dich mit dieser E-Mail-Adresse und dem Startpasswort an, das dir von deinem Admin mitgeteilt wurde:</p>
+        ${textToParagraphs(resolveEmailPlaceholders(settings.teamInviteIntro, context))}
         <p style="margin:0 0 14px;"><a href="${loginUrl}" style="color:#2F5FFF;">${loginUrl}</a></p>
-        <p style="margin:0 0 14px;">Falls du kein Startpasswort erhalten hast, kannst du auf der Login-Seite über „Passwort vergessen?“ selbst eines vergeben.</p>
+        ${textToParagraphs(resolveEmailPlaceholders(settings.teamInviteOutro, context))}
       `,
     }),
   });

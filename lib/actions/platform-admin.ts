@@ -6,6 +6,8 @@ import { prisma } from "@/lib/prisma";
 import { assertNotLocked, recordFailedAttempt } from "@/lib/platform-lockout";
 import { deleteCompanyData } from "@/lib/company-deletion";
 import { sendPlatformInviteEmail } from "@/lib/email";
+import { getSystemEmailSettings } from "@/lib/system-email-settings";
+import type { Prisma, SystemEmailSettings } from "@prisma/client";
 
 const EMAIL_INVITE_LINK_TTL_MS = 14 * 24 * 60 * 60 * 1000;
 
@@ -268,5 +270,78 @@ export async function resetUserPasswordForAdmin(
   });
   if (count === 0) return { error: "Nutzer nicht gefunden." };
 
+  return { success: true };
+}
+
+const EMAIL_SETTINGS_TEXT_FIELDS = [
+  "signatureName",
+  "signatureRole",
+  "signatureOrgName",
+  "signatureAddress1",
+  "signatureAddress2",
+  "headerSlogan",
+  "resetSubject",
+  "resetIntro",
+  "resetOutro",
+  "verifySubject",
+  "verifyIntro",
+  "verifyOutro",
+  "teamInviteSubject",
+  "teamInviteIntro",
+  "teamInviteOutro",
+  "platformInviteSubject",
+  "platformInviteIntro",
+  "platformInviteOutro",
+] as const;
+
+type EmailSettingsTextField = (typeof EMAIL_SETTINGS_TEXT_FIELDS)[number];
+
+export async function getSystemEmailSettingsForAdmin(secret: string): Promise<SystemEmailSettings> {
+  await checkSecret(secret);
+  return getSystemEmailSettings();
+}
+
+export async function updateSystemEmailSettings(
+  secret: string,
+  data: Partial<Record<EmailSettingsTextField, string | null>>
+): Promise<{ error?: string; success?: boolean }> {
+  await checkSecret(secret);
+
+  const requiredFields: EmailSettingsTextField[] = [
+    "signatureName",
+    "signatureRole",
+    "signatureOrgName",
+    "headerSlogan",
+    "resetSubject",
+    "resetIntro",
+    "resetOutro",
+    "verifySubject",
+    "verifyIntro",
+    "verifyOutro",
+    "teamInviteSubject",
+    "teamInviteIntro",
+    "teamInviteOutro",
+    "platformInviteSubject",
+    "platformInviteIntro",
+    "platformInviteOutro",
+  ];
+  for (const field of requiredFields) {
+    if (data[field] !== undefined && !data[field]?.trim()) {
+      return { error: "Pflichtfelder dürfen nicht leer sein." };
+    }
+  }
+
+  const current = await getSystemEmailSettings();
+  const update: Record<string, string | null> = {};
+  for (const field of EMAIL_SETTINGS_TEXT_FIELDS) {
+    if (data[field] === undefined) continue;
+    const trimmed = (data[field] ?? "").trim();
+    update[field] = trimmed || (field === "signatureAddress1" || field === "signatureAddress2" ? null : trimmed);
+  }
+
+  await prisma.systemEmailSettings.update({
+    where: { id: current.id },
+    data: update as Prisma.SystemEmailSettingsUpdateInput,
+  });
   return { success: true };
 }

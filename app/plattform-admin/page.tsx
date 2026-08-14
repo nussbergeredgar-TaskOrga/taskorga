@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { Ban, CheckCircle2, ChevronDown, Gift, LifeBuoy, Mail, Trash2 } from "lucide-react";
@@ -22,9 +22,12 @@ import {
   type PlatformStats,
   type EmailInviteOverview,
   resetUserPasswordForAdmin,
+  getSystemEmailSettingsForAdmin,
+  updateSystemEmailSettings,
 } from "@/lib/actions/platform-admin";
 import { CustomChart } from "@/components/charts/custom-chart";
 import { PasswordInput } from "@/components/password-input";
+import type { SystemEmailSettings } from "@prisma/client";
 
 type Code = {
   id: string;
@@ -34,7 +37,7 @@ type Code = {
   usedCount: number;
 };
 
-type Tab = "codes" | "firmen" | "support";
+type Tab = "codes" | "firmen" | "mails" | "support";
 
 const TRIAL_DAYS_OPTIONS = [
   { value: 14, label: "2 Wochen" },
@@ -533,6 +536,229 @@ function CompaniesTab({
   );
 }
 
+type EmailSettingsForm = Omit<SystemEmailSettings, "id" | "createdAt" | "updatedAt">;
+
+function settingsToForm(s: SystemEmailSettings): EmailSettingsForm {
+  const { id, createdAt, updatedAt, ...rest } = s;
+  return rest;
+}
+
+const EMAIL_SECTIONS: {
+  key: "reset" | "verify" | "teamInvite" | "platformInvite";
+  title: string;
+  hint?: string;
+}[] = [
+  { key: "reset", title: "Passwort zurücksetzen" },
+  { key: "verify", title: "E-Mail-Adresse bestätigen" },
+  { key: "teamInvite", title: "Team-Einladung", hint: "{{firma}} wird durch den Firmennamen ersetzt." },
+  {
+    key: "platformInvite",
+    title: "Plattform-Einladung (Testzugang)",
+    hint: "{{tage}} wird durch die Testdauer in Tagen ersetzt.",
+  },
+];
+
+function EmailSectionEditor({
+  title,
+  hint,
+  subject,
+  intro,
+  outro,
+  onSubject,
+  onIntro,
+  onOutro,
+}: {
+  title: string;
+  hint?: string;
+  subject: string;
+  intro: string;
+  outro: string;
+  onSubject: (v: string) => void;
+  onIntro: (v: string) => void;
+  onOutro: (v: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="rounded-lg border border-ink-100 bg-surface">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="flex items-center gap-2 w-full px-4 py-3 text-left"
+      >
+        <ChevronDown size={15} className={`shrink-0 text-ink-300 transition-transform ${open ? "rotate-180" : ""}`} />
+        <span className="text-sm font-medium text-ink-900">{title}</span>
+      </button>
+      {open && (
+        <div className="px-4 pb-4 space-y-3 border-t border-ink-100 pt-3">
+          {hint && <p className="text-xs text-ink-500">{hint}</p>}
+          <div className="space-y-1">
+            <label className="block text-xs font-medium text-ink-700">Betreff</label>
+            <input
+              value={subject}
+              onChange={(e) => onSubject(e.target.value)}
+              className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500"
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="block text-xs font-medium text-ink-700">Text vor dem Link</label>
+            <textarea
+              value={intro}
+              onChange={(e) => onIntro(e.target.value)}
+              rows={2}
+              className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 resize-y"
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="block text-xs font-medium text-ink-700">Text nach dem Link</label>
+            <textarea
+              value={outro}
+              onChange={(e) => onOutro(e.target.value)}
+              rows={2}
+              className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 resize-y"
+            />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function EmailTemplatesTab({ secret }: { secret: string }) {
+  const [pending, startTransition] = useTransition();
+  const [form, setForm] = useState<EmailSettingsForm | null>(null);
+  const [error, setError] = useState("");
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    getSystemEmailSettingsForAdmin(secret).then((s) => setForm(settingsToForm(s)));
+  }, [secret]);
+
+  function set<K extends keyof EmailSettingsForm>(key: K, value: EmailSettingsForm[K]) {
+    setForm((f) => (f ? { ...f, [key]: value } : f));
+    setSaved(false);
+  }
+
+  function save() {
+    if (!form) return;
+    setError("");
+    startTransition(async () => {
+      const result = await updateSystemEmailSettings(secret, form);
+      if (result?.error) {
+        setError(result.error);
+        return;
+      }
+      setSaved(true);
+    });
+  }
+
+  if (!form) {
+    return (
+      <div>
+        <h1 className="font-display font-semibold text-2xl text-ink-900">E-Mail-Vorlagen</h1>
+        <p className="text-sm text-ink-500 mt-1">Wird geladen …</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="font-display font-semibold text-2xl text-ink-900">E-Mail-Vorlagen</h1>
+        <p className="text-sm text-ink-500 mt-1">
+          Signatur und Texte der automatischen System-E-Mails (Registrierung, Passwort, Einladungen).
+        </p>
+      </div>
+
+      <div className="space-y-3">
+        <h2 className="font-display font-semibold text-ink-900">Signatur & Header</h2>
+        <div className="bg-surface rounded-card border border-ink-100 shadow-card p-5 space-y-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="block text-xs font-medium text-ink-700">Name</label>
+              <input
+                value={form.signatureName}
+                onChange={(e) => set("signatureName", e.target.value)}
+                className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="block text-xs font-medium text-ink-700">Position</label>
+              <input
+                value={form.signatureRole}
+                onChange={(e) => set("signatureRole", e.target.value)}
+                className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="block text-xs font-medium text-ink-700">Organisation</label>
+              <input
+                value={form.signatureOrgName}
+                onChange={(e) => set("signatureOrgName", e.target.value)}
+                className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="block text-xs font-medium text-ink-700">Header-Slogan</label>
+              <input
+                value={form.headerSlogan}
+                onChange={(e) => set("headerSlogan", e.target.value)}
+                className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="block text-xs font-medium text-ink-700">Adresse Zeile 1</label>
+              <input
+                value={form.signatureAddress1 ?? ""}
+                onChange={(e) => set("signatureAddress1", e.target.value)}
+                className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="block text-xs font-medium text-ink-700">Adresse Zeile 2</label>
+              <input
+                value={form.signatureAddress2 ?? ""}
+                onChange={(e) => set("signatureAddress2", e.target.value)}
+                className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        <h2 className="font-display font-semibold text-ink-900">Mail-Texte</h2>
+        <div className="space-y-2">
+          {EMAIL_SECTIONS.map((s) => (
+            <EmailSectionEditor
+              key={s.key}
+              title={s.title}
+              hint={s.hint}
+              subject={form[`${s.key}Subject`]}
+              intro={form[`${s.key}Intro`]}
+              outro={form[`${s.key}Outro`]}
+              onSubject={(v) => set(`${s.key}Subject`, v)}
+              onIntro={(v) => set(`${s.key}Intro`, v)}
+              onOutro={(v) => set(`${s.key}Outro`, v)}
+            />
+          ))}
+        </div>
+      </div>
+
+      {error && <p className="text-sm text-danger">{error}</p>}
+      <div className="flex items-center gap-3">
+        <button
+          disabled={pending}
+          onClick={save}
+          className="rounded-lg bg-brand-500 text-white text-sm font-medium px-4 py-2.5 hover:bg-brand-600 disabled:opacity-60 transition-colors"
+        >
+          {pending ? "Wird gespeichert …" : "Speichern"}
+        </button>
+        {saved && <span className="text-sm text-success">Gespeichert.</span>}
+      </div>
+    </div>
+  );
+}
+
 function SupportAccessTab() {
   const router = useRouter();
   const [code, setCode] = useState("");
@@ -670,6 +896,7 @@ export default function PlattformAdminPage() {
             [
               ["codes", "Einladungen"],
               ["firmen", "Firmen"],
+              ["mails", "E-Mail-Vorlagen"],
               ["support", "Support-Zugriff"],
             ] as [Tab, string][]
           ).map(([id, label]) => (
@@ -697,6 +924,7 @@ export default function PlattformAdminPage() {
         {tab === "firmen" && (
           <CompaniesTab secret={secret} companies={companies} stats={stats} refresh={refreshCompanies} />
         )}
+        {tab === "mails" && <EmailTemplatesTab secret={secret} />}
         {tab === "support" && <SupportAccessTab />}
       </div>
     </div>

@@ -13,15 +13,6 @@ export type SignatureCompany = {
 };
 
 const TASKORGA_BLUE = "#2F5FFF";
-// TaskOrgas eigene Absender-Angaben (Impressum) -- fest verdrahtet, weil die
-// vier System-Mails (Login/Konto) immer von TaskOrga selbst kommen, nicht von
-// der Firma des jeweiligen Empfaengers (siehe renderSystemEmail unten).
-const TASKORGA_FOOTER = {
-  name: "Edgar Nussberger",
-  role: "Gründer",
-  orgName: "TaskOrga",
-  addressLines: ["In der Mudersbach 6", "55469 Mutterschied"],
-};
 
 function baseUrl(): string {
   return process.env.NEXTAUTH_URL || "http://localhost:3000";
@@ -134,29 +125,43 @@ function renderEmailShell({
   `;
 }
 
+export type SystemEmailBranding = {
+  signatureName: string;
+  signatureRole: string;
+  signatureOrgName: string;
+  signatureAddress1?: string | null;
+  signatureAddress2?: string | null;
+  headerSlogan: string;
+};
+
 // Fuer die vier System-Mails (Registrierung, Passwort, Team-/Plattform-
-// Einladung) -- kommen immer von TaskOrga selbst, daher feste eigene Angaben
+// Einladung) -- kommen immer von TaskOrga selbst, daher dieselben, im
+// Adminbereich editierbaren Angaben (siehe lib/system-email-settings.ts)
 // statt der Firma des Empfaengers.
 export function renderSystemEmail({
+  branding,
   greetingName,
   bodyHtml,
 }: {
+  branding: SystemEmailBranding;
   greetingName?: string | null;
   bodyHtml: string;
 }): string {
   const firstName = greetingName?.trim().split(" ")[0];
   return renderEmailShell({
     accentColor: TASKORGA_BLUE,
-    headerTitle: "TaskOrga",
-    headerSubtitle: "Weniger Büro. Mehr Business.",
+    headerTitle: branding.signatureOrgName,
+    headerSubtitle: branding.headerSlogan,
     headerLogoUrl: taskorgaLogoUrl(),
     greetingLine: firstName ? `Hallo ${firstName}` : "Hallo",
     bodyHtml,
-    footerName: TASKORGA_FOOTER.name,
-    footerRole: TASKORGA_FOOTER.role,
-    footerOrgName: TASKORGA_FOOTER.orgName,
+    footerName: branding.signatureName,
+    footerRole: branding.signatureRole,
+    footerOrgName: branding.signatureOrgName,
     footerLogoUrl: taskorgaLogoUrl(),
-    footerAddressLines: TASKORGA_FOOTER.addressLines,
+    footerAddressLines: [branding.signatureAddress1, branding.signatureAddress2].filter(
+      (l): l is string => !!l
+    ),
   });
 }
 
