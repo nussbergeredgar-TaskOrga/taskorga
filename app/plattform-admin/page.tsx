@@ -76,6 +76,7 @@ function InvitesTab({
   const [maxUses, setMaxUses] = useState("1");
 
   const [emailPending, startEmailTransition] = useTransition();
+  const [inviteName, setInviteName] = useState("");
   const [inviteEmail, setInviteEmail] = useState("");
   const [trialDays, setTrialDays] = useState(14);
   const [maxUsers, setMaxUsers] = useState("5");
@@ -100,11 +101,12 @@ function InvitesTab({
   function sendEmailInvite() {
     setEmailError("");
     startEmailTransition(async () => {
-      const result = await createEmailInvite(secret, inviteEmail, trialDays, Number(maxUsers) || 1);
+      const result = await createEmailInvite(secret, inviteEmail, trialDays, Number(maxUsers) || 1, inviteName);
       if (result?.error) {
         setEmailError(result.error);
         return;
       }
+      setInviteName("");
       setInviteEmail("");
       setMaxUsers("5");
       refreshEmailInvites();
@@ -130,7 +132,13 @@ function InvitesTab({
       <div className="space-y-3">
         <h2 className="font-display font-semibold text-ink-900">Per E-Mail einladen</h2>
         <div className="bg-surface rounded-card border border-ink-100 shadow-card p-5 space-y-3">
-          <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-5 gap-2">
+            <input
+              value={inviteName}
+              onChange={(e) => setInviteName(e.target.value)}
+              placeholder="Name (optional)"
+              className="rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500"
+            />
             <input
               type="email"
               value={inviteEmail}
@@ -179,7 +187,9 @@ function InvitesTab({
                 className="flex items-center justify-between bg-surface rounded-lg border border-ink-100 px-4 py-3"
               >
                 <div className="min-w-0">
-                  <p className="text-sm font-medium text-ink-900 truncate">{inv.email}</p>
+                  <p className="text-sm font-medium text-ink-900 truncate">
+                    {inv.name ? `${inv.name} · ${inv.email}` : inv.email}
+                  </p>
                   <p className="text-xs text-ink-500">
                     {TRIAL_DAYS_OPTIONS.find((o) => o.value === inv.trialDays)?.label ?? `${inv.trialDays} Tage`} · bis
                     zu {inv.maxUsers} Nutzer ·{" "}

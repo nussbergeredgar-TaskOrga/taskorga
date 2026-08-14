@@ -1,5 +1,5 @@
 import { Resend } from "resend";
-import { buildSignatureHtml, type SignatureCompany } from "@/lib/email-signature";
+import { renderSystemEmail, renderCompanyEmail, type SignatureCompany } from "@/lib/email-signature";
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
@@ -14,7 +14,7 @@ function brandedFrom(companyName: string): string {
   return `${companyName} (über TaskOrga) <${address}>`;
 }
 
-export async function sendPasswordResetEmail(to: string, resetUrl: string, company: SignatureCompany) {
+export async function sendPasswordResetEmail(to: string, resetUrl: string, name: string) {
   if (!resend) {
     throw new Error(
       "E-Mail-Versand ist noch nicht eingerichtet. Bitte einen Admin bitten, das Passwort manuell zurückzusetzen (Einstellungen → Benutzerverwaltung)."
@@ -25,17 +25,18 @@ export async function sendPasswordResetEmail(to: string, resetUrl: string, compa
     from: process.env.EMAIL_FROM || "TaskOrga <onboarding@resend.dev>",
     to,
     subject: "Passwort zurücksetzen – TaskOrga",
-    html: `
-      <p>Hallo,</p>
-      <p>klicke auf den folgenden Link, um dein TaskOrga-Passwort zurückzusetzen:</p>
-      <p><a href="${resetUrl}">${resetUrl}</a></p>
-      <p>Der Link ist eine Stunde lang gültig. Falls du das nicht angefordert hast, kannst du diese E-Mail ignorieren.</p>
-      ${buildSignatureHtml(company)}
-    `,
+    html: renderSystemEmail({
+      greetingName: name,
+      bodyHtml: `
+        <p style="margin:0 0 14px;">klicke auf den folgenden Link, um dein TaskOrga-Passwort zurückzusetzen:</p>
+        <p style="margin:0 0 14px;"><a href="${resetUrl}" style="color:#2F5FFF;">${resetUrl}</a></p>
+        <p style="margin:0 0 14px;">Der Link ist eine Stunde lang gültig. Falls du das nicht angefordert hast, kannst du diese E-Mail ignorieren.</p>
+      `,
+    }),
   });
 }
 
-export async function sendEmailVerificationEmail(to: string, verifyUrl: string, company: SignatureCompany) {
+export async function sendEmailVerificationEmail(to: string, verifyUrl: string, name: string) {
   if (!resend) {
     throw new Error(
       "E-Mail-Versand ist noch nicht eingerichtet. Bitte einen Admin bitten, die Adresse manuell zu bestätigen."
@@ -46,21 +47,20 @@ export async function sendEmailVerificationEmail(to: string, verifyUrl: string, 
     from: process.env.EMAIL_FROM || "TaskOrga <onboarding@resend.dev>",
     to,
     subject: "Bitte E-Mail-Adresse bestätigen – TaskOrga",
-    html: `
-      <p>Hallo,</p>
-      <p>bitte bestätige deine E-Mail-Adresse, um dein TaskOrga-Konto vollständig zu aktivieren:</p>
-      <p><a href="${verifyUrl}">${verifyUrl}</a></p>
-      <p>Der Link ist 24 Stunden lang gültig. Falls du dieses Konto nicht erstellt hast, kannst du diese E-Mail ignorieren.</p>
-      ${buildSignatureHtml(company)}
-    `,
+    html: renderSystemEmail({
+      greetingName: name,
+      bodyHtml: `
+        <p style="margin:0 0 14px;">bitte bestätige deine E-Mail-Adresse, um dein TaskOrga-Konto vollständig zu aktivieren:</p>
+        <p style="margin:0 0 14px;"><a href="${verifyUrl}" style="color:#2F5FFF;">${verifyUrl}</a></p>
+        <p style="margin:0 0 14px;">Der Link ist 24 Stunden lang gültig. Falls du dieses Konto nicht erstellt hast, kannst du diese E-Mail ignorieren.</p>
+      `,
+    }),
   });
 }
 
 // Persoenliche Einladung aus der Plattform-Verwaltung, ein neues Firmenkonto
 // mit einer selbst gewaehlten Testdauer anzulegen (siehe lib/actions/platform-admin.ts).
-// Ohne Firmenkontext (die Firma existiert ja noch nicht) -- daher keine
-// Firmen-Signatur wie bei den anderen System-Mails.
-export async function sendPlatformInviteEmail(to: string, registerUrl: string, trialDays: number) {
+export async function sendPlatformInviteEmail(to: string, registerUrl: string, trialDays: number, name?: string | null) {
   if (!resend) {
     throw new Error("E-Mail-Versand ist noch nicht eingerichtet.");
   }
@@ -69,13 +69,14 @@ export async function sendPlatformInviteEmail(to: string, registerUrl: string, t
     from: process.env.EMAIL_FROM || "TaskOrga <onboarding@resend.dev>",
     to,
     subject: "Du bist eingeladen: TaskOrga kostenlos testen",
-    html: `
-      <p>Hallo,</p>
-      <p>du wurdest eingeladen, TaskOrga ${trialDays} Tage lang kostenlos zu testen.</p>
-      <p><a href="${registerUrl}">${registerUrl}</a></p>
-      <p>Der Link ist 14 Tage lang gültig. Beim Registrieren legst du dein eigenes,
-      komplett von anderen Firmen getrenntes Konto an.</p>
-    `,
+    html: renderSystemEmail({
+      greetingName: name,
+      bodyHtml: `
+        <p style="margin:0 0 14px;">du wurdest eingeladen, TaskOrga ${trialDays} Tage lang kostenlos zu testen.</p>
+        <p style="margin:0 0 14px;"><a href="${registerUrl}" style="color:#2F5FFF;">${registerUrl}</a></p>
+        <p style="margin:0 0 14px;">Der Link ist 14 Tage lang gültig. Beim Registrieren legst du dein eigenes, komplett von anderen Firmen getrenntes Konto an.</p>
+      `,
+    }),
   });
 }
 
@@ -100,16 +101,15 @@ export async function sendTeamInviteEmail({
     from: process.env.EMAIL_FROM || "TaskOrga <onboarding@resend.dev>",
     to,
     subject: `Dein TaskOrga-Zugang für ${company.name}`,
-    html: `
-      <p>Hallo ${name},</p>
-      <p>für dich wurde ein TaskOrga-Konto für <strong>${company.name}</strong> angelegt.</p>
-      <p>Melde dich mit dieser E-Mail-Adresse und dem Startpasswort an, das dir von deinem Admin
-      mitgeteilt wurde:</p>
-      <p><a href="${loginUrl}">${loginUrl}</a></p>
-      <p>Falls du kein Startpasswort erhalten hast, kannst du auf der Login-Seite über
-      „Passwort vergessen?“ selbst eines vergeben.</p>
-      ${buildSignatureHtml(company)}
-    `,
+    html: renderSystemEmail({
+      greetingName: name,
+      bodyHtml: `
+        <p style="margin:0 0 14px;">für dich wurde ein TaskOrga-Konto für <strong>${company.name}</strong> angelegt.</p>
+        <p style="margin:0 0 14px;">Melde dich mit dieser E-Mail-Adresse und dem Startpasswort an, das dir von deinem Admin mitgeteilt wurde:</p>
+        <p style="margin:0 0 14px;"><a href="${loginUrl}" style="color:#2F5FFF;">${loginUrl}</a></p>
+        <p style="margin:0 0 14px;">Falls du kein Startpasswort erhalten hast, kannst du auf der Login-Seite über „Passwort vergessen?“ selbst eines vergeben.</p>
+      `,
+    }),
   });
 }
 
@@ -145,17 +145,19 @@ export async function sendPaymentReminderEmail({
     replyTo: company.email || undefined,
     to,
     subject: `${levelLabel}: Rechnung ${invoiceNumber}`,
-    html: `
-      <p>${greeting},</p>
-      <p>${introText}</p>
-      <p>
-        <strong>Rechnung:</strong> ${invoiceNumber}<br/>
-        <strong>Betrag:</strong> ${amount}<br/>
-        <strong>Fällig seit:</strong> ${dueDate}
-      </p>
-      <p>Die Rechnung als PDF finden Sie im Anhang. Vielen Dank für Ihre schnelle Zahlung.</p>
-      ${buildSignatureHtml(company)}
-    `,
+    html: renderCompanyEmail({
+      company,
+      greetingLine: greeting,
+      bodyHtml: `
+        <p style="margin:0 0 14px;">${introText}</p>
+        <p style="margin:0 0 14px;">
+          <strong>Rechnung:</strong> ${invoiceNumber}<br/>
+          <strong>Betrag:</strong> ${amount}<br/>
+          <strong>Fällig seit:</strong> ${dueDate}
+        </p>
+        <p style="margin:0 0 14px;">Die Rechnung als PDF finden Sie im Anhang. Vielen Dank für Ihre schnelle Zahlung.</p>
+      `,
+    }),
     attachments: [
       {
         filename: `${invoiceNumber}.pdf`,
@@ -200,16 +202,18 @@ export async function sendDocumentEmail({
     replyTo: company.email || undefined,
     to,
     subject: `${kind} ${number}`,
-    html: `
-      <p>${greeting},</p>
-      <p>${message?.trim() || defaultMessage}</p>
-      <p>
-        <strong>${kind}:</strong> ${number}<br/>
-        <strong>Betrag:</strong> ${amount}
-      </p>
-      <p>Die Details finden Sie im PDF im Anhang.</p>
-      ${buildSignatureHtml(company)}
-    `,
+    html: renderCompanyEmail({
+      company,
+      greetingLine: greeting,
+      bodyHtml: `
+        <p style="margin:0 0 14px;">${message?.trim() || defaultMessage}</p>
+        <p style="margin:0 0 14px;">
+          <strong>${kind}:</strong> ${number}<br/>
+          <strong>Betrag:</strong> ${amount}
+        </p>
+        <p style="margin:0 0 14px;">Die Details finden Sie im PDF im Anhang.</p>
+      `,
+    }),
     attachments: [
       {
         filename: `${number}.pdf`,

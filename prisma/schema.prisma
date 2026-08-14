@@ -163,6 +163,9 @@ model InviteCode {
 model EmailInvite {
   id        String    @id @default(cuid())
   email     String
+  // Optional, nur fuer die persoenliche Anrede in der Einladungsmail --
+  // die Person hat zu diesem Zeitpunkt noch kein Konto.
+  name      String?
   token     String    @unique
   trialDays Int
   // Meist registriert sich der Geschaeftsfuehrer zuerst und nimmt sein Team

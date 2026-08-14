@@ -113,6 +113,7 @@ export type EmailInviteOverview = {
   email: string;
   trialDays: number;
   maxUsers: number;
+  name: string | null;
   usedAt: Date | null;
   expiresAt: Date;
   createdAt: Date;
@@ -127,7 +128,8 @@ export async function createEmailInvite(
   secret: string,
   email: string,
   trialDays: number,
-  maxUsers: number
+  maxUsers: number,
+  name?: string
 ): Promise<{ error?: string }> {
   await checkSecret(secret);
 
@@ -143,18 +145,19 @@ export async function createEmailInvite(
     return { error: "Für diese E-Mail-Adresse existiert bereits ein Konto." };
   }
 
+  const cleanName = name?.trim() || null;
   const token = crypto.randomBytes(32).toString("hex");
   const expiresAt = new Date(Date.now() + EMAIL_INVITE_LINK_TTL_MS);
 
   await prisma.emailInvite.create({
-    data: { email: cleanEmail, token, trialDays, maxUsers, expiresAt },
+    data: { email: cleanEmail, name: cleanName, token, trialDays, maxUsers, expiresAt },
   });
 
   const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
   const registerUrl = `${baseUrl}/registrieren?invite=${token}`;
 
   try {
-    await sendPlatformInviteEmail(cleanEmail, registerUrl, trialDays);
+    await sendPlatformInviteEmail(cleanEmail, registerUrl, trialDays, cleanName);
   } catch (err) {
     return { error: err instanceof Error ? err.message : "E-Mail-Versand fehlgeschlagen." };
   }
