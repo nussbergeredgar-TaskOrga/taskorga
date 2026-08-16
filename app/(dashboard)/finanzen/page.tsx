@@ -10,6 +10,7 @@ import { ListHeaderActions } from "@/components/list-header-actions";
 import { markOverdueInvoices } from "@/lib/actions/invoices";
 import { getListViewConfig } from "@/lib/actions/list-view";
 import { getFilterState } from "@/lib/actions/filters";
+import { getFieldConfig } from "@/lib/actions/field-config";
 import { INVOICE_COLUMNS_DEFAULT, INVOICE_STATUS_LABELS as STATUS_LABELS } from "@/lib/invoice-columns";
 import { EXPENSE_COLUMNS_DEFAULT, EXPENSE_STATUS_LABELS } from "@/lib/expense-columns";
 
@@ -26,7 +27,7 @@ export default async function FinanzenPage({
   // Fällige, unbezahlte Rechnungen automatisch auf "Überfällig" setzen
   await markOverdueInvoices();
 
-  const [invoices, expenses, projects, savedListConfig, filterState, savedExpenseListConfig, expenseFilterState] = await Promise.all([
+  const [invoices, expenses, projects, savedListConfig, filterState, savedExpenseListConfig, expenseFilterState, expenseFieldConfig] = await Promise.all([
     prisma.invoice.findMany({
       where: { companyId: company.id },
       orderBy: { createdAt: "desc" },
@@ -49,6 +50,7 @@ export default async function FinanzenPage({
     getFilterState("invoice"),
     getListViewConfig("expense"),
     getFilterState("expense"),
+    getFieldConfig("expense"),
   ]);
 
   const savedColumns = savedListConfig?.columns ?? [];
@@ -221,7 +223,7 @@ export default async function FinanzenPage({
                 <Download size={14} /> CSV
               </a>
             </ListHeaderActions>
-            <ExpenseForm projects={projects} />
+            <ExpenseForm projects={projects} fieldConfig={expenseFieldConfig} />
           </div>
         </div>
 

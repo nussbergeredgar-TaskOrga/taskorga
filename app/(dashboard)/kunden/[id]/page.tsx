@@ -54,11 +54,12 @@ export default async function KundeDetailPage({
   params: { id: string };
 }) {
   const company = await getCurrentCompany();
-  const [customer, tabsConfig, appointmentTypes, appointmentFieldConfig, currentUser] = await Promise.all([
+  const [customer, tabsConfig, appointmentTypes, appointmentFieldConfig, contactFieldConfig, currentUser] = await Promise.all([
     getCustomer(params.id, company.id),
     getCustomerTabsConfig(),
     getAppointmentTypes(),
     getFieldConfig("appointment"),
+    getFieldConfig("contact"),
     getCurrentUser(),
   ]);
   if (!customer) notFound();
@@ -347,7 +348,7 @@ export default async function KundeDetailPage({
           per Klick gesucht werden müssen. */}
       {customer.type === "BUSINESS" && (
         <div className="rounded-card border border-ink-100 bg-surface p-5 shadow-card">
-          <ContactsList customerId={customer.id} contacts={customer.contacts} />
+          <ContactsList customerId={customer.id} contacts={customer.contacts} fieldConfig={contactFieldConfig} />
         </div>
       )}
 

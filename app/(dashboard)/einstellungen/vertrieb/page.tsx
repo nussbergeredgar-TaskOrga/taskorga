@@ -13,7 +13,7 @@ import { FIELD_CATALOGS } from "@/lib/field-config-catalog";
 export default async function VertriebSettingsPage() {
   const admin = await requireAdmin();
 
-  const [steps, customerTabs, appointmentTypes, customerFieldConfig, inquiryFieldConfig, taskFieldConfig, appointmentFieldConfig, quoteFieldConfig] = await Promise.all([
+  const [steps, customerTabs, appointmentTypes, customerFieldConfig, inquiryFieldConfig, taskFieldConfig, appointmentFieldConfig, quoteFieldConfig, contactFieldConfig] = await Promise.all([
     prisma.workflowStep.findMany({
       where: { companyId: admin.companyId },
       orderBy: { order: "asc" },
@@ -25,6 +25,7 @@ export default async function VertriebSettingsPage() {
     getFieldConfig("task"),
     getFieldConfig("appointment"),
     getFieldConfig("quote"),
+    getFieldConfig("contact"),
   ]);
 
   return (
@@ -83,6 +84,13 @@ export default async function VertriebSettingsPage() {
         description="Kunde, Titel und Positionen sind immer vorhanden. Nur „Gültig bis“ ist konfigurierbar (Rabatt hat eigene Grundeinstellung unter Dokumente & Finanzen)."
       >
         <FieldConfigManager formKey="quote" catalog={FIELD_CATALOGS.quote} initialConfig={quoteFieldConfig} />
+      </SettingsSection>
+
+      <SettingsSection
+        title="Ansprechpartner-Formular — Felder"
+        description="Lege fest, welche Felder beim Anlegen eines Ansprechpartners sichtbar oder Pflicht sind. Name ist immer vorhanden."
+      >
+        <FieldConfigManager formKey="contact" catalog={FIELD_CATALOGS.contact} initialConfig={contactFieldConfig} />
       </SettingsSection>
     </div>
   );

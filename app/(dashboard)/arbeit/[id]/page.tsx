@@ -9,10 +9,12 @@ import { TimeTracking } from "@/components/time-tracking";
 import { ExpenseForm } from "@/components/expense-form";
 import { ExpensesList } from "@/components/expenses-list";
 import { DocumentTab } from "@/components/document-tab";
+import { getFieldConfig } from "@/lib/actions/field-config";
 
 export default async function AuftragDetailPage({ params }: { params: { id: string } }) {
   const user = await getCurrentUser();
   const company = await getCurrentCompany();
+  const expenseFieldConfig = await getFieldConfig("expense");
   const project = await prisma.project.findFirst({
     where: { id: params.id, companyId: company.id },
     include: {
@@ -123,7 +125,7 @@ export default async function AuftragDetailPage({ params }: { params: { id: stri
       <div className="rounded-card border border-ink-100 bg-surface p-5 shadow-card space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="font-display font-semibold text-ink-900">Ausgaben</h2>
-          <ExpenseForm defaultProjectId={project.id} />
+          <ExpenseForm defaultProjectId={project.id} fieldConfig={expenseFieldConfig} />
         </div>
         <ExpensesList title="Materialkosten & Ausgaben" expenses={mappedExpenses} />
       </div>

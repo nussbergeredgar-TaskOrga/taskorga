@@ -22,7 +22,7 @@ export default async function DokumenteSettingsPage() {
   const user = await requirePermission("dokumentVorlagen");
   const isAdmin = user.role?.name === "Admin";
 
-  const [documentTemplates, reminderLevels, itemTemplates, company, revenueSources, invoiceFieldConfig] =
+  const [documentTemplates, reminderLevels, itemTemplates, company, revenueSources, invoiceFieldConfig, expenseFieldConfig] =
     await Promise.all([
       getDocumentTemplates(),
       isAdmin ? getReminderLevels() : Promise.resolve([]),
@@ -30,6 +30,7 @@ export default async function DokumenteSettingsPage() {
       prisma.company.findUniqueOrThrow({ where: { id: user.companyId } }),
       isAdmin ? getRevenueSources() : Promise.resolve([]),
       isAdmin ? getFieldConfig("invoice") : Promise.resolve(undefined),
+      isAdmin ? getFieldConfig("expense") : Promise.resolve(undefined),
     ]);
 
   return (
@@ -110,6 +111,15 @@ export default async function DokumenteSettingsPage() {
           description="Pflichtfelder/Ausblenden für die eigenständige Rechnungserstellung (ohne vorheriges Angebot)."
         >
           <FieldConfigManager formKey="invoice" catalog={FIELD_CATALOGS.invoice} initialConfig={invoiceFieldConfig!} />
+        </SettingsSection>
+      )}
+
+      {isAdmin && (
+        <SettingsSection
+          title="Ausgaben-Formular — Felder"
+          description="Lege fest, welche Felder beim Erfassen einer Ausgabe sichtbar oder Pflicht sind. Titel, Betrag und Datum sind immer vorhanden."
+        >
+          <FieldConfigManager formKey="expense" catalog={FIELD_CATALOGS.expense} initialConfig={expenseFieldConfig!} />
         </SettingsSection>
       )}
 

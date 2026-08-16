@@ -4,14 +4,20 @@ import { useRef, useState, useTransition } from "react";
 import { upload } from "@vercel/blob/client";
 import { Upload, Plus } from "lucide-react";
 import { createExpense } from "@/lib/actions/expenses";
+import type { FieldConfigMap } from "@/lib/actions/field-config";
+
+const DEFAULT_FIELD_STATE = { visible: true, required: false };
 
 export function ExpenseForm({
   projects,
   defaultProjectId,
+  fieldConfig,
 }: {
   projects?: { id: string; title: string; number: string }[];
   defaultProjectId?: string;
+  fieldConfig?: FieldConfigMap;
 }) {
+  const fc = (key: string) => fieldConfig?.[key] ?? DEFAULT_FIELD_STATE;
   const [open, setOpen] = useState(false);
   const [projectId, setProjectId] = useState(defaultProjectId ?? "");
   const titleRef = useRef<HTMLInputElement>(null);
@@ -53,7 +59,7 @@ export function ExpenseForm({
     }
 
     startTransition(async () => {
-      await createExpense({
+      const result = await createExpense({
         title,
         category: categoryRef.current?.value,
         amount,
@@ -61,6 +67,10 @@ export function ExpenseForm({
         projectId: projectId || undefined,
         file: pendingFile ?? undefined,
       });
+      if (result?.error) {
+        setError(result.error);
+        return;
+      }
       if (titleRef.current) titleRef.current.value = "";
       if (categoryRef.current) categoryRef.current.value = "";
       if (amountRef.current) amountRef.current.value = "";
@@ -92,11 +102,13 @@ export function ExpenseForm({
           placeholder="Titel, z. B. Material Baumarkt"
           className="rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500"
         />
-        <input
-          ref={categoryRef}
-          placeholder="Kategorie (optional)"
-          className="rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500"
-        />
+        {fc("category").visible && (
+          <input
+            ref={categoryRef}
+            placeholder={`Kategorie${fc("category").required ? "" : " (optional)"}`}
+            className="rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500"
+          />
+        )}
         <input
           ref={amountRef}
           type="number"
@@ -111,13 +123,13 @@ export function ExpenseForm({
         />
       </div>
 
-      {projects && projects.length > 0 && !defaultProjectId && (
+      {fc("projectId").visible && projects && projects.length > 0 && !defaultProjectId && (
         <select
           value={projectId}
           onChange={(e) => setProjectId(e.target.value)}
           className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface"
         >
-          <option value="">Kein Auftragsbezug</option>
+          <option value="">{fc("projectId").required ? "Bitte auswählen …" : "Kein Auftragsbezug"}</option>
           {projects.map((p) => (
             <option key={p.id} value={p.id}>
               {p.number} — {p.title}

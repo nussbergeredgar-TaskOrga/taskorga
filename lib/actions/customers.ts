@@ -351,14 +351,34 @@ export async function unarchiveCustomer(customerId: string) {
   revalidatePath(`/kunden/${customerId}`);
 }
 
+// Prüft die admin-konfigurierten Pflichtfelder des Ansprechpartner-Formulars
+// serverseitig (analog zu checkConfiguredRequiredFields für Kunden).
+async function checkConfiguredRequiredContactFields(
+  data: Record<string, string | null | undefined>
+): Promise<string | null> {
+  const config = await getFieldConfig("contact");
+  const missing: string[] = [];
+  for (const field of FIELD_CATALOGS.contact) {
+    const rule = config[field.key];
+    if (rule?.required && !data[field.key]?.trim()) {
+      missing.push(field.label);
+    }
+  }
+  if (missing.length === 0) return null;
+  return `Pflichtfeld${missing.length > 1 ? "er" : ""} fehlt: ${missing.join(", ")}`;
+}
+
 export async function createContact(
   customerId: string,
   data: { name: string; role?: string; email?: string; phone?: string }
-) {
-  if (!data.name.trim()) return;
+): Promise<{ error?: string }> {
+  if (!data.name.trim()) return { error: "Der Name darf nicht leer sein." };
+  const fieldError = await checkConfiguredRequiredContactFields(data);
+  if (fieldError) return { error: fieldError };
+
   const company = await getCurrentCompany();
   const customer = await prisma.customer.findFirst({ where: { id: customerId, companyId: company.id } });
-  if (!customer) return;
+  if (!customer) return { error: "Kunde nicht gefunden." };
 
   const number = await nextCustomerNumber(company.id);
 
@@ -376,6 +396,7 @@ export async function createContact(
 
   revalidatePath(`/kunden/${customerId}`);
   revalidatePath("/kunden");
+  return {};
 }
 
 export async function updateContact(
@@ -384,6 +405,9 @@ export async function updateContact(
   data: { name: string; number?: string; role?: string; email?: string; phone?: string }
 ): Promise<{ error?: string }> {
   if (!data.name.trim()) return { error: "Der Name darf nicht leer sein." };
+  const fieldError = await checkConfiguredRequiredContactFields(data);
+  if (fieldError) return { error: fieldError };
+
   const company = await getCurrentCompany();
   const contact = await prisma.contact.findFirst({ where: { id: contactId, customerId, companyId: company.id } });
   if (!contact) return { error: "Ansprechpartner nicht gefunden." };

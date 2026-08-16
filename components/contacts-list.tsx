@@ -3,6 +3,7 @@
 import { useRef, useState, useTransition } from "react";
 import { Pencil, Plus, Trash2, User } from "lucide-react";
 import { createContact, deleteContact, updateContact } from "@/lib/actions/customers";
+import type { FieldConfigMap } from "@/lib/actions/field-config";
 
 type Contact = {
   id: string;
@@ -13,19 +14,24 @@ type Contact = {
   phone: string | null;
 };
 
+const DEFAULT_FIELD_STATE = { visible: true, required: false };
+
 function ContactForm({
   initial,
   pending,
   error,
+  fieldConfig,
   onCancel,
   onSubmit,
 }: {
   initial?: Contact;
   pending: boolean;
   error?: string;
+  fieldConfig?: FieldConfigMap;
   onCancel: () => void;
   onSubmit: (data: { name: string; number: string; role: string; email: string; phone: string }) => void;
 }) {
+  const fc = (key: string) => fieldConfig?.[key] ?? DEFAULT_FIELD_STATE;
   const nameRef = useRef<HTMLInputElement>(null);
   const numberRef = useRef<HTMLInputElement>(null);
   const roleRef = useRef<HTMLInputElement>(null);
@@ -47,25 +53,31 @@ function ContactForm({
           placeholder="Kundennummer"
           className="rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 font-mono"
         />
-        <input
-          ref={roleRef}
-          defaultValue={initial?.role ?? ""}
-          placeholder="Position (optional)"
-          className="rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500"
-        />
-        <input
-          ref={emailRef}
-          type="email"
-          defaultValue={initial?.email ?? ""}
-          placeholder="E-Mail (optional)"
-          className="rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500"
-        />
-        <input
-          ref={phoneRef}
-          defaultValue={initial?.phone ?? ""}
-          placeholder="Telefon (optional)"
-          className="rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500"
-        />
+        {fc("role").visible && (
+          <input
+            ref={roleRef}
+            defaultValue={initial?.role ?? ""}
+            placeholder={`Position${fc("role").required ? "" : " (optional)"}`}
+            className="rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500"
+          />
+        )}
+        {fc("email").visible && (
+          <input
+            ref={emailRef}
+            type="email"
+            defaultValue={initial?.email ?? ""}
+            placeholder={`E-Mail${fc("email").required ? "" : " (optional)"}`}
+            className="rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500"
+          />
+        )}
+        {fc("phone").visible && (
+          <input
+            ref={phoneRef}
+            defaultValue={initial?.phone ?? ""}
+            placeholder={`Telefon${fc("phone").required ? "" : " (optional)"}`}
+            className="rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500"
+          />
+        )}
       </div>
       {error && <p className="text-xs text-danger">{error}</p>}
       <div className="flex gap-2">
@@ -95,7 +107,15 @@ function ContactForm({
   );
 }
 
-export function ContactsList({ customerId, contacts }: { customerId: string; contacts: Contact[] }) {
+export function ContactsList({
+  customerId,
+  contacts,
+  fieldConfig,
+}: {
+  customerId: string;
+  contacts: Contact[];
+  fieldConfig?: FieldConfigMap;
+}) {
   const [adding, setAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -105,7 +125,11 @@ export function ContactsList({ customerId, contacts }: { customerId: string; con
     if (!data.name.trim()) return;
     setError("");
     startTransition(async () => {
-      await createContact(customerId, data);
+      const result = await createContact(customerId, data);
+      if (result?.error) {
+        setError(result.error);
+        return;
+      }
       setAdding(false);
     });
   }
@@ -131,6 +155,7 @@ export function ContactsList({ customerId, contacts }: { customerId: string; con
           <button
             onClick={() => {
               setEditingId(null);
+              setError("");
               setAdding(true);
             }}
             className="flex items-center gap-1 text-xs font-medium text-brand-700 hover:underline"
@@ -153,6 +178,7 @@ export function ContactsList({ customerId, contacts }: { customerId: string; con
                 initial={c}
                 pending={pending}
                 error={error}
+                fieldConfig={fieldConfig}
                 onCancel={() => setEditingId(null)}
                 onSubmit={(data) => submitEdit(c.id, data)}
               />
@@ -196,7 +222,7 @@ export function ContactsList({ customerId, contacts }: { customerId: string; con
       )}
 
       {adding && (
-        <ContactForm pending={pending} error={error} onCancel={() => setAdding(false)} onSubmit={submitCreate} />
+        <ContactForm pending={pending} error={error} fieldConfig={fieldConfig} onCancel={() => setAdding(false)} onSubmit={submitCreate} />
       )}
     </div>
   );
