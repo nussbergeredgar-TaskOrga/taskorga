@@ -16,7 +16,7 @@ export default async function KundenPage({
   const company = await getCurrentCompany();
   const showArchived = searchParams.archiviert === "1";
 
-  const [customers, savedListConfig, filterState] = await Promise.all([
+  const [customers, contacts, savedListConfig, filterState] = await Promise.all([
     prisma.customer.findMany({
       where: { companyId: company.id, archivedAt: showArchived ? { not: null } : null },
       orderBy: { createdAt: "desc" },
@@ -24,9 +24,19 @@ export default async function KundenPage({
         _count: { select: { projects: true, invoices: true } },
       },
     }),
+    // Ansprechpartner haben kein eigenes Archiv -- sie erscheinen nur in der
+    // aktiven Ansicht, zusammen mit dem Hinweis, zu welchem Unternehmen sie gehoeren.
+    showArchived
+      ? Promise.resolve([])
+      : prisma.contact.findMany({
+          where: { companyId: company.id },
+          orderBy: { name: "asc" },
+          include: { customer: { select: { id: true, name: true, archivedAt: true } } },
+        }),
     getListViewConfig("customer"),
     getFilterState("customer"),
   ]);
+  const visibleContacts = contacts.filter((c) => !c.customer.archivedAt);
 
   // Neue Spalten, die es beim letzten Speichern der Konfiguration noch nicht
   // gab, werden ergaenzt (analog zum Dashboard-Layout) -- sonst wuerden
@@ -95,6 +105,7 @@ export default async function KundenPage({
           customers={customers.map((c) => ({
             id: c.id,
             name: c.name,
+            number: c.number,
             type: c.type,
             email: c.email,
             phone: c.phone,
@@ -104,6 +115,16 @@ export default async function KundenPage({
             customerSince: c.customerSince.toISOString(),
             projectsCount: c._count.projects,
             invoicesCount: c._count.invoices,
+          }))}
+          contacts={visibleContacts.map((c) => ({
+            id: c.id,
+            name: c.name,
+            number: c.number,
+            role: c.role,
+            email: c.email,
+            phone: c.phone,
+            parentCustomerId: c.customer.id,
+            parentCustomerName: c.customer.name,
           }))}
           initialViewMode={savedListConfig?.viewMode ?? "cards"}
           initialColumns={columns}

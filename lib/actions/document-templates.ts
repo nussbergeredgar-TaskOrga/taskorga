@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin, getCurrentCompany } from "@/lib/session";
+import { requireAdmin, requirePermission, getCurrentCompany } from "@/lib/session";
 import type { DocumentTemplateType, LogoPosition } from "@prisma/client";
 
 export async function getDocumentTemplates() {
@@ -14,15 +14,15 @@ export async function getDocumentTemplates() {
 }
 
 export async function createDocumentTemplate(type: DocumentTemplateType) {
-  const admin = await requireAdmin();
+  const user = await requirePermission("dokumentVorlagen");
 
   const existingCount = await prisma.documentTemplate.count({
-    where: { companyId: admin.companyId, type },
+    where: { companyId: user.companyId, type },
   });
 
   const template = await prisma.documentTemplate.create({
     data: {
-      companyId: admin.companyId,
+      companyId: user.companyId,
       type,
       name: type === "QUOTE" ? "Neue Angebotsvorlage" : "Neue Rechnungsvorlage",
       isDefault: existingCount === 0, // erste Vorlage eines Typs wird automatisch Standard
@@ -45,11 +45,15 @@ export async function updateDocumentTemplate(
     showSenderLine: boolean;
     showBankDetails: boolean;
     showCompanyEmail: boolean;
+    coloredHeaderFooter: boolean;
+    showPositionNumbers: boolean;
+    showCustomerNumber: boolean;
+    showCreator: boolean;
   }
 ) {
-  const admin = await requireAdmin();
+  const user = await requirePermission("dokumentVorlagen");
   await prisma.documentTemplate.updateMany({
-    where: { id, companyId: admin.companyId },
+    where: { id, companyId: user.companyId },
     data: {
       name: data.name.trim() || "Vorlage",
       introText: data.introText || null,
@@ -60,20 +64,24 @@ export async function updateDocumentTemplate(
       showSenderLine: data.showSenderLine,
       showBankDetails: data.showBankDetails,
       showCompanyEmail: data.showCompanyEmail,
+      coloredHeaderFooter: data.coloredHeaderFooter,
+      showPositionNumbers: data.showPositionNumbers,
+      showCustomerNumber: data.showCustomerNumber,
+      showCreator: data.showCreator,
     },
   });
   revalidatePath("/einstellungen");
 }
 
 export async function setDefaultTemplate(id: string, type: DocumentTemplateType) {
-  const admin = await requireAdmin();
+  const user = await requirePermission("dokumentVorlagen");
   await prisma.$transaction([
     prisma.documentTemplate.updateMany({
-      where: { companyId: admin.companyId, type },
+      where: { companyId: user.companyId, type },
       data: { isDefault: false },
     }),
     prisma.documentTemplate.updateMany({
-      where: { id, companyId: admin.companyId },
+      where: { id, companyId: user.companyId },
       data: { isDefault: true },
     }),
   ]);

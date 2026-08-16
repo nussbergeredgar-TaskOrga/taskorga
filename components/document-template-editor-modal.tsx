@@ -18,6 +18,10 @@ type Template = {
   showSenderLine: boolean;
   showBankDetails: boolean;
   showCompanyEmail: boolean;
+  coloredHeaderFooter: boolean;
+  showPositionNumbers: boolean;
+  showCustomerNumber: boolean;
+  showCreator: boolean;
 };
 
 const LOGO_POSITION_OPTIONS: { value: LogoPosition; label: string }[] = [
@@ -45,6 +49,10 @@ export function DocumentTemplateEditorModal({
   const [showSenderLine, setShowSenderLine] = useState(template.showSenderLine);
   const [showBankDetails, setShowBankDetails] = useState(template.showBankDetails);
   const [showCompanyEmail, setShowCompanyEmail] = useState(template.showCompanyEmail);
+  const [coloredHeaderFooter, setColoredHeaderFooter] = useState(template.coloredHeaderFooter);
+  const [showPositionNumbers, setShowPositionNumbers] = useState(template.showPositionNumbers);
+  const [showCustomerNumber, setShowCustomerNumber] = useState(template.showCustomerNumber);
+  const [showCreator, setShowCreator] = useState(template.showCreator);
   const [pending, startTransition] = useTransition();
   const [saved, setSaved] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -68,6 +76,10 @@ export function DocumentTemplateEditorModal({
             showSenderLine,
             showBankDetails,
             showCompanyEmail,
+            coloredHeaderFooter,
+            showPositionNumbers,
+            showCustomerNumber,
+            showCreator,
           }),
         });
         if (!res.ok) return;
@@ -81,7 +93,21 @@ export function DocumentTemplateEditorModal({
       }
     }, 400);
     return () => clearTimeout(timeout);
-  }, [template.type, introText, footerText, showVat, accentColor, logoPosition, showSenderLine, showBankDetails, showCompanyEmail]);
+  }, [
+    template.type,
+    introText,
+    footerText,
+    showVat,
+    accentColor,
+    logoPosition,
+    showSenderLine,
+    showBankDetails,
+    showCompanyEmail,
+    coloredHeaderFooter,
+    showPositionNumbers,
+    showCustomerNumber,
+    showCreator,
+  ]);
 
   useEffect(() => {
     return () => {
@@ -101,6 +127,10 @@ export function DocumentTemplateEditorModal({
         showSenderLine,
         showBankDetails,
         showCompanyEmail,
+        coloredHeaderFooter,
+        showPositionNumbers,
+        showCustomerNumber,
+        showCreator,
       });
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
@@ -190,6 +220,42 @@ export function DocumentTemplateEditorModal({
                 <input type="checkbox" checked={showVat} onChange={(e) => setShowVat(e.target.checked)} className="accent-brand-500" />
                 MwSt. ausweisen
               </label>
+              <label className="flex items-center gap-2 text-sm text-ink-700">
+                <input
+                  type="checkbox"
+                  checked={coloredHeaderFooter}
+                  onChange={(e) => setColoredHeaderFooter(e.target.checked)}
+                  className="accent-brand-500"
+                />
+                Kopf-/Fußzeile farbig (Akzentfarbe) statt schlicht in Weiß
+              </label>
+              <label className="flex items-center gap-2 text-sm text-ink-700">
+                <input
+                  type="checkbox"
+                  checked={showPositionNumbers}
+                  onChange={(e) => setShowPositionNumbers(e.target.checked)}
+                  className="accent-brand-500"
+                />
+                Fortlaufende Positionsnummern anzeigen
+              </label>
+              <label className="flex items-center gap-2 text-sm text-ink-700">
+                <input
+                  type="checkbox"
+                  checked={showCustomerNumber}
+                  onChange={(e) => setShowCustomerNumber(e.target.checked)}
+                  className="accent-brand-500"
+                />
+                Kundennummer im Kopf anzeigen
+              </label>
+              <label className="flex items-center gap-2 text-sm text-ink-700">
+                <input
+                  type="checkbox"
+                  checked={showCreator}
+                  onChange={(e) => setShowCreator(e.target.checked)}
+                  className="accent-brand-500"
+                />
+                Ersteller im Kopf anzeigen
+              </label>
             </div>
 
             <div>
@@ -218,12 +284,25 @@ export function DocumentTemplateEditorModal({
               Vorschau mit Beispieldaten {previewLoading && "· wird aktualisiert …"}
             </p>
             {previewUrl ? (
-              <iframe
-                src={previewUrl}
-                title="Vorschau der Vorlage"
-                className="w-full flex-1 rounded border border-ink-100 bg-white"
-                style={{ aspectRatio: "210 / 297" }}
-              />
+              <>
+                {/* Mobile PDF-Viewer im iframe skaliert nicht zuverlaessig auf
+                    die Bildschirmbreite (v. a. iOS Safari) -- dort direkt den
+                    nativen Viewer in einem neuen Tab nutzen. */}
+                <a
+                  href={previewUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex sm:hidden w-full items-center justify-center gap-1.5 rounded-lg bg-brand-500 text-white text-sm font-medium px-4 py-3 hover:bg-brand-600 transition-colors"
+                >
+                  PDF öffnen
+                </a>
+                <iframe
+                  src={previewUrl}
+                  title="Vorschau der Vorlage"
+                  className="hidden sm:block w-full flex-1 rounded border border-ink-100 bg-white"
+                  style={{ aspectRatio: "210 / 297" }}
+                />
+              </>
             ) : (
               <p className="text-sm text-ink-500 m-auto">Vorschau wird geladen …</p>
             )}

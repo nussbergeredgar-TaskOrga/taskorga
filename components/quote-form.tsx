@@ -33,12 +33,14 @@ function emptyItem(): Item {
 
 export function QuoteForm({
   customers,
+  contacts,
   inquiries,
   projects,
   itemTemplates,
   defaultValidUntil,
   defaultDiscountType,
   defaultCustomerId,
+  defaultContactId,
   defaultInquiryId,
   defaultTitle,
   fieldConfig,
@@ -47,12 +49,14 @@ export function QuoteForm({
   initialDiscountValue,
 }: {
   customers: { id: string; name: string }[];
+  contacts: { id: string; name: string; customerId: string }[];
   inquiries: { id: string; title: string; customerId: string }[];
   projects: { id: string; title: string; number: string; customerId: string }[];
   itemTemplates: Template[];
   defaultValidUntil: string; // bereits fertig formatiert YYYY-MM-DD
   defaultDiscountType: "AMOUNT" | "PERCENT";
   defaultCustomerId?: string;
+  defaultContactId?: string;
   defaultInquiryId?: string;
   defaultTitle?: string;
   fieldConfig?: FieldConfigMap;
@@ -124,6 +128,7 @@ export function QuoteForm({
 
   const relevantInquiries = inquiries.filter((i) => i.customerId === customerId);
   const relevantProjects = projects.filter((p) => p.customerId === customerId);
+  const relevantContacts = contacts.filter((c) => c.customerId === customerId);
 
   return (
     <form action={formAction} className="space-y-6 max-w-2xl">
@@ -170,6 +175,27 @@ export function QuoteForm({
           </select>
         </div>
       </div>
+
+      {customerId && relevantContacts.length > 0 && (
+        <div>
+          <label htmlFor="contactId" className="block text-sm font-medium text-ink-700 mb-1.5">
+            Ansprechpartner
+          </label>
+          <select
+            id="contactId"
+            name="contactId"
+            defaultValue={defaultContactId || ""}
+            className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface"
+          >
+            <option value="">Keiner</option>
+            {relevantContacts.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
       {customerId && relevantProjects.length > 0 && (
         <div>

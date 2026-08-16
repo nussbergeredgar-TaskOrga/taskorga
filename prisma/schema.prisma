@@ -53,6 +53,12 @@ model Company {
   defaultDiscountType      String @default("AMOUNT") // AMOUNT | PERCENT
   quoteNumberFormat        String @default("ANG-{YYYY}-{NNNN}")
   invoiceNumberFormat      String @default("RE-{YYYY}-{NNNN}")
+  // Kundennummer: ein gemeinsamer, atomar hochgezaehlter Zaehler fuer Customer
+  // UND Contact (siehe lib/customer-numbering.ts) -- ein count()-basierter
+  // Ansatz wie bei Angebots-/Rechnungsnummern waere hier nicht race-sicher,
+  // da sich zwei verschiedene Tabellen einen Nummernkreis teilen.
+  customerNumberFormat     String @default("KD-{NNNN}")
+  customerNumberSeq        Int    @default(0)
   // Stundensatz fuer die Umwandlung erfasster Zeit in Rechnungspositionen.
   // Ohne gesetzten Satz wird Zeiterfassung nicht zur Abrechnung angeboten.
   defaultHourlyRate        Decimal? @db.Decimal(10, 2)
@@ -88,6 +94,7 @@ model Company {
   users       User[]
   supportAccessCodes SupportAccessCode[]
   customers   Customer[]
+  contacts    Contact[]
   inquiries   Inquiry[]
   quotes      Quote[]
   projects    Project[]
@@ -306,6 +313,8 @@ model User {
 
   assignedTasks   Task[]        @relation("TaskAssignee")
   assignedAppointments Appointment[] @relation("AppointmentAssignee")
+  createdQuotes   Quote[]
+  createdInvoices Invoice[]
   workingHours    UserWorkingHours[]
   absences        Absence[]
   comments        Comment[]
@@ -363,6 +372,7 @@ model Customer {
   company   Company  @relation(fields: [companyId], references: [id])
 
   name        String // Anzeigename (bei Privatkunden automatisch aus Vor-/Nachname zusammengesetzt)
+  number      String? // Kundennummer, automatisch vergeben (siehe Company.customerNumberFormat), manuell aenderbar
   salutation  CustomerSalutation?
   firstName   String?
   lastName    String?
@@ -392,6 +402,7 @@ model Customer {
   comments     Comment[]
   insight      CustomerInsight?
 
+  @@unique([companyId, number])
   @@index([companyId])
 }
 
@@ -406,16 +417,28 @@ enum CustomerSalutation {
   DIVERS
 }
 
-// Ansprechpartner bei Firmenkunden
+// Ansprechpartner bei Firmenkunden -- erscheinen ebenfalls (mit Hinweis auf
+// ihr Unternehmen) in der Kundenliste, daher companyId denormalisiert statt
+// nur ueber customer.companyId erreichbar (spart einen Join in jeder Abfrage
+// der Liste) und gleichzeitig Grundlage fuer die Kundennummer-Eindeutigkeit.
 model Contact {
   id         String   @id @default(cuid())
   customerId String
   customer   Customer @relation(fields: [customerId], references: [id])
+  companyId  String
+  company    Company  @relation(fields: [companyId], references: [id])
 
-  name  String
-  role  String?
-  email String?
-  phone String?
+  name   String
+  number String? // Kundennummer, automatisch vergeben, manuell aenderbar
+  role   String?
+  email  String?
+  phone  String?
+
+  quotes   Quote[]
+  invoices Invoice[]
+
+  @@unique([companyId, number])
+  @@index([companyId])
 }
 
 // ------------------------------------------------------------
@@ -545,6 +568,10 @@ model Quote {
   customer   Customer @relation(fields: [customerId], references: [id])
   inquiryId  String?
   inquiry    Inquiry? @relation(fields: [inquiryId], references: [id])
+  contactId  String?
+  contact    Contact? @relation(fields: [contactId], references: [id])
+  createdByUserId String?
+  createdByUser   User?  @relation(fields: [createdByUserId], references: [id])
 
   number    String   // fortlaufende Angebotsnummer
   title     String
@@ -647,6 +674,10 @@ model Invoice {
   customer   Customer @relation(fields: [customerId], references: [id])
   projectId  String?
   project    Project? @relation(fields: [projectId], references: [id])
+  contactId  String?
+  contact    Contact? @relation(fields: [contactId], references: [id])
+  createdByUserId String?
+  createdByUser   User?  @relation(fields: [createdByUserId], references: [id])
 
   number     String
   status     InvoiceStatus @default(DRAFT)
@@ -987,6 +1018,14 @@ model DocumentTemplate {
   showSenderLine    Boolean      @default(false) // Absenderzeile über der Empfängeradresse (DIN 5008 Fensterumschlag)
   showBankDetails   Boolean      @default(true)
   showCompanyEmail  Boolean      @default(false)
+
+  // Neues Standardlayout (Header/Footer wie bei den System-Mails). Alle mit
+  // Default true, damit Firmen ohne eigene Anpassung automatisch das neue
+  // Standardlayout bekommen ("die gesamte Vorlage ist erstmal der Standard").
+  coloredHeaderFooter Boolean @default(true) // aus = "keine Farben": weisser statt blauer Header/Footer
+  showPositionNumbers Boolean @default(true)
+  showCustomerNumber  Boolean @default(true) // im Info-Block des Headers
+  showCreator         Boolean @default(true) // Ersteller im Info-Block des Headers
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

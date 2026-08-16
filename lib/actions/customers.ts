@@ -7,9 +7,11 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentCompany, getCurrentUser } from "@/lib/session";
 import { getFieldConfig } from "@/lib/actions/field-config";
 import { FIELD_CATALOGS } from "@/lib/field-config-catalog";
+import { nextCustomerNumber } from "@/lib/customer-numbering";
 
 const customerSchema = z.object({
   name: z.string().nullish(), // Firmenname bei Geschäftskunden, sonst Fallback
+  number: z.string().nullish(),
   type: z.enum(["PRIVATE", "BUSINESS"]),
   salutation: z.enum(["HERR", "FRAU", "DIVERS"]).nullish().or(z.literal("")),
   firstName: z.string().nullish(),
@@ -98,11 +100,13 @@ export async function createCustomer(
   }
 
   const company = await getCurrentCompany();
+  const number = await nextCustomerNumber(company.id);
 
   const customer = await prisma.customer.create({
     data: {
       companyId: company.id,
       name,
+      number,
       type: parsed.data.type,
       salutation: parsed.data.type === "PRIVATE" && parsed.data.salutation ? parsed.data.salutation : null,
       firstName: parsed.data.type === "PRIVATE" ? parsed.data.firstName || null : null,
@@ -136,6 +140,7 @@ export async function updateCustomer(
 ): Promise<CustomerFormState> {
   const parsed = customerSchema.safeParse({
     name: formData.get("name"),
+    number: formData.get("number"),
     type: formData.get("type"),
     salutation: formData.get("salutation"),
     firstName: formData.get("firstName"),
@@ -173,10 +178,19 @@ export async function updateCustomer(
     };
   }
 
+  const number = parsed.data.number?.trim() || null;
+  if (number && number !== existing.number) {
+    const duplicate = await prisma.customer.findFirst({ where: { companyId: company.id, number } });
+    if (duplicate) {
+      return { errors: { number: ["Diese Kundennummer wird bereits verwendet."] } };
+    }
+  }
+
   const customer = await prisma.customer.update({
     where: { id: customerId },
     data: {
       name,
+      number,
       type: parsed.data.type,
       salutation: parsed.data.type === "PRIVATE" && parsed.data.salutation ? parsed.data.salutation : null,
       firstName: parsed.data.type === "PRIVATE" ? parsed.data.firstName || null : null,
@@ -277,6 +291,7 @@ export async function createCustomerQuick(data: {
     data: {
       companyId: company.id,
       name: data.name.trim(),
+      number: await nextCustomerNumber(company.id),
       type: data.type,
       email,
       phone,
@@ -345,9 +360,13 @@ export async function createContact(
   const customer = await prisma.customer.findFirst({ where: { id: customerId, companyId: company.id } });
   if (!customer) return;
 
+  const number = await nextCustomerNumber(company.id);
+
   await prisma.contact.create({
     data: {
       customerId,
+      companyId: company.id,
+      number,
       name: data.name.trim(),
       role: data.role?.trim() || null,
       email: data.email?.trim() || null,
@@ -356,6 +375,39 @@ export async function createContact(
   });
 
   revalidatePath(`/kunden/${customerId}`);
+  revalidatePath("/kunden");
+}
+
+export async function updateContact(
+  contactId: string,
+  customerId: string,
+  data: { name: string; number?: string; role?: string; email?: string; phone?: string }
+): Promise<{ error?: string }> {
+  if (!data.name.trim()) return { error: "Der Name darf nicht leer sein." };
+  const company = await getCurrentCompany();
+  const contact = await prisma.contact.findFirst({ where: { id: contactId, customerId, companyId: company.id } });
+  if (!contact) return { error: "Ansprechpartner nicht gefunden." };
+
+  const number = data.number?.trim() || null;
+  if (number && number !== contact.number) {
+    const duplicate = await prisma.contact.findFirst({ where: { companyId: company.id, number } });
+    if (duplicate) return { error: "Diese Kundennummer wird bereits verwendet." };
+  }
+
+  await prisma.contact.update({
+    where: { id: contactId },
+    data: {
+      name: data.name.trim(),
+      number,
+      role: data.role?.trim() || null,
+      email: data.email?.trim() || null,
+      phone: data.phone?.trim() || null,
+    },
+  });
+
+  revalidatePath(`/kunden/${customerId}`);
+  revalidatePath("/kunden");
+  return {};
 }
 
 export async function deleteContact(contactId: string, customerId: string) {
@@ -365,6 +417,7 @@ export async function deleteContact(contactId: string, customerId: string) {
 
   await prisma.contact.deleteMany({ where: { id: contactId, customerId } });
   revalidatePath(`/kunden/${customerId}`);
+  revalidatePath("/kunden");
 }
 
 export async function addCustomerComment(customerId: string, content: string) {

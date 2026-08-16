@@ -9,6 +9,7 @@ type Role = { id: string; name: string; permissions: Permissions };
 const TOGGLES: { key: keyof Permissions; label: string }[] = [
   { key: "finanzen", label: "Finanzen einsehen" },
   { key: "einblicke", label: "Einblicke einsehen" },
+  { key: "dokumentVorlagen", label: "Dokumentvorlagen anpassen" },
 ];
 
 export function RolePermissionsManager({ roles }: { roles: Role[] }) {

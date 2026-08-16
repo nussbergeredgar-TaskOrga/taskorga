@@ -9,7 +9,7 @@ import { getFieldConfig } from "@/lib/actions/field-config";
 
 export default async function AngebotBearbeitenPage({ params }: { params: { id: string } }) {
   const company = await getCurrentCompany();
-  const [quote, customers, inquiries, projects, itemTemplates, fieldConfig] = await Promise.all([
+  const [quote, customers, contacts, inquiries, projects, itemTemplates, fieldConfig] = await Promise.all([
     prisma.quote.findFirst({
       where: { id: params.id, companyId: company.id },
       include: { items: { orderBy: { position: "asc" } } },
@@ -18,6 +18,11 @@ export default async function AngebotBearbeitenPage({ params }: { params: { id: 
       where: { companyId: company.id },
       orderBy: { name: "asc" },
       select: { id: true, name: true },
+    }),
+    prisma.contact.findMany({
+      where: { companyId: company.id },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, customerId: true },
     }),
     prisma.inquiry.findMany({
       where: { companyId: company.id, status: { not: "LOST" } },
@@ -67,6 +72,7 @@ export default async function AngebotBearbeitenPage({ params }: { params: { id: 
       <div className="rounded-card border border-ink-100 bg-surface p-6 shadow-card">
         <QuoteForm
           customers={customers}
+          contacts={contacts}
           inquiries={inquiries}
           projects={projects}
           itemTemplates={itemTemplates.map((t) => ({
@@ -79,6 +85,7 @@ export default async function AngebotBearbeitenPage({ params }: { params: { id: 
           defaultValidUntil={quote.validUntil ? quote.validUntil.toISOString().slice(0, 10) : ""}
           defaultDiscountType={(quote.discountType as "AMOUNT" | "PERCENT") ?? "AMOUNT"}
           defaultCustomerId={quote.customerId}
+          defaultContactId={quote.contactId ?? undefined}
           defaultInquiryId={quote.inquiryId ?? undefined}
           defaultTitle={quote.title}
           fieldConfig={fieldConfig}

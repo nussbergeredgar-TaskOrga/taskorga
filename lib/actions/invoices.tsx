@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { renderToBuffer } from "@react-pdf/renderer";
 import { prisma } from "@/lib/prisma";
-import { getCurrentCompany } from "@/lib/session";
+import { getCurrentCompany, getCurrentUser } from "@/lib/session";
 import { sendPaymentReminderEmail, sendDocumentEmail } from "@/lib/email";
 import { getSalutationShort } from "@/lib/customer-salutation";
 import { DocumentPdf } from "@/lib/pdf/document-pdf";
@@ -17,6 +17,7 @@ import { addDays } from "@/lib/date-utils";
 
 const invoiceSchema = z.object({
   customerId: z.string().min(1, "Bitte einen Kunden auswählen"),
+  contactId: z.string().optional(),
   projectId: z.string().optional(),
   discountValue: z.string().optional(),
   discountType: z.string().optional(),
@@ -54,6 +55,7 @@ export async function createInvoice(
 ): Promise<InvoiceFormState> {
   const parsed = invoiceSchema.safeParse({
     customerId: formData.get("customerId"),
+    contactId: formData.get("contactId") || undefined,
     projectId: formData.get("projectId") || undefined,
     discountValue: formData.get("discountValue") || undefined,
     discountType: formData.get("discountType") || undefined,
@@ -82,9 +84,16 @@ export async function createInvoice(
   }
 
   const company = await getCurrentCompany();
+  const user = await getCurrentUser();
   const customer = await prisma.customer.findFirst({ where: { id: parsed.data.customerId, companyId: company.id } });
   if (!customer) {
     return { errors: { customerId: ["Kunde nicht gefunden."] } };
+  }
+  if (parsed.data.contactId) {
+    const contact = await prisma.contact.findFirst({
+      where: { id: parsed.data.contactId, customerId: parsed.data.customerId },
+    });
+    if (!contact) return { message: "Ansprechpartner nicht gefunden." };
   }
   if (parsed.data.projectId) {
     const project = await prisma.project.findFirst({ where: { id: parsed.data.projectId, companyId: company.id } });
@@ -105,6 +114,8 @@ export async function createInvoice(
       data: {
         companyId: company.id,
         customerId: parsed.data.customerId,
+        contactId: parsed.data.contactId || null,
+        createdByUserId: user.id,
         projectId: parsed.data.projectId || null,
         number,
         status: "DRAFT",
@@ -273,7 +284,13 @@ export async function sendPaymentReminder(invoiceId: string): Promise<{ error?: 
   const currentCompany = await getCurrentCompany();
   const invoice = await prisma.invoice.findFirst({
     where: { id: invoiceId, companyId: currentCompany.id },
-    include: { customer: true, company: true, items: { orderBy: { position: "asc" } } },
+    include: {
+      customer: true,
+      company: true,
+      contact: true,
+      createdByUser: { select: { name: true } },
+      items: { orderBy: { position: "asc" } },
+    },
   });
 
   if (!invoice) return { error: "Rechnung nicht gefunden." };
@@ -337,12 +354,16 @@ export async function sendPaymentReminder(invoiceId: string): Promise<{ error?: 
       validUntilOrDue={dueDateStr}
       company={pdfCompany}
       customer={invoice.customer}
+      contact={invoice.contact}
+      customerNumber={invoice.customer.number}
+      creatorName={invoice.createdByUser?.name}
       items={invoice.items.map((i) => ({
         description: i.description,
         quantity: Number(i.quantity),
         unit: i.unit,
         unitPrice: Number(i.unitPrice),
         taxRate: Number(i.taxRate),
+        position: i.position,
       }))}
       totalNet={Number(invoice.totalNet)}
       totalGross={Number(invoice.totalGross)}
@@ -357,6 +378,10 @@ export async function sendPaymentReminder(invoiceId: string): Promise<{ error?: 
       showSenderLine={template?.showSenderLine}
       showBankDetails={template?.showBankDetails}
       showCompanyEmail={template?.showCompanyEmail}
+      coloredHeaderFooterOverride={template?.coloredHeaderFooter}
+      showPositionNumbersOverride={template?.showPositionNumbers}
+      showCustomerNumberOverride={template?.showCustomerNumber}
+      showCreatorOverride={template?.showCreator}
     />
   );
 
@@ -405,7 +430,13 @@ export async function sendInvoiceEmail(
   const currentCompany = await getCurrentCompany();
   const invoice = await prisma.invoice.findFirst({
     where: { id: invoiceId, companyId: currentCompany.id },
-    include: { customer: true, company: true, items: { orderBy: { position: "asc" } } },
+    include: {
+      customer: true,
+      company: true,
+      contact: true,
+      createdByUser: { select: { name: true } },
+      items: { orderBy: { position: "asc" } },
+    },
   });
 
   if (!invoice) return { error: "Rechnung nicht gefunden." };
@@ -446,12 +477,16 @@ export async function sendInvoiceEmail(
       validUntilOrDue={dueDateStr}
       company={pdfCompany}
       customer={invoice.customer}
+      contact={invoice.contact}
+      customerNumber={invoice.customer.number}
+      creatorName={invoice.createdByUser?.name}
       items={invoice.items.map((i) => ({
         description: i.description,
         quantity: Number(i.quantity),
         unit: i.unit,
         unitPrice: Number(i.unitPrice),
         taxRate: Number(i.taxRate),
+        position: i.position,
       }))}
       totalNet={Number(invoice.totalNet)}
       totalGross={Number(invoice.totalGross)}
@@ -466,6 +501,10 @@ export async function sendInvoiceEmail(
       showSenderLine={template?.showSenderLine}
       showBankDetails={template?.showBankDetails}
       showCompanyEmail={template?.showCompanyEmail}
+      coloredHeaderFooterOverride={template?.coloredHeaderFooter}
+      showPositionNumbersOverride={template?.showPositionNumbers}
+      showCustomerNumberOverride={template?.showCustomerNumber}
+      showCreatorOverride={template?.showCreator}
     />
   );
 

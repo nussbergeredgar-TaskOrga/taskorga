@@ -9,6 +9,7 @@ export function DocumentDefaultsForm({
   defaultDiscountType,
   quoteNumberFormat,
   invoiceNumberFormat,
+  customerNumberFormat,
   defaultHourlyRate,
 }: {
   defaultQuoteValidityDays: number;
@@ -16,6 +17,7 @@ export function DocumentDefaultsForm({
   defaultDiscountType: string;
   quoteNumberFormat: string;
   invoiceNumberFormat: string;
+  customerNumberFormat: string;
   defaultHourlyRate: number | null;
 }) {
   const [pending, startTransition] = useTransition();
@@ -87,7 +89,7 @@ export function DocumentDefaultsForm({
         Ohne Stundensatz lässt sich erfasste Arbeitszeit beim Auftrag nicht in Rechnungspositionen umwandeln.
       </p>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div>
           <label className="block text-xs text-ink-500 mb-1">Angebotsnummer-Format</label>
           <input
@@ -101,6 +103,14 @@ export function DocumentDefaultsForm({
           <input
             name="invoiceNumberFormat"
             defaultValue={invoiceNumberFormat}
+            className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface font-mono"
+          />
+        </div>
+        <div>
+          <label className="block text-xs text-ink-500 mb-1">Kundennummer-Format</label>
+          <input
+            name="customerNumberFormat"
+            defaultValue={customerNumberFormat}
             className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface font-mono"
           />
         </div>

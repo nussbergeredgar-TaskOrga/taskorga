@@ -33,6 +33,7 @@ function emptyItem(): Item {
 
 export function InvoiceForm({
   customers,
+  contacts,
   projects,
   itemTemplates,
   defaultDiscountType,
@@ -40,6 +41,7 @@ export function InvoiceForm({
   fieldConfig,
 }: {
   customers: { id: string; name: string }[];
+  contacts: { id: string; name: string; customerId: string }[];
   projects: { id: string; title: string; number: string; customerId: string }[];
   itemTemplates: Template[];
   defaultDiscountType: "AMOUNT" | "PERCENT";
@@ -106,6 +108,7 @@ export function InvoiceForm({
   const grossAfterDiscount = grossBeforeDiscount * factor;
 
   const relevantProjects = projects.filter((p) => p.customerId === customerId);
+  const relevantContacts = contacts.filter((c) => c.customerId === customerId);
 
   return (
     <form action={formAction} className="space-y-6 max-w-2xl">
@@ -131,6 +134,26 @@ export function InvoiceForm({
           <p className="text-xs text-danger mt-1">{state.errors.customerId[0]}</p>
         )}
       </div>
+
+      {customerId && relevantContacts.length > 0 && (
+        <div>
+          <label htmlFor="contactId" className="block text-sm font-medium text-ink-700 mb-1.5">
+            Ansprechpartner
+          </label>
+          <select
+            id="contactId"
+            name="contactId"
+            className="w-full max-w-xs rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface"
+          >
+            <option value="">Keiner</option>
+            {relevantContacts.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
       {customerId && relevantProjects.length > 0 && (
         <div>

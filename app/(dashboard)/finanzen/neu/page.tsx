@@ -12,11 +12,16 @@ export default async function NeueRechnungPage({
   searchParams: { customerId?: string };
 }) {
   const company = await getCurrentCompany();
-  const [customers, projects, itemTemplates, fieldConfig] = await Promise.all([
+  const [customers, contacts, projects, itemTemplates, fieldConfig] = await Promise.all([
     prisma.customer.findMany({
       where: { companyId: company.id },
       orderBy: { name: "asc" },
       select: { id: true, name: true },
+    }),
+    prisma.contact.findMany({
+      where: { companyId: company.id },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, customerId: true },
     }),
     prisma.project.findMany({
       where: { companyId: company.id },
@@ -41,6 +46,7 @@ export default async function NeueRechnungPage({
       <div className="rounded-card border border-ink-100 bg-surface p-6 shadow-card">
         <InvoiceForm
           customers={customers}
+          contacts={contacts}
           projects={projects}
           itemTemplates={itemTemplates.map((t) => ({
             id: t.id,

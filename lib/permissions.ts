@@ -1,4 +1,4 @@
-export type PermissionKey = "finanzen" | "einblicke";
+export type PermissionKey = "finanzen" | "einblicke" | "dokumentVorlagen";
 
 export type Permissions = Partial<Record<PermissionKey, boolean>>;
 

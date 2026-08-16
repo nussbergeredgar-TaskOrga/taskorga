@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { renderToBuffer } from "@react-pdf/renderer";
 import { prisma } from "@/lib/prisma";
-import { getCurrentCompany } from "@/lib/session";
+import { getCurrentCompany, getCurrentUser } from "@/lib/session";
 import { DocumentPdf } from "@/lib/pdf/document-pdf";
 import { buildPlaceholderContext } from "@/lib/pdf/build-context";
 import { resolvePlaceholders } from "@/lib/document-placeholders";
@@ -17,6 +17,7 @@ import type { QuoteStatus } from "@prisma/client";
 
 const quoteSchema = z.object({
   customerId: z.string().min(1, "Bitte einen Kunden auswählen"),
+  contactId: z.string().optional(),
   inquiryId: z.string().optional(),
   projectId: z.string().optional(),
   title: z.string().min(2, "Titel muss mindestens 2 Zeichen haben"),
@@ -56,6 +57,7 @@ export async function createQuote(
 ): Promise<QuoteFormState> {
   const parsed = quoteSchema.safeParse({
     customerId: formData.get("customerId"),
+    contactId: formData.get("contactId") || undefined,
     inquiryId: formData.get("inquiryId") || undefined,
     projectId: formData.get("projectId") || undefined,
     title: formData.get("title"),
@@ -87,9 +89,16 @@ export async function createQuote(
   }
 
   const company = await getCurrentCompany();
+  const user = await getCurrentUser();
   const customer = await prisma.customer.findFirst({ where: { id: parsed.data.customerId, companyId: company.id } });
   if (!customer) {
     return { errors: { customerId: ["Kunde nicht gefunden."] } };
+  }
+  if (parsed.data.contactId) {
+    const contact = await prisma.contact.findFirst({
+      where: { id: parsed.data.contactId, customerId: parsed.data.customerId },
+    });
+    if (!contact) return { message: "Ansprechpartner nicht gefunden." };
   }
   if (parsed.data.inquiryId) {
     const inquiry = await prisma.inquiry.findFirst({ where: { id: parsed.data.inquiryId, companyId: company.id } });
@@ -109,6 +118,8 @@ export async function createQuote(
       data: {
         companyId: company.id,
         customerId: parsed.data.customerId,
+        contactId: parsed.data.contactId || null,
+        createdByUserId: user.id,
         inquiryId: parsed.data.inquiryId || null,
         number,
         title: parsed.data.title,
@@ -174,6 +185,7 @@ export async function updateQuote(
 ): Promise<QuoteFormState> {
   const parsed = quoteSchema.safeParse({
     customerId: formData.get("customerId"),
+    contactId: formData.get("contactId") || undefined,
     inquiryId: formData.get("inquiryId") || undefined,
     projectId: formData.get("projectId") || undefined,
     title: formData.get("title"),
@@ -215,6 +227,12 @@ export async function updateQuote(
   if (!customer) {
     return { errors: { customerId: ["Kunde nicht gefunden."] } };
   }
+  if (parsed.data.contactId) {
+    const contact = await prisma.contact.findFirst({
+      where: { id: parsed.data.contactId, customerId: parsed.data.customerId },
+    });
+    if (!contact) return { message: "Ansprechpartner nicht gefunden." };
+  }
 
   const discountValue = Number(parsed.data.discountValue) || 0;
   const discountType = parsed.data.discountType === "PERCENT" ? "PERCENT" : "AMOUNT";
@@ -226,6 +244,7 @@ export async function updateQuote(
       where: { id: quoteId },
       data: {
         customerId: parsed.data.customerId,
+        contactId: parsed.data.contactId || null,
         inquiryId: parsed.data.inquiryId || null,
         title: parsed.data.title,
         validUntil: parsed.data.validUntil ? new Date(parsed.data.validUntil) : null,
@@ -261,6 +280,7 @@ export async function updateQuote(
 // anderen Kunden). Immer als neuer Entwurf, unabhaengig vom Status des Originals.
 export async function duplicateQuote(quoteId: string) {
   const company = await getCurrentCompany();
+  const user = await getCurrentUser();
   const original = await prisma.quote.findFirst({
     where: { id: quoteId, companyId: company.id },
     include: { items: { orderBy: { position: "asc" } } },
@@ -272,6 +292,8 @@ export async function duplicateQuote(quoteId: string) {
       data: {
         companyId: company.id,
         customerId: original.customerId,
+        contactId: original.contactId,
+        createdByUserId: user.id,
         number,
         title: `${original.title} (Kopie)`,
         status: "DRAFT",
@@ -413,7 +435,13 @@ export async function sendQuoteEmail(
   const currentCompany = await getCurrentCompany();
   const quote = await prisma.quote.findFirst({
     where: { id: quoteId, companyId: currentCompany.id },
-    include: { customer: true, company: true, items: { orderBy: { position: "asc" } } },
+    include: {
+      customer: true,
+      company: true,
+      contact: true,
+      createdByUser: { select: { name: true } },
+      items: { orderBy: { position: "asc" } },
+    },
   });
 
   if (!quote) return { error: "Angebot nicht gefunden." };
@@ -449,12 +477,16 @@ export async function sendQuoteEmail(
       validUntilOrDue={validUntilStr}
       company={pdfCompany}
       customer={quote.customer}
+      contact={quote.contact}
+      customerNumber={quote.customer.number}
+      creatorName={quote.createdByUser?.name}
       items={quote.items.map((i) => ({
         description: i.description,
         quantity: Number(i.quantity),
         unit: i.unit,
         unitPrice: Number(i.unitPrice),
         taxRate: Number(i.taxRate),
+        position: i.position,
       }))}
       totalNet={Number(quote.totalNet)}
       totalGross={Number(quote.totalGross)}
@@ -469,6 +501,10 @@ export async function sendQuoteEmail(
       showSenderLine={template?.showSenderLine}
       showBankDetails={template?.showBankDetails}
       showCompanyEmail={template?.showCompanyEmail}
+      coloredHeaderFooterOverride={template?.coloredHeaderFooter}
+      showPositionNumbersOverride={template?.showPositionNumbers}
+      showCustomerNumberOverride={template?.showCustomerNumber}
+      showCreatorOverride={template?.showCreator}
     />
   );
 

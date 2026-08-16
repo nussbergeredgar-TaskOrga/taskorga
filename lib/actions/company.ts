@@ -74,6 +74,7 @@ export async function updateDocumentDefaults(formData: FormData) {
       defaultDiscountType: (formData.get("defaultDiscountType") as string) || "AMOUNT",
       quoteNumberFormat: (formData.get("quoteNumberFormat") as string)?.trim() || "ANG-{YYYY}-{NNNN}",
       invoiceNumberFormat: (formData.get("invoiceNumberFormat") as string)?.trim() || "RE-{YYYY}-{NNNN}",
+      customerNumberFormat: (formData.get("customerNumberFormat") as string)?.trim() || "KD-{NNNN}",
       defaultHourlyRate: hourlyRate != null && Number.isFinite(hourlyRate) && hourlyRate > 0 ? hourlyRate : null,
     },
   });

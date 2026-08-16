@@ -39,7 +39,19 @@ export default async function AngebotVorschauPage({ params }: { params: { id: st
         </p>
       </div>
 
-      <div className="mx-auto max-w-3xl rounded-card border border-ink-100 bg-surface p-2 shadow-card">
+      {/* Mobile PDF-Viewer im iframe skaliert nicht zuverlaessig auf die
+          Bildschirmbreite (v. a. iOS Safari) -- dort direkt den nativen
+          Viewer in einem neuen Tab nutzen statt eines abgeschnittenen iframes. */}
+      <a
+        href={`/api/angebote/${quote.id}/pdf`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex sm:hidden items-center justify-center gap-1.5 rounded-lg bg-brand-500 text-white text-sm font-medium px-4 py-3 hover:bg-brand-600 transition-colors"
+      >
+        <ExternalLink size={15} /> PDF öffnen
+      </a>
+
+      <div className="hidden sm:block mx-auto max-w-3xl rounded-card border border-ink-100 bg-surface p-2 shadow-card">
         <iframe
           src={`/api/angebote/${quote.id}/pdf`}
           className="w-full rounded-lg"

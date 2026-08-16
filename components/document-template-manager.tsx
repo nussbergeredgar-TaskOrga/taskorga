@@ -20,9 +20,13 @@ type Template = {
   showSenderLine: boolean;
   showBankDetails: boolean;
   showCompanyEmail: boolean;
+  coloredHeaderFooter: boolean;
+  showPositionNumbers: boolean;
+  showCustomerNumber: boolean;
+  showCreator: boolean;
 };
 
-function TemplateRow({ template }: { template: Template }) {
+function TemplateRow({ template, isAdmin }: { template: Template; isAdmin: boolean }) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [pending, startTransition] = useTransition();
@@ -55,20 +59,22 @@ function TemplateRow({ template }: { template: Template }) {
         >
           <Pencil size={13} /> Bearbeiten
         </button>
-        <button
-          disabled={pending}
-          onClick={() => {
-            if (confirm(`Vorlage „${template.name}“ wirklich löschen?`)) {
-              startTransition(async () => {
-                await deleteDocumentTemplate(template.id);
-                router.refresh();
-              });
-            }
-          }}
-          className="flex items-center gap-1 text-xs text-ink-500 hover:text-danger transition-colors"
-        >
-          <Trash2 size={13} /> Löschen
-        </button>
+        {isAdmin && (
+          <button
+            disabled={pending}
+            onClick={() => {
+              if (confirm(`Vorlage „${template.name}“ wirklich löschen?`)) {
+                startTransition(async () => {
+                  await deleteDocumentTemplate(template.id);
+                  router.refresh();
+                });
+              }
+            }}
+            className="flex items-center gap-1 text-xs text-ink-500 hover:text-danger transition-colors"
+          >
+            <Trash2 size={13} /> Löschen
+          </button>
+        )}
       </div>
 
       {editing && (
@@ -85,7 +91,17 @@ function TemplateRow({ template }: { template: Template }) {
   );
 }
 
-function TemplateSection({ type, title, templates }: { type: DocumentTemplateType; title: string; templates: Template[] }) {
+function TemplateSection({
+  type,
+  title,
+  templates,
+  isAdmin,
+}: {
+  type: DocumentTemplateType;
+  title: string;
+  templates: Template[];
+  isAdmin: boolean;
+}) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
 
@@ -108,7 +124,7 @@ function TemplateSection({ type, title, templates }: { type: DocumentTemplateTyp
       ) : (
         <div className="space-y-3">
           {templates.map((t) => (
-            <TemplateRow key={t.id} template={t} />
+            <TemplateRow key={t.id} template={t} isAdmin={isAdmin} />
           ))}
         </div>
       )}
@@ -116,14 +132,14 @@ function TemplateSection({ type, title, templates }: { type: DocumentTemplateTyp
   );
 }
 
-export function DocumentTemplateManager({ templates }: { templates: Template[] }) {
+export function DocumentTemplateManager({ templates, isAdmin }: { templates: Template[]; isAdmin: boolean }) {
   const quoteTemplates = templates.filter((t) => t.type === "QUOTE");
   const invoiceTemplates = templates.filter((t) => t.type === "INVOICE");
 
   return (
     <div className="space-y-6">
-      <TemplateSection type="QUOTE" title="Angebotsvorlagen" templates={quoteTemplates} />
-      <TemplateSection type="INVOICE" title="Rechnungsvorlagen" templates={invoiceTemplates} />
+      <TemplateSection type="QUOTE" title="Angebotsvorlagen" templates={quoteTemplates} isAdmin={isAdmin} />
+      <TemplateSection type="INVOICE" title="Rechnungsvorlagen" templates={invoiceTemplates} isAdmin={isAdmin} />
     </div>
   );
 }

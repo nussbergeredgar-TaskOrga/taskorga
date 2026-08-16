@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { getCurrentCompany } from "@/lib/session";
+import { getCurrentCompany, getCurrentUser } from "@/lib/session";
 import { createWithUniqueNumber } from "@/lib/numbering";
 import type { ProjectStatus } from "@prisma/client";
 
@@ -162,6 +162,8 @@ export async function createInvoiceFromProject(
     taxRate: TIME_TAX_RATE,
   }));
 
+  const currentUser = await getCurrentUser();
+
   const invoice = await createWithUniqueNumber(
     "invoice",
     project.companyId,
@@ -171,6 +173,8 @@ export async function createInvoiceFromProject(
         data: {
           companyId: project.companyId,
           customerId: project.customerId,
+          contactId: project.quote?.contactId ?? null,
+          createdByUserId: currentUser.id,
           projectId: project.id,
           number,
           status: "DRAFT",

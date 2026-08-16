@@ -2,13 +2,14 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Building2, User as UserIcon } from "lucide-react";
+import { Building2, User as UserIcon, UserRound } from "lucide-react";
 import { ColumnConfigMenu } from "@/components/column-config-menu";
 import { EditableCell } from "@/components/editable-cell";
 import { MobileListRow } from "@/components/mobile-list-row";
 import { saveListViewConfig, type ColumnConfig } from "@/lib/actions/list-view";
 import { updateCustomerField } from "@/lib/actions/customers";
 import { CUSTOMER_COLUMN_LABELS, type CustomerColumnKey } from "@/lib/customer-columns";
+import type { ContactRow } from "@/components/customers-view";
 
 type CustomerRow = {
   id: string;
@@ -58,9 +59,11 @@ function mobileFieldValue(col: ColumnConfig, c: CustomerRow): string {
 
 export function CustomersTableView({
   customers,
+  contacts = [],
   initialConfig,
 }: {
   customers: CustomerRow[];
+  contacts?: ContactRow[];
   initialConfig: { viewMode: "cards" | "table"; columns: ColumnConfig[] };
 }) {
   const [columns, setColumns] = useState(initialConfig.columns);
@@ -120,7 +123,7 @@ export function CustomersTableView({
         <ColumnConfigMenu columns={columns} labels={CUSTOMER_COLUMN_LABELS} onChange={setColumns} />
       </div>
 
-      {customers.length === 0 ? (
+      {customers.length === 0 && contacts.length === 0 ? (
         <div className="rounded-card border border-dashed border-ink-100 bg-surface p-8 text-center">
           <p className="text-ink-500 text-sm">Keine Kunden mit diesen Filtern.</p>
         </div>
@@ -182,6 +185,23 @@ export function CustomersTableView({
                   ))}
                 </tr>
               ))}
+              {contacts.map((c) => (
+                <tr key={c.id} className="border-b border-ink-100 last:border-0 hover:bg-ink-50/50 transition-colors">
+                  <td className="px-3 py-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <UserRound size={14} className="text-ink-300 shrink-0" />
+                      <Link href={`/kunden/${c.parentCustomerId}`} className="font-medium text-ink-900 hover:underline truncate">
+                        {c.name}
+                      </Link>
+                    </div>
+                  </td>
+                  <td className="px-3 py-2 truncate text-ink-500" colSpan={visibleColumns.length}>
+                    Ansprechpartner bei {c.parentCustomerName}
+                    {c.role ? ` · ${c.role}` : ""}
+                    {c.email || c.phone ? ` · ${[c.email, c.phone].filter(Boolean).join(" · ")}` : ""}
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
@@ -203,6 +223,20 @@ export function CustomersTableView({
                 label: CUSTOMER_COLUMN_LABELS[col.key as CustomerColumnKey] ?? col.key,
                 value: mobileFieldValue(col, c),
               }))}
+            />
+          ))}
+          {contacts.map((c) => (
+            <MobileListRow
+              key={c.id}
+              href={`/kunden/${c.parentCustomerId}`}
+              title={c.name}
+              icon={<UserRound size={14} className="shrink-0 text-ink-300" />}
+              fields={[
+                { label: "Unternehmen", value: c.parentCustomerName },
+                ...(c.role ? [{ label: "Position", value: c.role }] : []),
+                ...(c.email ? [{ label: "E-Mail", value: c.email }] : []),
+                ...(c.phone ? [{ label: "Telefon", value: c.phone }] : []),
+              ]}
             />
           ))}
         </div>

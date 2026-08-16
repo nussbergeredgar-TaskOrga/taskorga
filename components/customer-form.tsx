@@ -10,6 +10,7 @@ const initialState: CustomerFormState = {};
 type ExistingCustomer = {
   id: string;
   name: string;
+  number: string | null;
   type: "PRIVATE" | "BUSINESS";
   salutation: "HERR" | "FRAU" | "DIVERS" | null;
   firstName: string | null;
@@ -101,6 +102,15 @@ export function CustomerForm({
           <option value="BUSINESS">Geschäftskunde</option>
         </select>
       </div>
+
+      {customer && (
+        <Field
+          label="Kundennummer"
+          name="number"
+          defaultValue={customer.number}
+          errors={state.errors?.number}
+        />
+      )}
 
       {type === "PRIVATE" ? (
         <>

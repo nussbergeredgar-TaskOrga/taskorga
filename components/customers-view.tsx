@@ -2,13 +2,38 @@
 
 import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
-import { LayoutGrid, Table2, Building2, User as UserIcon, ChevronDown } from "lucide-react";
+import { LayoutGrid, Table2, Building2, User as UserIcon, UserRound, ChevronDown } from "lucide-react";
 import { CustomersTableView } from "@/components/customers-table-view";
 import { FilterSwitcher } from "@/components/filter-switcher";
 import { saveListViewConfig, type ColumnConfig } from "@/lib/actions/list-view";
 import type { FilterEntityState, FilterFieldDef } from "@/lib/actions/filters";
 import { CUSTOMER_COLUMN_LABELS } from "@/lib/customer-columns";
 import { cn } from "@/lib/utils";
+
+function ContactCard({ contact }: { contact: ContactRow }) {
+  return (
+    <Link
+      href={`/kunden/${contact.parentCustomerId}`}
+      className="block rounded-card border-l-4 border-l-ink-300 bg-surface p-5 shadow-card hover:shadow-cardHover transition-shadow"
+    >
+      <div className="flex items-start justify-between">
+        <div className="min-w-0">
+          <h3 className="truncate font-display font-semibold text-ink-900">{contact.name}</h3>
+          <p className="text-sm text-ink-500 mt-0.5 truncate">
+            Ansprechpartner bei {contact.parentCustomerName}
+            {contact.role ? ` · ${contact.role}` : ""}
+          </p>
+        </div>
+        <UserRound size={18} className="text-ink-300 shrink-0" />
+      </div>
+      {(contact.email || contact.phone) && (
+        <p className="mt-4 text-xs text-ink-500 truncate">
+          {[contact.email, contact.phone].filter(Boolean).join(" · ")}
+        </p>
+      )}
+    </Link>
+  );
+}
 
 function CustomerCard({ customer }: { customer: CustomerRow }) {
   const [expanded, setExpanded] = useState(false);
@@ -92,6 +117,7 @@ function CustomerCard({ customer }: { customer: CustomerRow }) {
 type CustomerRow = {
   id: string;
   name: string;
+  number: string | null;
   type: "PRIVATE" | "BUSINESS";
   email: string | null;
   phone: string | null;
@@ -103,16 +129,29 @@ type CustomerRow = {
   invoicesCount: number;
 };
 
+export type ContactRow = {
+  id: string;
+  name: string;
+  number: string | null;
+  role: string | null;
+  email: string | null;
+  phone: string | null;
+  parentCustomerId: string;
+  parentCustomerName: string;
+};
+
 // Filterung passiert hier statt in der Tabellen-Ansicht, damit sie fuer
 // Karten- und Listenansicht gleichermassen gilt (jede Ansicht ist filterbar,
 // nicht nur die Liste).
 export function CustomersView({
   customers,
+  contacts,
   initialViewMode,
   initialColumns,
   initialFilterState,
 }: {
   customers: CustomerRow[];
+  contacts?: ContactRow[];
   initialViewMode: "cards" | "table";
   initialColumns: ColumnConfig[];
   initialFilterState: FilterEntityState;
@@ -196,6 +235,23 @@ export function CustomersView({
     });
   }, [customers, search, activeFilter]);
 
+  // Ansprechpartner laufen nur zusaetzlich mit durch die Liste -- die
+  // erweiterten Spalten-Filter (Ort, PLZ, Auftraege …) gelten nur fuer
+  // Kunden, da Kontakte diese Felder nicht haben; die Freitextsuche gilt fuer
+  // beide gemeinsam, ebenso wird bei aktivem Spalten-Filter nichts angezeigt,
+  // das nicht zu einem Kunden gehoert (sonst wirkt der Filter inkonsistent).
+  const filteredContacts = useMemo(() => {
+    if (!contacts || activeFilter) return [];
+    const q = search.trim().toLowerCase();
+    if (!q) return contacts;
+    return contacts.filter(
+      (c) =>
+        c.name.toLowerCase().includes(q) ||
+        (c.email ?? "").toLowerCase().includes(q) ||
+        c.parentCustomerName.toLowerCase().includes(q)
+    );
+  }, [contacts, search, activeFilter]);
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -233,8 +289,8 @@ export function CustomersView({
       </div>
 
       {viewMode === "table" ? (
-        <CustomersTableView customers={filtered} initialConfig={{ viewMode, columns: initialColumns }} />
-      ) : filtered.length === 0 ? (
+        <CustomersTableView customers={filtered} contacts={filteredContacts} initialConfig={{ viewMode, columns: initialColumns }} />
+      ) : filtered.length === 0 && filteredContacts.length === 0 ? (
         <div className="rounded-card border border-dashed border-ink-100 bg-surface p-8 text-center">
           <p className="text-ink-500 text-sm">Keine Kunden mit diesen Filtern.</p>
         </div>
@@ -242,6 +298,9 @@ export function CustomersView({
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {filtered.map((customer) => (
             <CustomerCard key={customer.id} customer={customer} />
+          ))}
+          {filteredContacts.map((contact) => (
+            <ContactCard key={contact.id} contact={contact} />
           ))}
         </div>
       )}

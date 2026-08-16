@@ -1,6 +1,6 @@
 import { Document, Page, Text, View, Image, StyleSheet } from "@react-pdf/renderer";
 
-type Item = { description: string; quantity: number; unit: string; unitPrice: number; taxRate?: number };
+type Item = { description: string; quantity: number; unit: string; unitPrice: number; taxRate?: number; position?: number };
 
 type CompanyInfo = {
   name: string;
@@ -23,10 +23,13 @@ export type LogoPosition = "TOP_LEFT" | "TOP_RIGHT" | "TOP_CENTER" | "HIDDEN";
 
 type CustomerInfo = {
   name: string;
+  firstName?: string | null;
   address?: string | null;
   zip?: string | null;
   city?: string | null;
 };
+
+type ContactInfo = { name: string };
 
 export function DocumentPdf({
   kind,
@@ -36,6 +39,9 @@ export function DocumentPdf({
   validUntilOrDue,
   company,
   customer,
+  contact,
+  customerNumber,
+  creatorName,
   items,
   totalNet,
   totalGross,
@@ -50,6 +56,10 @@ export function DocumentPdf({
   showSenderLine = false,
   showBankDetails = true,
   showCompanyEmail = false,
+  coloredHeaderFooterOverride,
+  showPositionNumbersOverride,
+  showCustomerNumberOverride,
+  showCreatorOverride,
 }: {
   kind: "Angebot" | "Rechnung";
   number: string;
@@ -58,6 +68,9 @@ export function DocumentPdf({
   validUntilOrDue?: string;
   company: CompanyInfo;
   customer: CustomerInfo;
+  contact?: ContactInfo | null;
+  customerNumber?: string | null;
+  creatorName?: string | null;
   items: Item[];
   totalNet: number;
   totalGross: number;
@@ -72,6 +85,10 @@ export function DocumentPdf({
   showSenderLine?: boolean;
   showBankDetails?: boolean;
   showCompanyEmail?: boolean;
+  coloredHeaderFooterOverride?: boolean;
+  showPositionNumbersOverride?: boolean;
+  showCustomerNumberOverride?: boolean;
+  showCreatorOverride?: boolean;
 }) {
   const accent = accentColorOverride || company.documentAccentColor || "#2F5FFF";
   const showVat = showVatOverride ?? company.showVatOnDocuments !== false;
@@ -80,6 +97,14 @@ export function DocumentPdf({
   const senderLine = [company.name, company.address, [company.zip, company.city].filter(Boolean).join(" ")]
     .filter(Boolean)
     .join(" · ");
+
+  const colored = coloredHeaderFooterOverride ?? true;
+  const showPositionNumbers = showPositionNumbersOverride ?? true;
+  const showCustomerNumberBlock = (showCustomerNumberOverride ?? true) && !!customerNumber;
+  const showCreatorBlock = (showCreatorOverride ?? true) && !!creatorName;
+
+  const greetingSource = contact?.name?.trim() || customer.firstName?.trim() || customer.name;
+  const greetingFirstName = greetingSource.split(" ")[0];
 
   // Netto/MwSt je Steuersatz gruppieren (Positionen können unterschiedliche Sätze haben)
   const netBeforeDiscount = items.reduce((sum, i) => sum + i.quantity * i.unitPrice, 0);
@@ -104,25 +129,37 @@ export function DocumentPdf({
     .map(([rate, { net }]) => ({ rate, net, vat: net * (rate / 100) }))
     .sort((a, b) => b.rate - a.rate);
 
+  const bandText = colored ? "#FFFFFF" : "#1C2128";
+  const bandSubText = colored ? "#DCE4FF" : "#5B636D";
+
   const styles = StyleSheet.create({
-    page: { padding: 40, fontSize: 10, fontFamily: "Helvetica", color: "#1C2128" },
+    page: { padding: 0, fontSize: 10, fontFamily: "Helvetica", color: "#1C2128" },
+    headerBand: {
+      backgroundColor: colored ? accent : "#FFFFFF",
+      borderBottomWidth: colored ? 0 : 0.5,
+      borderBottomColor: "#E8EAED",
+      paddingHorizontal: 40,
+      paddingVertical: 20,
+    },
     headerRow:
       logoPosition === "TOP_CENTER"
-        ? { flexDirection: "column", alignItems: "center", marginBottom: 25 }
+        ? { flexDirection: "column", alignItems: "center" }
         : {
             flexDirection: logoPosition === "TOP_LEFT" ? "row-reverse" : "row",
             justifyContent: "space-between",
             alignItems: "flex-start",
-            marginBottom: 25,
           },
-    logo: logoPosition === "TOP_CENTER" ? { width: 70, height: 70, objectFit: "contain", marginBottom: 8 } : { width: 70, height: 70, objectFit: "contain" },
-    companyName: { fontSize: 13, fontWeight: 700, color: "#1C2128", marginBottom: 3 },
-    companyBlock: { fontSize: 9, color: "#5B636D" },
-    companyBlockCenter: { fontSize: 9, color: "#5B636D", textAlign: "center" },
+    logo: { width: 44, height: 44, objectFit: "contain", borderRadius: 6 },
+    companyName: { fontSize: 14, fontWeight: 700, color: bandText, marginBottom: 3 },
+    companyBlock: { fontSize: 9, color: bandSubText },
+    infoBlock: { marginTop: 8, alignItems: "flex-end" },
+    infoBlockCenter: { marginTop: 8, alignItems: "center" },
+    infoLine: { fontSize: 8.5, color: bandSubText, marginBottom: 1.5 },
+    body: { paddingHorizontal: 40, paddingTop: 24, paddingBottom: 90, flexGrow: 1 },
     title: { fontSize: 18, fontWeight: 700, marginBottom: 4, color: accent },
-    meta: { fontSize: 9, color: "#5B636D", marginBottom: 20 },
     senderLine: { fontSize: 7, color: "#A8AFB8", marginBottom: 4 },
-    customerBlock: { marginBottom: 20, fontSize: 10 },
+    customerBlock: { marginBottom: 14, fontSize: 10 },
+    greeting: { fontSize: 10, marginBottom: 10 },
     intro: { fontSize: 10, marginBottom: 15, lineHeight: 1.4 },
     subject: { fontSize: 11, fontWeight: 700, marginBottom: 10 },
     table: { width: "100%", marginBottom: 20 },
@@ -139,6 +176,7 @@ export function DocumentPdf({
       borderBottomWidth: 0.5,
       borderBottomColor: "#E8EAED",
     },
+    colPos: { flex: 0.4, color: "#5B636D" },
     colDesc: { flex: 4 },
     colQty: { flex: 1, textAlign: "right" },
     colUnit: { flex: 1, textAlign: "right" },
@@ -162,142 +200,188 @@ export function DocumentPdf({
     grossLabel: { fontSize: 11, fontWeight: 700 },
     grossValue: { fontSize: 11, fontWeight: 700 },
     vatNote: { fontSize: 8, color: "#5B636D", marginTop: 6, textAlign: "right" },
-    footer: {
+    footerBand: {
       position: "absolute",
-      bottom: 30,
-      left: 40,
-      right: 40,
-      fontSize: 8,
-      color: "#A8AFB8",
-      borderTopWidth: 0.5,
+      bottom: 0,
+      left: 0,
+      right: 0,
+      backgroundColor: colored ? accent : "#FFFFFF",
+      borderTopWidth: colored ? 0 : 0.5,
       borderTopColor: "#E8EAED",
-      paddingTop: 8,
+      paddingHorizontal: 40,
+      paddingVertical: 14,
     },
+    footerRow: { flexDirection: "row", justifyContent: "space-between" },
+    footerText: { fontSize: 8, color: bandSubText, marginBottom: 3 },
+    footerCompanyName: { fontSize: 9, fontWeight: 700, color: bandText },
+    footerLine: { fontSize: 8, color: bandSubText, textAlign: "right", marginBottom: 1.5 },
   });
+
+  const infoLines = (
+    <View style={logoPosition === "TOP_CENTER" ? styles.infoBlockCenter : styles.infoBlock}>
+      {showCustomerNumberBlock && <Text style={styles.infoLine}>Kundennummer: {customerNumber}</Text>}
+      {showCreatorBlock && <Text style={styles.infoLine}>Ersteller: {creatorName}</Text>}
+      <Text style={styles.infoLine}>Datum: {createdAt}</Text>
+      {validUntilOrDue && (
+        <Text style={styles.infoLine}>
+          {kind === "Angebot" ? "Gültig bis" : "Fällig am"}: {validUntilOrDue}
+        </Text>
+      )}
+    </View>
+  );
+
+  const logoImage = logoPosition !== "HIDDEN" && company.logoUrl ? <Image src={company.logoUrl} style={styles.logo} /> : null;
 
   return (
     <Document>
       <Page size="A4" style={styles.page}>
-        <View style={styles.headerRow}>
-          <View>
-            <Text style={logoPosition === "TOP_CENTER" ? [styles.companyName, { textAlign: "center" }] : styles.companyName}>
-              {company.name}
-            </Text>
-            <View style={logoPosition === "TOP_CENTER" ? styles.companyBlockCenter : styles.companyBlock}>
-              {company.address && <Text>{company.address}</Text>}
-              {(company.zip || company.city) && (
-                <Text>{[company.zip, company.city].filter(Boolean).join(" ")}</Text>
-              )}
-              {company.taxNumber && <Text>Steuernummer: {company.taxNumber}</Text>}
-              {company.vatId && <Text>USt-IdNr.: {company.vatId}</Text>}
-              {showCompanyEmail && company.email && <Text>{company.email}</Text>}
-            </View>
-          </View>
-          {logoPosition !== "HIDDEN" && company.logoUrl && <Image src={company.logoUrl} style={styles.logo} />}
-        </View>
-
-        <Text style={styles.title}>
-          {kind} {number}
-        </Text>
-        <Text style={styles.meta}>
-          Datum: {createdAt}
-          {validUntilOrDue
-            ? `   ${kind === "Angebot" ? "Gültig bis" : "Fällig am"}: ${validUntilOrDue}`
-            : ""}
-        </Text>
-
-        {showSenderLine && senderLine && <Text style={styles.senderLine}>{senderLine}</Text>}
-
-        <View style={styles.customerBlock}>
-          <Text>{customer.name}</Text>
-          {customer.address && <Text>{customer.address}</Text>}
-          {(customer.zip || customer.city) && (
-            <Text>{[customer.zip, customer.city].filter(Boolean).join(" ")}</Text>
-          )}
-        </View>
-
-        {introText && <Text style={styles.intro}>{introText}</Text>}
-
-        <Text style={styles.subject}>{title}</Text>
-
-        <View style={styles.table}>
-          <View style={styles.tableHeader}>
-            <Text style={[styles.colDesc, styles.headerCell]}>BESCHREIBUNG</Text>
-            <Text style={[styles.colQty, styles.headerCell]}>MENGE</Text>
-            <Text style={[styles.colUnit, styles.headerCell]}>EINHEIT</Text>
-            <Text style={[styles.colPrice, styles.headerCell]}>EINZELPREIS</Text>
-            {showVat && <Text style={[styles.colVat, styles.headerCell]}>MWST.</Text>}
-            <Text style={[styles.colTotal, styles.headerCell]}>SUMME</Text>
-          </View>
-          {items.map((item, i) => (
-            <View style={styles.tableRow} key={i}>
-              <Text style={styles.colDesc}>{item.description}</Text>
-              <Text style={styles.colQty}>{item.quantity}</Text>
-              <Text style={styles.colUnit}>{item.unit}</Text>
-              <Text style={styles.colPrice}>{item.unitPrice.toLocaleString("de-DE")} €</Text>
-              {showVat && <Text style={styles.colVat}>{item.taxRate ?? taxRate}%</Text>}
-              <Text style={styles.colTotal}>
-                {(item.quantity * item.unitPrice).toLocaleString("de-DE")} €
+        <View style={styles.headerBand}>
+          {logoPosition === "TOP_CENTER" ? (
+            <View style={styles.headerRow}>
+              {logoImage}
+              <Text style={[styles.companyName, { textAlign: "center", marginTop: logoImage ? 8 : 0 }]}>
+                {company.name}
               </Text>
-            </View>
-          ))}
-        </View>
-
-        <View style={styles.summary}>
-          {discountValue ? (
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>
-                Rabatt {discountType === "PERCENT" ? `(${discountValue}%)` : ""}
-              </Text>
-              <Text style={styles.summaryValue}>
-                −{(netBeforeDiscount - netBeforeDiscount * discountFactor).toLocaleString("de-DE")} €
-              </Text>
-            </View>
-          ) : null}
-
-          {showVat ? (
-            <>
-              {rateRows.map((r) => (
-                <View key={r.rate} style={styles.summaryRow}>
-                  <Text style={styles.summaryLabel}>
-                    Netto {rateRows.length > 1 ? `(${r.rate}%)` : ""}
+              <View style={{ alignItems: "center" }}>
+                {company.address && <Text style={[styles.companyBlock, { textAlign: "center" }]}>{company.address}</Text>}
+                {(company.zip || company.city) && (
+                  <Text style={[styles.companyBlock, { textAlign: "center" }]}>
+                    {[company.zip, company.city].filter(Boolean).join(" ")}
                   </Text>
-                  <Text style={styles.summaryValue}>{r.net.toLocaleString("de-DE")} €</Text>
-                </View>
-              ))}
-              {rateRows.map((r) => (
-                <View key={`vat-${r.rate}`} style={styles.summaryRow}>
-                  <Text style={styles.summaryLabel}>MwSt. ({r.rate}%)</Text>
-                  <Text style={styles.summaryValue}>{r.vat.toLocaleString("de-DE")} €</Text>
-                </View>
-              ))}
-              <View style={styles.grossRow}>
-                <Text style={styles.grossLabel}>Gesamt</Text>
-                <Text style={styles.grossValue}>{totalGross.toLocaleString("de-DE")} €</Text>
+                )}
+                {showCompanyEmail && company.email && (
+                  <Text style={[styles.companyBlock, { textAlign: "center" }]}>{company.email}</Text>
+                )}
               </View>
-            </>
+              {infoLines}
+            </View>
           ) : (
-            <>
-              <View style={styles.grossRow}>
-                <Text style={styles.grossLabel}>Gesamtbetrag</Text>
-                <Text style={styles.grossValue}>{totalGross.toLocaleString("de-DE")} €</Text>
+            <View style={styles.headerRow}>
+              <View>
+                <Text style={styles.companyName}>{company.name}</Text>
+                <View style={styles.companyBlock}>
+                  {company.address && <Text>{company.address}</Text>}
+                  {(company.zip || company.city) && <Text>{[company.zip, company.city].filter(Boolean).join(" ")}</Text>}
+                  {showCompanyEmail && company.email && <Text>{company.email}</Text>}
+                </View>
               </View>
-              <Text style={styles.vatNote}>
-                Gemäß §19 UStG wird keine Umsatzsteuer berechnet.
-              </Text>
-            </>
+              <View style={{ alignItems: "flex-end" }}>
+                {logoImage}
+                {infoLines}
+              </View>
+            </View>
           )}
         </View>
 
-        <View style={styles.footer}>
-          {footerText && <Text style={{ marginBottom: 4 }}>{footerText}</Text>}
-          <Text>
-            {company.name}
-            {showCompanyEmail && company.email ? `   ·   ${company.email}` : ""}
-            {showBankDetails && company.bankName ? `   ·   ${company.bankName}` : ""}
-            {showBankDetails && company.iban ? `   ·   IBAN: ${company.iban}` : ""}
-            {showBankDetails && company.bic ? `   ·   BIC: ${company.bic}` : ""}
+        <View style={styles.body}>
+          <Text style={styles.title}>
+            {kind} {number}
           </Text>
+
+          {showSenderLine && senderLine && <Text style={styles.senderLine}>{senderLine}</Text>}
+
+          <View style={styles.customerBlock}>
+            <Text>{customer.name}</Text>
+            {contact?.name && <Text>z. Hd. {contact.name}</Text>}
+            {customer.address && <Text>{customer.address}</Text>}
+            {(customer.zip || customer.city) && (
+              <Text>{[customer.zip, customer.city].filter(Boolean).join(" ")}</Text>
+            )}
+          </View>
+
+          <Text style={styles.greeting}>Hallo {greetingFirstName},</Text>
+
+          {introText && <Text style={styles.intro}>{introText}</Text>}
+
+          <Text style={styles.subject}>{title}</Text>
+
+          <View style={styles.table}>
+            <View style={styles.tableHeader}>
+              {showPositionNumbers && <Text style={[styles.colPos, styles.headerCell]}>NR.</Text>}
+              <Text style={[styles.colDesc, styles.headerCell]}>BESCHREIBUNG</Text>
+              <Text style={[styles.colQty, styles.headerCell]}>MENGE</Text>
+              <Text style={[styles.colUnit, styles.headerCell]}>EINHEIT</Text>
+              <Text style={[styles.colPrice, styles.headerCell]}>EINZELPREIS</Text>
+              {showVat && <Text style={[styles.colVat, styles.headerCell]}>MWST.</Text>}
+              <Text style={[styles.colTotal, styles.headerCell]}>SUMME</Text>
+            </View>
+            {items.map((item, i) => (
+              <View style={styles.tableRow} key={i}>
+                {showPositionNumbers && <Text style={styles.colPos}>{item.position ?? i + 1}</Text>}
+                <Text style={styles.colDesc}>{item.description}</Text>
+                <Text style={styles.colQty}>{item.quantity}</Text>
+                <Text style={styles.colUnit}>{item.unit}</Text>
+                <Text style={styles.colPrice}>{item.unitPrice.toLocaleString("de-DE")} €</Text>
+                {showVat && <Text style={styles.colVat}>{item.taxRate ?? taxRate}%</Text>}
+                <Text style={styles.colTotal}>
+                  {(item.quantity * item.unitPrice).toLocaleString("de-DE")} €
+                </Text>
+              </View>
+            ))}
+          </View>
+
+          <View style={styles.summary}>
+            {discountValue ? (
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>
+                  Rabatt {discountType === "PERCENT" ? `(${discountValue}%)` : ""}
+                </Text>
+                <Text style={styles.summaryValue}>
+                  −{(netBeforeDiscount - netBeforeDiscount * discountFactor).toLocaleString("de-DE")} €
+                </Text>
+              </View>
+            ) : null}
+
+            {showVat ? (
+              <>
+                {rateRows.map((r) => (
+                  <View key={r.rate} style={styles.summaryRow}>
+                    <Text style={styles.summaryLabel}>
+                      Netto {rateRows.length > 1 ? `(${r.rate}%)` : ""}
+                    </Text>
+                    <Text style={styles.summaryValue}>{r.net.toLocaleString("de-DE")} €</Text>
+                  </View>
+                ))}
+                {rateRows.map((r) => (
+                  <View key={`vat-${r.rate}`} style={styles.summaryRow}>
+                    <Text style={styles.summaryLabel}>MwSt. ({r.rate}%)</Text>
+                    <Text style={styles.summaryValue}>{r.vat.toLocaleString("de-DE")} €</Text>
+                  </View>
+                ))}
+                <View style={styles.grossRow}>
+                  <Text style={styles.grossLabel}>Gesamt</Text>
+                  <Text style={styles.grossValue}>{totalGross.toLocaleString("de-DE")} €</Text>
+                </View>
+              </>
+            ) : (
+              <>
+                <View style={styles.grossRow}>
+                  <Text style={styles.grossLabel}>Gesamtbetrag</Text>
+                  <Text style={styles.grossValue}>{totalGross.toLocaleString("de-DE")} €</Text>
+                </View>
+                <Text style={styles.vatNote}>
+                  Gemäß §19 UStG wird keine Umsatzsteuer berechnet.
+                </Text>
+              </>
+            )}
+          </View>
+        </View>
+
+        <View style={styles.footerBand}>
+          <View style={styles.footerRow}>
+            <View style={{ flex: 1 }}>
+              {footerText && <Text style={styles.footerText}>{footerText}</Text>}
+              <Text style={styles.footerCompanyName}>{company.name}</Text>
+            </View>
+            <View style={{ alignItems: "flex-end" }}>
+              {company.taxNumber && <Text style={styles.footerLine}>Steuernummer: {company.taxNumber}</Text>}
+              {company.vatId && <Text style={styles.footerLine}>USt-IdNr.: {company.vatId}</Text>}
+              {showBankDetails && company.bankName && <Text style={styles.footerLine}>{company.bankName}</Text>}
+              {showBankDetails && company.iban && <Text style={styles.footerLine}>IBAN: {company.iban}</Text>}
+              {showBankDetails && company.bic && <Text style={styles.footerLine}>BIC: {company.bic}</Text>}
+              {showCompanyEmail && company.email && <Text style={styles.footerLine}>{company.email}</Text>}
+            </View>
+          </View>
         </View>
       </Page>
     </Document>

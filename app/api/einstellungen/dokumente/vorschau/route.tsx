@@ -7,9 +7,11 @@ import { DocumentPdf, type LogoPosition } from "@/lib/pdf/document-pdf";
 import { buildPlaceholderContext } from "@/lib/pdf/build-context";
 import { resolvePlaceholders } from "@/lib/document-placeholders";
 import { resolveCompanyLogoUrl } from "@/lib/blob-signed-url";
+import { hasPermission } from "@/lib/permissions";
 
 const SAMPLE_CUSTOMER = {
   name: "Max Mustermann",
+  firstName: "Max",
   address: "Musterstraße 12",
   zip: "12345",
   city: "Musterstadt",
@@ -18,6 +20,9 @@ const SAMPLE_CUSTOMER = {
   salutation: "HERR" as const,
   lastName: "Mustermann",
 };
+
+const SAMPLE_CUSTOMER_NUMBER = "KD-0001";
+const SAMPLE_CREATOR_NAME = "Erika Musterfrau";
 
 const SAMPLE_ITEMS = [
   { description: "Anfahrt und Vorbereitung", quantity: 1, unit: "Pauschale", unitPrice: 45, taxRate: 19 },
@@ -32,8 +37,8 @@ export async function POST(request: Request) {
   }
 
   const user = await prisma.user.findUnique({ where: { id: session.user.id }, include: { role: true } });
-  if (user?.role?.name !== "Admin") {
-    return NextResponse.json({ error: "Nur für Admins." }, { status: 403 });
+  if (!hasPermission(user?.role, "dokumentVorlagen")) {
+    return NextResponse.json({ error: "Keine Berechtigung." }, { status: 403 });
   }
 
   const company = await prisma.company.findUnique({ where: { id: session.user.companyId } });
@@ -75,6 +80,8 @@ export async function POST(request: Request) {
       validUntilOrDue={kind === "QUOTE" ? "in 30 Tagen" : "in 14 Tagen"}
       company={pdfCompany}
       customer={SAMPLE_CUSTOMER}
+      customerNumber={SAMPLE_CUSTOMER_NUMBER}
+      creatorName={SAMPLE_CREATOR_NAME}
       items={SAMPLE_ITEMS}
       totalNet={netTotal}
       totalGross={grossTotal}
@@ -87,6 +94,10 @@ export async function POST(request: Request) {
       showSenderLine={Boolean(body.showSenderLine)}
       showBankDetails={Boolean(body.showBankDetails)}
       showCompanyEmail={Boolean(body.showCompanyEmail)}
+      coloredHeaderFooterOverride={body.coloredHeaderFooter === undefined ? undefined : Boolean(body.coloredHeaderFooter)}
+      showPositionNumbersOverride={body.showPositionNumbers === undefined ? undefined : Boolean(body.showPositionNumbers)}
+      showCustomerNumberOverride={body.showCustomerNumber === undefined ? undefined : Boolean(body.showCustomerNumber)}
+      showCreatorOverride={body.showCreator === undefined ? undefined : Boolean(body.showCreator)}
     />
   );
 

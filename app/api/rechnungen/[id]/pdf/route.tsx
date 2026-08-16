@@ -19,6 +19,8 @@ export async function GET(request: Request, { params }: { params: { id: string }
     include: {
       customer: true,
       company: true,
+      contact: true,
+      createdByUser: { select: { name: true } },
       items: { orderBy: { position: "asc" } },
     },
   });
@@ -56,12 +58,16 @@ export async function GET(request: Request, { params }: { params: { id: string }
       validUntilOrDue={dueDateStr}
       company={company}
       customer={invoice.customer}
+      contact={invoice.contact}
+      customerNumber={invoice.customer.number}
+      creatorName={invoice.createdByUser?.name}
       items={invoice.items.map((i) => ({
         description: i.description,
         quantity: Number(i.quantity),
         unit: i.unit,
         unitPrice: Number(i.unitPrice),
         taxRate: Number(i.taxRate),
+        position: i.position,
       }))}
       totalNet={Number(invoice.totalNet)}
       totalGross={Number(invoice.totalGross)}
@@ -76,6 +82,10 @@ export async function GET(request: Request, { params }: { params: { id: string }
       showSenderLine={template?.showSenderLine}
       showBankDetails={template?.showBankDetails}
       showCompanyEmail={template?.showCompanyEmail}
+      coloredHeaderFooterOverride={template?.coloredHeaderFooter}
+      showPositionNumbersOverride={template?.showPositionNumbers}
+      showCustomerNumberOverride={template?.showCustomerNumber}
+      showCreatorOverride={template?.showCreator}
     />
   );
 
