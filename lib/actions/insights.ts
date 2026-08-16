@@ -28,9 +28,9 @@ export async function generateCustomerInsight(
     .reduce((sum, i) => sum + Number(i.totalGross), 0);
   const lastContact = customer.activities[0]?.createdAt;
 
-  const context = `Du bist ein erfahrener Vertriebsassistent für ein Handwerks-/Dienstleistungsunternehmen (z.B. Elektro, Sanitär, Heizung, Handwerk allgemein).
+  const context = `Du bist ein erfahrener Vertriebsassistent für ein kleines Unternehmen bzw. eine/n Selbstständige/n (z. B. Handwerk, Beratung, Gesundheit/Wellness, kreative Dienstleistungen oder andere Branchen).
 
-Analysiere den folgenden Kunden und gib 2 bis 4 konkrete, kurze Cross-Selling- oder Nachfass-Vorschläge auf Deutsch. Beziehe dich dabei erkennbar auf das, was der Kunde bereits gekauft/beauftragt hat, und schlage sinnvolle Anschlussleistungen oder Wartungen vor, die zu einem Betrieb dieser Branche passen. Falls der Kunde lange keinen Kontakt hatte, erwähne das als eigenen Punkt.
+Analysiere den folgenden Kunden und gib 2 bis 4 konkrete, kurze Cross-Selling- oder Nachfass-Vorschläge auf Deutsch. Beziehe dich dabei erkennbar auf das, was der Kunde bereits gekauft/beauftragt hat, und schlage sinnvolle Anschlussleistungen, Folgetermine oder wiederkehrende Aufträge vor, die zu diesem Kunden passen. Falls der Kunde lange keinen Kontakt hatte, erwähne das als eigenen Punkt.
 
 Antworte NUR mit einer kurzen Aufzählung (Bindestriche), keine Einleitung, keine Zusammenfassung danach, maximal 4 Punkte, jeder Punkt maximal 2 Sätze.
 
