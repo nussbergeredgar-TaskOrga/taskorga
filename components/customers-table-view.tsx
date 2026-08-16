@@ -14,6 +14,7 @@ import type { ContactRow } from "@/components/customers-view";
 type CustomerRow = {
   id: string;
   name: string;
+  number: string | null;
   type: "PRIVATE" | "BUSINESS";
   email: string | null;
   phone: string | null;
@@ -34,6 +35,8 @@ const MIN_WIDTH = 70;
 
 function mobileFieldValue(col: ColumnConfig, c: CustomerRow): string {
   switch (col.key) {
+    case "number":
+      return c.number ?? "";
     case "type":
       return TYPE_OPTIONS.find((o) => o.value === c.type)?.label ?? c.type;
     case "email":
@@ -168,6 +171,7 @@ export function CustomersTableView({
                   </td>
                   {visibleColumns.map((col) => (
                     <td key={col.key} className="px-3 py-2 truncate">
+                      {col.key === "number" && <span className="font-mono text-ink-500">{c.number ?? "—"}</span>}
                       {col.key === "type" && (
                         <EditableCell recordId={c.id} field="type" value={c.type} type="select" options={TYPE_OPTIONS} onSave={updateCustomerField} />
                       )}

@@ -152,11 +152,11 @@ export function DocumentPdf({
     logo: { width: 44, height: 44, objectFit: "contain", borderRadius: 6 },
     companyName: { fontSize: 14, fontWeight: 700, color: bandText, marginBottom: 3 },
     companyBlock: { fontSize: 9, color: bandSubText },
-    infoBlock: { marginTop: 8, alignItems: "flex-end" },
-    infoBlockCenter: { marginTop: 8, alignItems: "center" },
-    infoLine: { fontSize: 8.5, color: bandSubText, marginBottom: 1.5 },
     body: { paddingHorizontal: 40, paddingTop: 24, paddingBottom: 90, flexGrow: 1 },
-    title: { fontSize: 18, fontWeight: 700, marginBottom: 4, color: accent },
+    metaRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14 },
+    infoBlock: { alignItems: "flex-end", marginTop: 3 },
+    infoLine: { fontSize: 8.5, color: "#5B636D", marginBottom: 1.5 },
+    title: { fontSize: 18, fontWeight: 700, color: accent },
     senderLine: { fontSize: 7, color: "#A8AFB8", marginBottom: 4 },
     customerBlock: { marginBottom: 14, fontSize: 10 },
     greeting: { fontSize: 10, marginBottom: 10 },
@@ -218,7 +218,7 @@ export function DocumentPdf({
   });
 
   const infoLines = (
-    <View style={logoPosition === "TOP_CENTER" ? styles.infoBlockCenter : styles.infoBlock}>
+    <View style={styles.infoBlock}>
       {showCustomerNumberBlock && <Text style={styles.infoLine}>Kundennummer: {customerNumber}</Text>}
       {showCreatorBlock && <Text style={styles.infoLine}>Ersteller: {creatorName}</Text>}
       <Text style={styles.infoLine}>Datum: {createdAt}</Text>
@@ -253,7 +253,6 @@ export function DocumentPdf({
                   <Text style={[styles.companyBlock, { textAlign: "center" }]}>{company.email}</Text>
                 )}
               </View>
-              {infoLines}
             </View>
           ) : (
             <View style={styles.headerRow}>
@@ -265,18 +264,18 @@ export function DocumentPdf({
                   {showCompanyEmail && company.email && <Text>{company.email}</Text>}
                 </View>
               </View>
-              <View style={{ alignItems: "flex-end" }}>
-                {logoImage}
-                {infoLines}
-              </View>
+              {logoImage}
             </View>
           )}
         </View>
 
         <View style={styles.body}>
-          <Text style={styles.title}>
-            {kind} {number}
-          </Text>
+          <View style={styles.metaRow}>
+            <Text style={styles.title}>
+              {kind} {number}
+            </Text>
+            {infoLines}
+          </View>
 
           {showSenderLine && senderLine && <Text style={styles.senderLine}>{senderLine}</Text>}
 

@@ -63,7 +63,8 @@ function CustomerCard({ customer }: { customer: CustomerRow }) {
             <UserIcon size={18} className="text-ink-300 shrink-0" />
           )}
         </div>
-        <div className="mt-4 flex gap-4 text-xs text-ink-500 font-mono">
+        <div className="mt-4 flex items-center gap-4 text-xs text-ink-500 font-mono">
+          {customer.number && <span className="rounded-full bg-ink-50 px-2 py-0.5">{customer.number}</span>}
           <span>{customer.projectsCount} Aufträge</span>
           <span>{customer.invoicesCount} Rechnungen</span>
         </div>
@@ -84,7 +85,8 @@ function CustomerCard({ customer }: { customer: CustomerRow }) {
                 <UserIcon size={18} className="shrink-0 text-ink-300" />
               )}
             </div>
-            <div className="mt-3 flex gap-4 text-xs text-ink-500 font-mono">
+            <div className="mt-3 flex items-center gap-4 text-xs text-ink-500 font-mono">
+              {customer.number && <span className="rounded-full bg-ink-50 px-2 py-0.5">{customer.number}</span>}
               <span>{customer.projectsCount} Aufträge</span>
               <span>{customer.invoicesCount} Rechnungen</span>
             </div>

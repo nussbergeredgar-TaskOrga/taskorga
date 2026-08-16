@@ -262,10 +262,14 @@ export function DocumentTemplateEditorModal({
               <label className="block text-xs text-ink-500 mb-1">
                 Einleitungstext (über der Positionstabelle) – Platzhalter anklicken zum Einfügen
               </label>
+              <p className="text-xs text-ink-300 mb-1.5">
+                Die Begrüßung ("Hallo Vorname,") wird automatisch vorangestellt – bitte hier nicht selbst nochmal
+                mit "Hallo …" beginnen.
+              </p>
               <PlaceholderTextarea
                 value={introText}
                 onChange={setIntroText}
-                placeholder="z. B. Vielen Dank für Ihre Anfrage, {{kunde.name}}. Hiermit unterbreiten wir Ihnen folgendes Angebot:"
+                placeholder="z. B. vielen Dank für Ihre Anfrage. Hiermit unterbreiten wir Ihnen folgendes Angebot:"
               />
             </div>
 

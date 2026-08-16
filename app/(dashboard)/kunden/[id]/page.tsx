@@ -92,9 +92,6 @@ export default async function KundeDetailPage({
             </span>
           </div>
           <CustomerInsightCard customerId={customer.id} insight={customer.insight} />
-          {customer.type === "BUSINESS" && (
-            <ContactsList customerId={customer.id} contacts={customer.contacts} />
-          )}
         </div>
       ),
     },
@@ -292,7 +289,14 @@ export default async function KundeDetailPage({
             )}
           </div>
           <div>
-            <h1 className="text-2xl font-semibold text-ink-900">{customer.name}</h1>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-2xl font-semibold text-ink-900">{customer.name}</h1>
+              {customer.number && (
+                <span className="rounded-full bg-ink-50 px-2.5 py-0.5 text-xs font-mono text-ink-500">
+                  {customer.number}
+                </span>
+              )}
+            </div>
             <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1.5 text-sm text-ink-500">
               {customer.email && (
                 <span className="flex items-center gap-1.5">
@@ -337,6 +341,15 @@ export default async function KundeDetailPage({
         <KpiCard label="Aufträge" value={String(customer.projects.length)} accent="border-l-brand-500" />
         <KpiCard label="Kunde seit" value={customer.customerSince.toLocaleDateString("de-DE", { month: "short", year: "numeric" })} accent="border-l-turquoise-500" />
       </div>
+
+      {/* Ansprechpartner: immer sichtbar (nicht eingeklappt) -- wird direkt
+          beim Angebot/Rechnung-Erstellen gebraucht, soll daher nicht erst
+          per Klick gesucht werden müssen. */}
+      {customer.type === "BUSINESS" && (
+        <div className="rounded-card border border-ink-100 bg-surface p-5 shadow-card">
+          <ContactsList customerId={customer.id} contacts={customer.contacts} />
+        </div>
+      )}
 
       {/* Bereiche: gestapelt, standardmäßig eingeklappt -- nur der Bereich, der
           gerade interessiert (z.B. Termine), wird per Klick geöffnet. */}
