@@ -10,8 +10,9 @@ import { DATE_FIELD_BY_ENTITY, type EntityKey, type KpiAggregation } from "@/lib
 import { applyFilterConditions, type ReportFilterCondition } from "@/lib/report-filters";
 
 export type KpiKind = "BASIC" | "FORMULA";
-export type FormulaOperator = "ADD" | "SUBTRACT";
+export type FormulaOperator = "ADD" | "SUBTRACT" | "MULTIPLY" | "DIVIDE";
 export type FormulaTerm = { kpiId: string; operator: FormulaOperator };
+export type FormulaDisplayFormat = "CURRENCY" | "COUNT" | "PERCENT";
 
 export type CustomKpiInput = {
   label: string;
@@ -25,6 +26,8 @@ export type CustomKpiInput = {
   filterConditions?: ReportFilterCondition[];
   // FORMULA:
   formulaTerms?: FormulaTerm[];
+  // "Automatisch" = undefined/null -> Fallback-Herleitung, siehe computeFormulaValueForRange.
+  formulaDisplayFormat?: FormulaDisplayFormat;
   // Beide Arten:
   dateRangeType?: string;
   dateFrom?: string;
@@ -56,6 +59,7 @@ export async function createCustomKpi(data: CustomKpiInput) {
         dateFrom,
         dateTo,
         formulaTerms: terms,
+        formulaDisplayFormat: data.formulaDisplayFormat || null,
       },
     });
     revalidatePath("/heute");
@@ -108,6 +112,7 @@ export async function duplicateCustomKpi(id: string) {
       dateField: original.dateField,
       filterConditions: original.filterConditions ?? undefined,
       formulaTerms: original.formulaTerms ?? undefined,
+      formulaDisplayFormat: original.formulaDisplayFormat,
     },
   });
 
@@ -141,6 +146,7 @@ export async function updateCustomKpi(id: string, data: CustomKpiInput) {
         dateFrom,
         dateTo,
         formulaTerms: terms,
+        formulaDisplayFormat: data.formulaDisplayFormat || null,
       },
     });
     revalidatePath("/heute");
@@ -166,6 +172,7 @@ export async function updateCustomKpi(id: string, data: CustomKpiInput) {
       filterConditions:
         data.filterConditions && data.filterConditions.length > 0 ? data.filterConditions : Prisma.JsonNull,
       formulaTerms: Prisma.JsonNull,
+      formulaDisplayFormat: null,
     },
   });
 
@@ -422,17 +429,53 @@ export type FormulaBreakdownEntry = { label: string; operator: FormulaOperator; 
 // waehlbar, ohne die einzelnen Kennzahlen anzupassen).
 // Referenzen auf geloeschte oder nicht-BASIC Kennzahlen (sollte durch die UI
 // nicht vorkommen) werden defensiv uebersprungen statt einen Fehler zu werfen.
+//
+// Auswertung strikt von links nach rechts, keine Punkt-vor-Strich-Regel: der
+// erste (gueltige) Term ist der Startwert, jeder weitere Term wendet seinen
+// Operator auf den bisherigen Zwischenwert an. Fuer reine ADD/SUBTRACT-Formeln
+// ist das rechnerisch identisch zur frueheren "Summe startet bei 0" (0+A-B ==
+// A-B) -- bestehende Formel-Kennzahlen aendern ihr Ergebnis dadurch nicht.
+// Division durch 0 ergibt bewusst 0 statt Infinity/NaN (die die Anzeige
+// zerlegen wuerden).
+function applyFormulaOperator(total: number, operator: FormulaOperator, value: number): number {
+  switch (operator) {
+    case "ADD":
+      return total + value;
+    case "SUBTRACT":
+      return total - value;
+    case "MULTIPLY":
+      return total * value;
+    case "DIVIDE":
+      return value === 0 ? 0 : total / value;
+  }
+}
+
+// Anzeigeformat einer Formel-Kennzahl: explizit gewaehlt (formulaDisplayFormat)
+// oder -- fuer Bestandsdaten ohne diese Spalte -- aus der alten Regel
+// hergeleitet (alle Terme sind Betraege -> Betrag, sonst Anzahl). So sehen
+// vorhandene Formel-Kennzahlen wie "Gewinn" nach diesem Update unveraendert aus.
+function resolveFormulaDisplayFormat(
+  displayFormatOverride: string | null | undefined,
+  breakdown: FormulaBreakdownEntry[]
+): FormulaDisplayFormat {
+  if (displayFormatOverride === "CURRENCY" || displayFormatOverride === "COUNT" || displayFormatOverride === "PERCENT") {
+    return displayFormatOverride;
+  }
+  return breakdown.length > 0 && breakdown.every((b) => b.isCurrency) ? "CURRENCY" : "COUNT";
+}
+
 export async function computeFormulaValueForRange(
   companyId: string,
   terms: FormulaTerm[],
-  dateFilter: { gte?: Date; lte?: Date } | null
-): Promise<{ value: number; breakdown: FormulaBreakdownEntry[] }> {
+  dateFilter: { gte?: Date; lte?: Date } | null,
+  displayFormatOverride?: string | null
+): Promise<{ value: number; breakdown: FormulaBreakdownEntry[]; displayFormat: FormulaDisplayFormat }> {
   const referencedKpis = await prisma.customKpi.findMany({
     where: { id: { in: terms.map((t) => t.kpiId) }, companyId, kind: "BASIC" },
   });
   const byId = new Map(referencedKpis.map((k) => [k.id, k]));
 
-  let total = 0;
+  let total: number | null = null;
   const breakdown: FormulaBreakdownEntry[] = [];
   for (const term of terms) {
     const refKpi = byId.get(term.kpiId);
@@ -448,7 +491,7 @@ export async function computeFormulaValueForRange(
       dateFilter,
       refKpi.filterConditions as ReportFilterCondition[] | null
     );
-    total += term.operator === "SUBTRACT" ? -termValue : termValue;
+    total = total === null ? termValue : applyFormulaOperator(total, term.operator, termValue);
     breakdown.push({
       label: refKpi.label,
       operator: term.operator,
@@ -457,7 +500,7 @@ export async function computeFormulaValueForRange(
     });
   }
 
-  return { value: total, breakdown };
+  return { value: total ?? 0, breakdown, displayFormat: resolveFormulaDisplayFormat(displayFormatOverride, breakdown) };
 }
 
 export async function getCustomKpiValues() {
@@ -474,12 +517,17 @@ export async function getCustomKpiValues() {
       if (kpi.kind === "FORMULA") {
         const terms = (kpi.formulaTerms as FormulaTerm[] | null) ?? [];
         const dateFilter = resolveDateRange(kpi.dateRangeType, kpi.dateFrom, kpi.dateTo);
-        const { value, breakdown } = await computeFormulaValueForRange(company.id, terms, dateFilter);
+        const { value, breakdown, displayFormat } = await computeFormulaValueForRange(
+          company.id,
+          terms,
+          dateFilter,
+          kpi.formulaDisplayFormat
+        );
         const previousValue = previousRange
-          ? (await computeFormulaValueForRange(company.id, terms, previousRange)).value
+          ? (await computeFormulaValueForRange(company.id, terms, previousRange, kpi.formulaDisplayFormat)).value
           : null;
 
-        return { ...kpi, value, previousValue, breakdown };
+        return { ...kpi, value, previousValue, breakdown, displayFormat };
       }
 
       const entity = kpi.entity as EntityKey;
@@ -515,7 +563,13 @@ export async function getCustomKpiValues() {
           )
         : null;
 
-      return { ...kpi, value, previousValue, breakdown: undefined as FormulaBreakdownEntry[] | undefined };
+      return {
+        ...kpi,
+        value,
+        previousValue,
+        breakdown: undefined as FormulaBreakdownEntry[] | undefined,
+        displayFormat: undefined as FormulaDisplayFormat | undefined,
+      };
     })
   );
 

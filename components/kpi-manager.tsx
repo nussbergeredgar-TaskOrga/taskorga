@@ -13,6 +13,7 @@ import {
   type FormulaOperator,
   type FormulaTerm,
   type FormulaBreakdownEntry,
+  type FormulaDisplayFormat,
 } from "@/lib/actions/custom-kpi";
 import {
   ENTITY_META,
@@ -48,10 +49,24 @@ type Kpi = {
   filterConditions: unknown;
   kind?: string;
   formulaTerms?: unknown;
+  formulaDisplayFormat?: string | null;
   breakdown?: FormulaBreakdownEntry[] | null;
+  displayFormat?: FormulaDisplayFormat;
 };
 
-const OPERATOR_LABELS: Record<FormulaOperator, string> = { ADD: "+", SUBTRACT: "−" };
+const OPERATOR_LABELS: Record<FormulaOperator, string> = { ADD: "+", SUBTRACT: "−", MULTIPLY: "×", DIVIDE: "÷" };
+
+const DISPLAY_FORMAT_LABELS: Record<FormulaDisplayFormat, string> = {
+  CURRENCY: "Betrag (€)",
+  COUNT: "Anzahl",
+  PERCENT: "Prozent",
+};
+
+function formatFormulaValue(value: number, displayFormat: FormulaDisplayFormat | undefined): string | number {
+  if (displayFormat === "CURRENCY") return `${value.toLocaleString("de-DE", { maximumFractionDigits: 2 })} €`;
+  if (displayFormat === "PERCENT") return `${Math.round(value * 100)} %`;
+  return Math.round(value * 100) / 100;
+}
 
 // Trend-Badge: Vergleich zum Wert der unmittelbar vorherigen, gleich langen
 // Periode (siehe resolvePreviousDateRange in lib/actions/custom-kpi.ts).
@@ -142,6 +157,9 @@ function KpiForm({
   const [formulaTerms, setFormulaTerms] = useState<FormulaTerm[]>(
     (initial?.formulaTerms as FormulaTerm[] | null) ?? (availableBasicKpis[0] ? [{ kpiId: availableBasicKpis[0].id, operator: "ADD" }] : [])
   );
+  const [formulaDisplayFormat, setFormulaDisplayFormat] = useState<FormulaDisplayFormat | "">(
+    (initial?.formulaDisplayFormat as FormulaDisplayFormat | null) ?? ""
+  );
   const [pending, startTransition] = useTransition();
   const tour = useTour();
 
@@ -172,6 +190,7 @@ function KpiForm({
         label,
         kind: "FORMULA" as const,
         formulaTerms: terms,
+        formulaDisplayFormat: formulaDisplayFormat || undefined,
         dateRangeType,
         dateFrom: dateRangeType === "CUSTOM" ? dateFrom : undefined,
         dateTo: dateRangeType === "CUSTOM" ? dateTo : undefined,
@@ -343,6 +362,8 @@ function KpiForm({
                 >
                   <option value="ADD">plus</option>
                   <option value="SUBTRACT">minus</option>
+                  <option value="MULTIPLY">mal</option>
+                  <option value="DIVIDE">geteilt durch</option>
                 </select>
               )}
               <select
@@ -376,6 +397,23 @@ function KpiForm({
           >
             <Plus size={13} /> Kennzahl hinzufügen
           </button>
+          <p className="text-xs text-ink-300">
+            Wird der Reihe nach von oben nach unten berechnet (keine Punkt-vor-Strich-Regel).
+          </p>
+
+          <div>
+            <label className="block text-xs text-ink-500 mb-1">Anzeige</label>
+            <select
+              value={formulaDisplayFormat}
+              onChange={(e) => setFormulaDisplayFormat(e.target.value as FormulaDisplayFormat | "")}
+              className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface"
+            >
+              <option value="">Automatisch</option>
+              <option value="CURRENCY">{DISPLAY_FORMAT_LABELS.CURRENCY}</option>
+              <option value="COUNT">{DISPLAY_FORMAT_LABELS.COUNT}</option>
+              <option value="PERCENT">{DISPLAY_FORMAT_LABELS.PERCENT}</option>
+            </select>
+          </div>
         </div>
       )}
 
@@ -539,12 +577,16 @@ function KpiRow({ kpi, onEdit }: { kpi: Kpi; onEdit: () => void }) {
   const tour = useTour();
   const [expanded, setExpanded] = useState(false);
 
-  // Bei Formel-Kennzahlen gibt es keine eigene aggregation -- € nur, wenn alle
-  // verrechneten Terme selbst Betraege sind (siehe isCurrency in breakdown).
-  const isCurrency =
-    kpi.kind === "FORMULA" ? (kpi.breakdown?.length ? kpi.breakdown.every((b) => b.isCurrency) : false) : kpi.aggregation !== "count";
-  const valueText = isCurrency ? `${kpi.value.toLocaleString("de-DE", { maximumFractionDigits: 2 })} €` : kpi.value;
-  const formatBreakdownValue = (v: number) => (isCurrency ? `${v.toLocaleString("de-DE", { maximumFractionDigits: 2 })} €` : v);
+  // Formel-Kennzahlen haben ein explizit gewaehltes/hergeleitetes Anzeigeformat
+  // (Betrag/Anzahl/Prozent, siehe resolveFormulaDisplayFormat serverseitig).
+  // Die Aufschluesselung darunter zeigt jeden Term aber weiter in SEINEM
+  // eigenen Format (z.B. zwei €-Betraege, deren Verhaeltnis als Prozent
+  // angezeigt wird) -- siehe formatBreakdownValue.
+  const isCurrency = kpi.kind === "FORMULA" ? kpi.displayFormat === "CURRENCY" : kpi.aggregation !== "count";
+  const valueText =
+    kpi.kind === "FORMULA" ? formatFormulaValue(kpi.value, kpi.displayFormat) : isCurrency ? `${kpi.value.toLocaleString("de-DE", { maximumFractionDigits: 2 })} €` : kpi.value;
+  const formatBreakdownValue = (b: FormulaBreakdownEntry) =>
+    b.isCurrency ? `${b.value.toLocaleString("de-DE", { maximumFractionDigits: 2 })} €` : b.value;
 
   function toggleDashboard() {
     const addingToDashboard = !kpi.onDashboard;
@@ -594,7 +636,7 @@ function KpiRow({ kpi, onEdit }: { kpi: Kpi; onEdit: () => void }) {
             {i > 0 && <span className="font-mono">{OPERATOR_LABELS[b.operator]} </span>}
             {b.label}
           </span>
-          <span className="font-mono text-ink-700">{formatBreakdownValue(b.value)}</span>
+          <span className="font-mono text-ink-700">{formatBreakdownValue(b)}</span>
         </div>
       ))}
     </div>

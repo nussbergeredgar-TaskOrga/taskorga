@@ -200,12 +200,20 @@ export async function GET(request: Request) {
     if (kpi.kind === "FORMULA") {
       const terms = (kpi.formulaTerms as FormulaTerm[] | null) ?? [];
       const dateFilter = resolveDateRange(kpi.dateRangeType, kpi.dateFrom, kpi.dateTo);
-      const { value, breakdown } = await computeFormulaValueForRange(companyId, terms, dateFilter);
-      const opLabel = (op: "ADD" | "SUBTRACT") => (op === "SUBTRACT" ? "−" : "+");
+      const { value, breakdown, displayFormat } = await computeFormulaValueForRange(
+        companyId,
+        terms,
+        dateFilter,
+        kpi.formulaDisplayFormat
+      );
+      const opLabel = (op: "ADD" | "SUBTRACT" | "MULTIPLY" | "DIVIDE") =>
+        op === "SUBTRACT" ? "−" : op === "MULTIPLY" ? "×" : op === "DIVIDE" ? "÷" : "+";
+      const totalText =
+        displayFormat === "PERCENT" ? `${csvNum(value * 100)}%` : csvNum(value) + (displayFormat === "CURRENCY" ? " €" : "");
       const rows: string[][] = [
         ["Kennzahl", "Operator", "Wert"],
-        ...breakdown.map((b) => [b.label, opLabel(b.operator), csvNum(b.value)]),
-        ["Gesamt", "", csvNum(value)],
+        ...breakdown.map((b) => [b.label, opLabel(b.operator), b.isCurrency ? `${csvNum(b.value)} €` : csvNum(b.value)]),
+        ["Gesamt", "", totalText],
       ];
       const filenameSafe = kpi.label.replace(/[^a-z0-9äöüß\-_]+/gi, "-").toLowerCase();
       return new NextResponse(toCsv(rows), {

@@ -59,11 +59,15 @@ export default async function DashboardBerichtPage() {
                 <div key={kpi.id} className="rounded-card border border-ink-100 p-4">
                   <p className="text-xs text-ink-500">{kpi.label}</p>
                   <p className="text-xl font-semibold text-ink-900 font-mono">
-                    {(kpi.kind === "FORMULA"
-                      ? (kpi.breakdown?.length ?? 0) > 0 && kpi.breakdown!.every((b) => b.isCurrency)
-                      : kpi.aggregation !== "count")
-                      ? `${kpi.value.toLocaleString("de-DE", { maximumFractionDigits: 2 })} €`
-                      : kpi.value}
+                    {kpi.kind === "FORMULA"
+                      ? kpi.displayFormat === "CURRENCY"
+                        ? `${kpi.value.toLocaleString("de-DE", { maximumFractionDigits: 2 })} €`
+                        : kpi.displayFormat === "PERCENT"
+                          ? `${Math.round(kpi.value * 100)} %`
+                          : Math.round(kpi.value * 100) / 100
+                      : kpi.aggregation !== "count"
+                        ? `${kpi.value.toLocaleString("de-DE", { maximumFractionDigits: 2 })} €`
+                        : kpi.value}
                   </p>
                 </div>
               ))}

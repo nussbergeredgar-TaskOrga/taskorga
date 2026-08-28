@@ -378,18 +378,26 @@ export default async function HeutePage({
       }
 
       // Formel-Kennzahlen haben keine eigene aggregation/entity (siehe
-      // lib/actions/custom-kpi.ts) -- € nur, wenn alle verrechneten Terme
-      // selbst Betraege sind; kein Klickziel (kein einzelner Datentyp).
-      const isCurrency =
-        kpi.kind === "FORMULA"
-          ? (kpi.breakdown?.length ?? 0) > 0 && kpi.breakdown!.every((b) => b.isCurrency)
-          : kpi.aggregation !== "count";
+      // lib/actions/custom-kpi.ts) -- Anzeigeformat kommt vom Server
+      // (displayFormat, explizit gewaehlt oder hergeleitet); kein Klickziel
+      // (kein einzelner Datentyp).
+      let value: string;
+      if (kpi.kind === "FORMULA") {
+        value =
+          kpi.displayFormat === "CURRENCY"
+            ? `${kpi.value.toLocaleString("de-DE", { maximumFractionDigits: 2 })} €`
+            : kpi.displayFormat === "PERCENT"
+              ? `${Math.round(kpi.value * 100)} %`
+              : String(Math.round(kpi.value * 100) / 100);
+      } else {
+        value = kpi.aggregation !== "count" ? `${kpi.value.toLocaleString("de-DE", { maximumFractionDigits: 2 })} €` : String(kpi.value);
+      }
 
       return {
         id: `custom:${kpi.id}`,
         kpi: {
           label: kpi.label,
-          value: isCurrency ? `${kpi.value.toLocaleString("de-DE", { maximumFractionDigits: 2 })} €` : String(kpi.value),
+          value,
           accent: kpi.accent,
           href: kpi.kind === "FORMULA" ? undefined : entityStatusHref(kpi.entity as EntityKey, kpi.statusValue),
           trend,

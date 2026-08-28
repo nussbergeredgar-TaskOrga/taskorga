@@ -967,8 +967,12 @@ model CustomKpi {
   // duerfen nur BASIC-Kennzahlen referenzieren, keine anderen Formeln (siehe
   // lib/actions/custom-kpi.ts computeFormulaValue).
   kind String @default("BASIC")
-  // Nur bei kind="FORMULA" gesetzt: [{ kpiId: string, operator: "ADD"|"SUBTRACT" }, ...]
+  // Nur bei kind="FORMULA" gesetzt: [{ kpiId: string, operator: "ADD"|"SUBTRACT"|"MULTIPLY"|"DIVIDE" }, ...]
   formulaTerms Json?
+  // Nur bei kind="FORMULA": "CURRENCY"|"COUNT"|"PERCENT" -- null = automatisch hergeleitet
+  // aus den referenzierten Termen (siehe computeFormulaValueForRange), damit bestehende
+  // Formel-Kennzahlen ohne Migrations-Backfill unveraendert weiter angezeigt werden.
+  formulaDisplayFormat String?
 
   createdAt DateTime @default(now())
 
