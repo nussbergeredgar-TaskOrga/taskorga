@@ -413,7 +413,6 @@ export default async function HeutePage({
           chartType={chart.chartType as "bar" | "line" | "pie" | "area"}
           data={chart.data}
           valueSuffix={chart.aggregation !== "count" ? " €" : undefined}
-          entity={chart.entity as EntityKey}
           xAxisLabel={chart.xAxisLabel}
           yAxisLabel={chart.yAxisLabel}
           showValueLabels={chart.showValueLabels}

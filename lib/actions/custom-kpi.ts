@@ -32,6 +32,9 @@ export type CustomKpiInput = {
   dateRangeType?: string;
   dateFrom?: string;
   dateTo?: string;
+  // Immer in derselben Rohwert-Einheit wie der berechnete Wert (bei
+  // Prozent-Formeln als Verhaeltnis 0-1, nicht 0-100).
+  targetValue?: number;
 };
 
 export async function createCustomKpi(data: CustomKpiInput) {
@@ -60,6 +63,7 @@ export async function createCustomKpi(data: CustomKpiInput) {
         dateTo,
         formulaTerms: terms,
         formulaDisplayFormat: data.formulaDisplayFormat || null,
+        targetValue: data.targetValue ?? null,
       },
     });
     revalidatePath("/heute");
@@ -82,6 +86,7 @@ export async function createCustomKpi(data: CustomKpiInput) {
       dateTo,
       dateField: data.dateField || null,
       filterConditions: data.filterConditions && data.filterConditions.length > 0 ? data.filterConditions : undefined,
+      targetValue: data.targetValue ?? null,
     },
   });
 
@@ -113,6 +118,7 @@ export async function duplicateCustomKpi(id: string) {
       filterConditions: original.filterConditions ?? undefined,
       formulaTerms: original.formulaTerms ?? undefined,
       formulaDisplayFormat: original.formulaDisplayFormat,
+      targetValue: original.targetValue,
     },
   });
 
@@ -147,6 +153,7 @@ export async function updateCustomKpi(id: string, data: CustomKpiInput) {
         dateTo,
         formulaTerms: terms,
         formulaDisplayFormat: data.formulaDisplayFormat || null,
+        targetValue: data.targetValue ?? null,
       },
     });
     revalidatePath("/heute");
@@ -173,6 +180,7 @@ export async function updateCustomKpi(id: string, data: CustomKpiInput) {
         data.filterConditions && data.filterConditions.length > 0 ? data.filterConditions : Prisma.JsonNull,
       formulaTerms: Prisma.JsonNull,
       formulaDisplayFormat: null,
+      targetValue: data.targetValue ?? null,
     },
   });
 

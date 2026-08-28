@@ -518,7 +518,6 @@ function ChartCard({ chart, onEdit }: { chart: Chart; onEdit: () => void }) {
         chartType={chart.chartType as ChartType}
         data={chart.data}
         valueSuffix={chart.aggregation !== "count" ? " €" : undefined}
-        entity={chart.entity as EntityKey}
         xAxisLabel={chart.xAxisLabel}
         yAxisLabel={chart.yAxisLabel}
         showValueLabels={chart.showValueLabels}

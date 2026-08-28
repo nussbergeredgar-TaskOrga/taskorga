@@ -17,6 +17,7 @@ import {
   type KpiAggregation,
 } from "@/lib/custom-kpi";
 import { applyFilterConditions, type ReportFilterCondition } from "@/lib/report-filters";
+import { entityStatusHref, entityDetailHref } from "@/lib/entity-links";
 import { Prisma } from "@prisma/client";
 
 export type ChartType = "bar" | "line" | "pie" | "area";
@@ -204,7 +205,11 @@ const FIELD_BUCKET_TOP_N = 8;
 // Bei vielen unterschiedlichen Werten werden nur die groessten Gruppen
 // einzeln gezeigt, der Rest als "Sonstige" zusammengefasst -- sonst waere ein
 // Diagramm mit z.B. 30 Ausgaben-Kategorien unlesbar.
-function collapseTopN(buckets: { label: string; value: number }[]): { label: string; value: number }[] {
+// Generisch ueber zusaetzliche Bucket-Felder (z.B. href) -- die werden fuer
+// die einzeln gezeigten Top-Eintraege beibehalten, aber NICHT fuer den
+// "Sonstige"-Sammeleintrag (mehrere zusammengefasst -> kein einzelnes
+// sinnvolles Klick-Ziel).
+function collapseTopN<T extends { label: string; value: number }>(buckets: T[]): (T | { label: string; value: number })[] {
   if (buckets.length <= FIELD_BUCKET_TOP_N) return buckets;
   const top = buckets.slice(0, FIELD_BUCKET_TOP_N - 1);
   const restSum = buckets.slice(FIELD_BUCKET_TOP_N - 1).reduce((sum, b) => sum + b.value, 0);
@@ -276,7 +281,7 @@ async function computeEnumBuckets(
   aggregation: KpiAggregation,
   sumField: string | undefined,
   filterConditions?: ReportFilterCondition[] | null
-): Promise<{ label: string; value: number; status?: string }[]> {
+): Promise<{ label: string; value: number; href?: string }[]> {
   const where = applyFilterConditions({ companyId }, filterConditions) as Record<string, unknown>;
   const rows = await delegateFor(entity).groupBy(buildGroupByArgs(where, field, aggregation, sumField));
 
@@ -292,7 +297,7 @@ async function computeEnumBuckets(
     // Nur beim echten Status-Feld klickbar zur gefilterten Liste (siehe
     // lib/entity-links.ts) -- andere Enum-Felder (z.B. discountType) haben
     // dort kein passendes Ziel.
-    status: field === "status" ? opt.value : undefined,
+    href: field === "status" ? entityStatusHref(entity, opt.value) : undefined,
   }));
 }
 
@@ -352,7 +357,7 @@ async function computeRelationBuckets(
   aggregation: KpiAggregation,
   sumField: string | undefined,
   filterConditions?: ReportFilterCondition[] | null
-): Promise<{ label: string; value: number }[]> {
+): Promise<{ label: string; value: number; href?: string }[]> {
   const where = applyFilterConditions({ companyId }, filterConditions) as Record<string, unknown>;
   const rows = await delegateFor(entity).groupBy(buildGroupByArgs(where, field, aggregation, sumField));
 
@@ -363,7 +368,11 @@ async function computeRelationBuckets(
     .map((row) => {
       const id = row[field] as string | null;
       const label = id ? nameById.get(id) ?? "(unbekannt)" : "(ohne Angabe)";
-      return { label, value: bucketValueFromRow(row, aggregation, sumField) };
+      return {
+        label,
+        value: bucketValueFromRow(row, aggregation, sumField),
+        href: id ? entityDetailHref(relationModel, id) : undefined,
+      };
     })
     .filter((b) => b.value !== 0)
     .sort((a, b) => b.value - a.value);
@@ -558,7 +567,7 @@ export async function getCustomChartsWithData() {
       const field = fieldFor(entity, chart.groupByField);
       const config = chart.groupByConfig as GroupByConfig;
 
-      let data: { label: string; value: number; status?: string }[] = [];
+      let data: { label: string; value: number; href?: string }[] = [];
       if (field) {
         if (field.kind === "enum") {
           data = await computeEnumBuckets(company.id, entity, field.key, field.options, aggregation, sumField, filterConditions);

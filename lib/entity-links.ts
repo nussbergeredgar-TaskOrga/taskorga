@@ -1,4 +1,4 @@
-import type { EntityKey } from "@/lib/custom-kpi";
+import type { EntityKey, RelationModel } from "@/lib/custom-kpi";
 
 // Wohin ein Datentyp fuehrt, wenn man auf eine Kennzahl/einen Diagrammbalken klickt.
 const ENTITY_LIST_PATH: Record<EntityKey, string> = {
@@ -29,4 +29,13 @@ export function entityStatusHref(entity: EntityKey, status?: string | null): str
   if (entity === "customers") return base;
 
   return `${base}?status=${encodeURIComponent(status)}`;
+}
+
+// Baut die Ziel-URL fuer ein nach Kunde/Auftrag gruppiertes Diagramm-Segment
+// -- direkt zur jeweiligen Detailseite, keine Listen-Filterung noetig. Fuer
+// "user" (Ersteller) gibt es keine Nutzer-Detailseite, daher kein Ziel.
+export function entityDetailHref(relationModel: RelationModel, id: string): string | undefined {
+  if (relationModel === "customer") return `/kunden/${id}`;
+  if (relationModel === "project") return `/arbeit/${id}`;
+  return undefined;
 }

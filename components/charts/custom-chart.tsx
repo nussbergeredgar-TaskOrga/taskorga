@@ -20,18 +20,17 @@ import {
   Legend,
   LabelList,
 } from "recharts";
-import { entityStatusHref } from "@/lib/entity-links";
-import type { EntityKey } from "@/lib/custom-kpi";
-
-type ChartPoint = { label: string; value: number; status?: string };
-
 export const PALETTE = ["#2F5FFF", "#16A34A", "#F0A020", "#E5484D", "#7C3AED", "#0EA5E9", "#DB2777", "#A8AFB8"];
+
+// "href" kommt bereits fertig vom Server (siehe lib/actions/custom-chart.ts) --
+// nur bei Gruppierung nach Status, Kunde oder Auftrag gesetzt; Text-/Datums-/
+// Zahlen-Gruppierungen und der "Sonstige"-Sammeleintrag haben keins.
+type ChartPoint = { label: string; value: number; href?: string };
 
 export function CustomChart({
   chartType,
   data,
   valueSuffix,
-  entity,
   xAxisLabel,
   yAxisLabel,
   showValueLabels,
@@ -41,7 +40,6 @@ export function CustomChart({
   chartType: "bar" | "line" | "pie" | "area";
   data: ChartPoint[];
   valueSuffix?: string;
-  entity?: EntityKey;
   xAxisLabel?: string | null;
   yAxisLabel?: string | null;
   showValueLabels?: boolean;
@@ -78,19 +76,19 @@ export function CustomChart({
     ? { label: { value: yAxisLabel, angle: -90, position: "insideLeft" as const, fontSize: 12, fill: "#5B636D" } }
     : {};
 
-  // Balken/Punkte mit Status fuehren zur entsprechend gefilterten Liste;
-  // andere Gruppierungen (Monat, freies Textfeld) haben noch keine passende
-  // Ziel-Filterung auf den Listenseiten -- fuehren zur ungefilterten Liste.
-  const clickable = Boolean(entity);
+  // Nur Balken/Segmente mit eigenem href sind klickbar (Status, Kunde,
+  // Auftrag) -- andere Gruppierungen (Text, Datum, Zahl) zeigen bewusst
+  // keinen Klick-Cursor, statt auf eine ungefilterte Liste zu fuehren.
+  const clickable = data.some((d) => d.href);
   function handleChartClick(state: { activeTooltipIndex?: number } | null) {
-    if (!entity || !state || state.activeTooltipIndex == null) return;
+    if (!state || state.activeTooltipIndex == null) return;
     const point = data[state.activeTooltipIndex];
-    if (!point) return;
-    router.push(entityStatusHref(entity, point.status));
+    if (!point?.href) return;
+    router.push(point.href);
   }
   function handlePieClick(point: ChartPoint) {
-    if (!entity) return;
-    router.push(entityStatusHref(entity, point.status));
+    if (!point.href) return;
+    router.push(point.href);
   }
 
   if (chartType === "pie") {

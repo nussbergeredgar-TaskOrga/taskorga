@@ -140,6 +140,7 @@ export default async function EinblickePage() {
             formulaDisplayFormat: k.formulaDisplayFormat,
             breakdown: k.breakdown,
             displayFormat: k.displayFormat,
+            targetValue: k.targetValue,
             value: k.value,
             previousValue: k.previousValue,
             onDashboard: onDashboardIds.has(`custom:${k.id}`),

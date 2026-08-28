@@ -52,6 +52,7 @@ type Kpi = {
   formulaDisplayFormat?: string | null;
   breakdown?: FormulaBreakdownEntry[] | null;
   displayFormat?: FormulaDisplayFormat;
+  targetValue?: number | null;
 };
 
 const OPERATOR_LABELS: Record<FormulaOperator, string> = { ADD: "+", SUBTRACT: "−", MULTIPLY: "×", DIVIDE: "÷" };
@@ -90,6 +91,35 @@ function TrendBadge({ value, previousValue }: { value: number; previousValue?: n
     <span className={`text-xs font-medium whitespace-nowrap ${up ? "text-success" : "text-danger"}`}>
       {up ? "▲" : "▼"} {Math.abs(Math.round(deltaPercent))} %
     </span>
+  );
+}
+
+// Fortschrittsbalken zum optionalen Sollwert -- "formatValue" kommt von
+// aussen (KpiRow kennt schon die passende Formatierung fuer diese Kennzahl,
+// gleiches Format fuer Ist- und Sollwert statt eigener Formatierungslogik).
+function KpiProgressBar({
+  value,
+  target,
+  formatValue,
+}: {
+  value: number;
+  target: number;
+  formatValue: (n: number) => string | number;
+}) {
+  const pct = target === 0 ? (value > 0 ? 100 : 0) : Math.min(100, Math.round((value / target) * 100));
+  const reached = pct >= 100;
+  return (
+    <div className="mt-2">
+      <div className="h-1.5 w-full overflow-hidden rounded-full bg-ink-100">
+        <div
+          className={`h-full rounded-full transition-all ${reached ? "bg-success" : "bg-brand-500"}`}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+      <p className="mt-1 text-xs text-ink-500">
+        {formatValue(value)} von {formatValue(target)} ({pct} %)
+      </p>
+    </div>
   );
 }
 
@@ -160,6 +190,13 @@ function KpiForm({
   const [formulaDisplayFormat, setFormulaDisplayFormat] = useState<FormulaDisplayFormat | "">(
     (initial?.formulaDisplayFormat as FormulaDisplayFormat | null) ?? ""
   );
+  // Sollwert im Formular immer in Anzeige-Einheit (bei Prozent also "50"
+  // statt "0.5") -- Umrechnung passiert nur beim Absenden, siehe submit().
+  const [targetValue, setTargetValue] = useState<string>(
+    initial?.targetValue != null
+      ? String(kind === "FORMULA" && formulaDisplayFormat === "PERCENT" ? Math.round(initial.targetValue * 100) : initial.targetValue)
+      : ""
+  );
   const [pending, startTransition] = useTransition();
   const tour = useTour();
 
@@ -186,6 +223,7 @@ function KpiForm({
     if (kind === "FORMULA") {
       const terms = formulaTerms.filter((t) => t.kpiId);
       if (terms.length === 0) return;
+      const targetRaw = targetValue.trim() ? Number(targetValue.replace(",", ".")) : undefined;
       const payload = {
         label,
         kind: "FORMULA" as const,
@@ -194,6 +232,12 @@ function KpiForm({
         dateRangeType,
         dateFrom: dateRangeType === "CUSTOM" ? dateFrom : undefined,
         dateTo: dateRangeType === "CUSTOM" ? dateTo : undefined,
+        targetValue:
+          targetRaw != null && Number.isFinite(targetRaw)
+            ? formulaDisplayFormat === "PERCENT"
+              ? targetRaw / 100
+              : targetRaw
+            : undefined,
       };
       startTransition(async () => {
         if (initial) {
@@ -206,6 +250,7 @@ function KpiForm({
       return;
     }
 
+    const basicTargetRaw = targetValue.trim() ? Number(targetValue.replace(",", ".")) : undefined;
     const payload = {
       label,
       kind: "BASIC" as const,
@@ -218,6 +263,7 @@ function KpiForm({
       dateTo: dateRangeType === "CUSTOM" ? dateTo : undefined,
       dateField: dateField || undefined,
       filterConditions: conditions.filter((c) => c.value.trim()),
+      targetValue: basicTargetRaw != null && Number.isFinite(basicTargetRaw) ? basicTargetRaw : undefined,
     };
     startTransition(async () => {
       if (initial) {
@@ -476,6 +522,21 @@ function KpiForm({
 
       {kind === "BASIC" && <ReportFilterConditionsEditor fields={filterFields} conditions={conditions} onChange={setConditions} />}
 
+      <div>
+        <label className="block text-xs text-ink-500 mb-1">
+          {kind === "FORMULA" && formulaDisplayFormat === "PERCENT" ? "Sollwert in % (optional)" : "Sollwert (optional)"}
+        </label>
+        <input
+          type="text"
+          inputMode="decimal"
+          value={targetValue}
+          onChange={(e) => setTargetValue(e.target.value)}
+          placeholder={kind === "FORMULA" && formulaDisplayFormat === "PERCENT" ? "z. B. 50" : "z. B. 5000"}
+          className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface"
+        />
+        <p className="mt-1 text-xs text-ink-300">Zeigt einen Fortschrittsbalken zum Sollwert an.</p>
+      </div>
+
       <div className="flex gap-2">
         <button
           disabled={pending || !label.trim() || (kind === "FORMULA" && formulaTerms.length === 0)}
@@ -587,6 +648,14 @@ function KpiRow({ kpi, onEdit }: { kpi: Kpi; onEdit: () => void }) {
     kpi.kind === "FORMULA" ? formatFormulaValue(kpi.value, kpi.displayFormat) : isCurrency ? `${kpi.value.toLocaleString("de-DE", { maximumFractionDigits: 2 })} €` : kpi.value;
   const formatBreakdownValue = (b: FormulaBreakdownEntry) =>
     b.isCurrency ? `${b.value.toLocaleString("de-DE", { maximumFractionDigits: 2 })} €` : b.value;
+  // Gleiche Formatierung wie valueText, aber als Funktion -- fuer den
+  // Fortschrittsbalken, der Ist- UND Sollwert damit formatiert.
+  const formatValue = (n: number) =>
+    kpi.kind === "FORMULA"
+      ? formatFormulaValue(n, kpi.displayFormat)
+      : isCurrency
+        ? `${n.toLocaleString("de-DE", { maximumFractionDigits: 2 })} €`
+        : Math.round(n * 100) / 100;
 
   function toggleDashboard() {
     const addingToDashboard = !kpi.onDashboard;
@@ -672,6 +741,11 @@ function KpiRow({ kpi, onEdit }: { kpi: Kpi; onEdit: () => void }) {
             <KpiActionsMenu kpi={kpi} pending={pending} onEdit={onEdit} onDuplicate={handleDuplicate} onDelete={handleDelete} />
           </div>
         </div>
+        {kpi.targetValue != null && (
+          <div className="px-3 pb-2.5">
+            <KpiProgressBar value={kpi.value} target={kpi.targetValue} formatValue={formatValue} />
+          </div>
+        )}
         {expanded && hasBreakdown && <div className="px-3 pb-2.5">{breakdownPanel}</div>}
       </div>
 
@@ -701,6 +775,9 @@ function KpiRow({ kpi, onEdit }: { kpi: Kpi; onEdit: () => void }) {
               </span>
               {dashboardToggleButton}
             </div>
+            {kpi.targetValue != null && (
+              <KpiProgressBar value={kpi.value} target={kpi.targetValue} formatValue={formatValue} />
+            )}
             {hasBreakdown && breakdownPanel}
           </div>
         )}

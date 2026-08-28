@@ -974,6 +974,11 @@ model CustomKpi {
   // Formel-Kennzahlen ohne Migrations-Backfill unveraendert weiter angezeigt werden.
   formulaDisplayFormat String?
 
+  // Optionaler Sollwert (BASIC und FORMULA gleichermassen) -- immer in
+  // derselben Rohwert-Einheit wie "value" gespeichert (bei Prozent-Formeln
+  // also 0-1, nicht 0-100), siehe formatFormulaValue().
+  targetValue Float?
+
   createdAt DateTime @default(now())
 
   @@index([companyId])
