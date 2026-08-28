@@ -14,11 +14,13 @@ import {
   type RelationModel,
   type DateGranularity,
   type GroupByConfig,
+  type KpiAggregation,
 } from "@/lib/custom-kpi";
 import { applyFilterConditions, type ReportFilterCondition } from "@/lib/report-filters";
 import { Prisma } from "@prisma/client";
 
 export type ChartType = "bar" | "line" | "pie" | "area";
+export type ValueLabelFormat = "VALUE" | "PERCENT";
 
 export type CustomChartInput = {
   label: string;
@@ -26,9 +28,15 @@ export type CustomChartInput = {
   chartType: ChartType;
   groupByField: string;
   groupByConfig?: GroupByConfig;
-  aggregation: "count" | "sum";
+  aggregation: KpiAggregation;
   sumField?: string;
   filterConditions?: ReportFilterCondition[];
+  xAxisLabel?: string;
+  yAxisLabel?: string;
+  showValueLabels?: boolean;
+  valueLabelFormat?: ValueLabelFormat;
+  // Ein Hex-Code pro Bucket in Anzeige-Reihenfolge -- siehe components/charts/custom-chart.tsx.
+  colors?: string[];
 };
 
 export async function createCustomChart(data: CustomChartInput) {
@@ -44,8 +52,13 @@ export async function createCustomChart(data: CustomChartInput) {
       groupByField: data.groupByField,
       groupByConfig: data.groupByConfig ?? Prisma.JsonNull,
       aggregation: data.aggregation,
-      sumField: data.aggregation === "sum" ? data.sumField || null : null,
+      sumField: data.aggregation !== "count" ? data.sumField || null : null,
       filterConditions: data.filterConditions && data.filterConditions.length > 0 ? data.filterConditions : undefined,
+      xAxisLabel: data.xAxisLabel || null,
+      yAxisLabel: data.yAxisLabel || null,
+      showValueLabels: data.showValueLabels ?? false,
+      valueLabelFormat: data.valueLabelFormat || "VALUE",
+      colors: data.colors && data.colors.length > 0 ? data.colors : undefined,
     },
   });
 
@@ -66,9 +79,14 @@ export async function updateCustomChart(id: string, data: CustomChartInput) {
       groupByField: data.groupByField,
       groupByConfig: data.groupByConfig ?? Prisma.JsonNull,
       aggregation: data.aggregation,
-      sumField: data.aggregation === "sum" ? data.sumField || null : null,
+      sumField: data.aggregation !== "count" ? data.sumField || null : null,
       filterConditions:
         data.filterConditions && data.filterConditions.length > 0 ? data.filterConditions : Prisma.JsonNull,
+      xAxisLabel: data.xAxisLabel || null,
+      yAxisLabel: data.yAxisLabel || null,
+      showValueLabels: data.showValueLabels ?? false,
+      valueLabelFormat: data.valueLabelFormat || "VALUE",
+      colors: data.colors && data.colors.length > 0 ? data.colors : Prisma.JsonNull,
     },
   });
 
@@ -77,7 +95,9 @@ export async function updateCustomChart(id: string, data: CustomChartInput) {
 }
 
 // Dupliziert ein Diagramm als Ausgangspunkt fuer eine kleine Variante
-// (z.B. gleiche Auswertung mit anderem Diagrammtyp oder Gruppierung).
+// (z.B. gleiche Auswertung mit anderem Diagrammtyp oder Gruppierung). Farben
+// werden bewusst NICHT mitkopiert -- die Kopie kann eine andere Gruppierung
+// bekommen, wodurch alte Bucket-Farben nicht mehr passen wuerden.
 export async function duplicateCustomChart(id: string) {
   const company = await getCurrentCompany();
   const original = await prisma.customChart.findFirst({ where: { id, companyId: company.id } });
@@ -94,6 +114,10 @@ export async function duplicateCustomChart(id: string) {
       aggregation: original.aggregation,
       sumField: original.sumField,
       filterConditions: original.filterConditions ?? undefined,
+      xAxisLabel: original.xAxisLabel,
+      yAxisLabel: original.yAxisLabel,
+      showValueLabels: original.showValueLabels,
+      valueLabelFormat: original.valueLabelFormat,
     },
   });
 
@@ -187,24 +211,56 @@ function collapseTopN(buckets: { label: string; value: number }[]): { label: str
   return [...top, { label: "Sonstige", value: restSum }];
 }
 
+// "_sum"/"_avg"/"_min"/"_max" folgen alle demselben Prisma-groupBy-Muster
+// { [aggKey]: { [field]: true } } -- siehe auch AGG_KEY in lib/actions/custom-kpi.ts
+// (dort nicht exportiert, da "use server"-Dateien nur async Functions
+// exportieren duerfen -- hier daher als eigene kleine Kopie).
+const CHART_AGG_KEY: Record<"sum" | "avg" | "min" | "max", string> = {
+  sum: "_sum",
+  avg: "_avg",
+  min: "_min",
+  max: "_max",
+};
+
+// Fasst gesammelte Rohwerte (ein Eintrag pro Datensatz) zu einem Bucket-Wert
+// zusammen -- fuer die beiden JS-seitig gebauten Bucket-Arten (Zahl-Histogramm,
+// Datums-Fenster), wo Prisma nicht direkt gruppieren kann. Bei "count" ist der
+// Inhalt der Werte irrelevant, nur die Anzahl zaehlt.
+function reduceValues(values: number[], aggregation: KpiAggregation): number {
+  if (values.length === 0) return 0;
+  switch (aggregation) {
+    case "count":
+      return values.length;
+    case "sum":
+      return values.reduce((a, b) => a + b, 0);
+    case "avg":
+      return values.reduce((a, b) => a + b, 0) / values.length;
+    case "min":
+      return Math.min(...values);
+    case "max":
+      return Math.max(...values);
+  }
+}
+
 function buildGroupByArgs(
   where: Record<string, unknown>,
   field: string,
-  aggregation: "count" | "sum",
+  aggregation: KpiAggregation,
   sumField: string | undefined
 ): Record<string, unknown> {
   const args: Record<string, unknown> = { by: [field], where, _count: { _all: true } };
-  if (aggregation === "sum" && sumField) args._sum = { [sumField]: true };
+  if (aggregation !== "count" && sumField) args[CHART_AGG_KEY[aggregation]] = { [sumField]: true };
   return args;
 }
 
 function bucketValueFromRow(
   row: Record<string, unknown>,
-  aggregation: "count" | "sum",
+  aggregation: KpiAggregation,
   sumField: string | undefined
 ): number {
-  if (aggregation === "sum" && sumField) {
-    return Number((row._sum as Record<string, number | null> | undefined)?.[sumField] ?? 0);
+  if (aggregation !== "count" && sumField) {
+    const aggKey = CHART_AGG_KEY[aggregation];
+    return Number((row[aggKey] as Record<string, number | null> | undefined)?.[sumField] ?? 0);
   }
   return (row._count as { _all?: number } | undefined)?._all ?? 0;
 }
@@ -217,7 +273,7 @@ async function computeEnumBuckets(
   entity: EntityKey,
   field: string,
   options: EnumFieldOption[],
-  aggregation: "count" | "sum",
+  aggregation: KpiAggregation,
   sumField: string | undefined,
   filterConditions?: ReportFilterCondition[] | null
 ): Promise<{ label: string; value: number; status?: string }[]> {
@@ -245,7 +301,7 @@ async function computeTextBuckets(
   companyId: string,
   entity: EntityKey,
   field: string,
-  aggregation: "count" | "sum",
+  aggregation: KpiAggregation,
   sumField: string | undefined,
   filterConditions?: ReportFilterCondition[] | null
 ): Promise<{ label: string; value: number }[]> {
@@ -293,7 +349,7 @@ async function computeRelationBuckets(
   entity: EntityKey,
   field: string,
   relationModel: RelationModel,
-  aggregation: "count" | "sum",
+  aggregation: KpiAggregation,
   sumField: string | undefined,
   filterConditions?: ReportFilterCondition[] | null
 ): Promise<{ label: string; value: number }[]> {
@@ -328,7 +384,7 @@ async function computeNumberBuckets(
   companyId: string,
   entity: EntityKey,
   field: string,
-  aggregation: "count" | "sum",
+  aggregation: KpiAggregation,
   sumField: string | undefined,
   bucketCount: number,
   filterConditions?: ReportFilterCondition[] | null
@@ -347,24 +403,24 @@ async function computeNumberBuckets(
   const max = Number(maxRaw);
 
   const select: Record<string, boolean> = { [field]: true };
-  if (aggregation === "sum" && sumField) select[sumField] = true;
+  if (aggregation !== "count" && sumField) select[sumField] = true;
   const allRows = await delegate.findMany({ where, select });
   const rows = allRows.filter((r) => r[field] != null);
 
   function rowValue(row: Record<string, unknown>): number {
-    return aggregation === "sum" && sumField ? Number(row[sumField] ?? 0) : 1;
+    return aggregation !== "count" && sumField ? Number(row[sumField] ?? 0) : 1;
   }
 
   if (min === max) {
-    const total = rows.reduce((sum, r) => sum + rowValue(r), 0);
-    return [{ label: formatNumberBucketLabel(min, max), value: total }];
+    const values = rows.map(rowValue);
+    return [{ label: formatNumberBucketLabel(min, max), value: reduceValues(values, aggregation) }];
   }
 
   const binWidth = (max - min) / bucketCount;
   const buckets = Array.from({ length: bucketCount }, (_, i) => {
     const lo = min + i * binWidth;
     const hi = i === bucketCount - 1 ? max : min + (i + 1) * binWidth;
-    return { label: formatNumberBucketLabel(lo, hi), value: 0 };
+    return { label: formatNumberBucketLabel(lo, hi), values: [] as number[] };
   });
 
   for (const row of rows) {
@@ -372,10 +428,10 @@ async function computeNumberBuckets(
     let idx = Math.floor((value - min) / binWidth);
     if (idx >= bucketCount) idx = bucketCount - 1;
     if (idx < 0) idx = 0;
-    buckets[idx].value += rowValue(row);
+    buckets[idx].values.push(rowValue(row));
   }
 
-  return buckets;
+  return buckets.map(({ label, values }) => ({ label, value: reduceValues(values, aggregation) }));
 }
 
 function periodStart(date: Date, granularity: DateGranularity): Date {
@@ -452,17 +508,17 @@ async function computeDateBuckets(
   companyId: string,
   entity: EntityKey,
   field: string,
-  aggregation: "count" | "sum",
+  aggregation: KpiAggregation,
   sumField: string | undefined,
   granularity: DateGranularity,
   windowCount: number,
   filterConditions?: ReportFilterCondition[] | null
 ): Promise<{ label: string; value: number }[]> {
   const now = new Date();
-  const buckets: { label: string; value: number; start: number }[] = [];
+  const buckets: { label: string; values: number[]; start: number }[] = [];
   for (let i = windowCount - 1; i >= 0; i--) {
     const start = periodStart(addPeriods(now, granularity, -i), granularity);
-    buckets.push({ label: periodLabel(start, granularity), value: 0, start: start.getTime() });
+    buckets.push({ label: periodLabel(start, granularity), values: [], start: start.getTime() });
   }
   const windowStart = new Date(buckets[0].start);
 
@@ -471,7 +527,7 @@ async function computeDateBuckets(
     unknown
   >;
   const select: Record<string, boolean> = { [field]: true };
-  if (aggregation === "sum" && sumField) select[sumField] = true;
+  if (aggregation !== "count" && sumField) select[sumField] = true;
   const rows = await delegateFor(entity).findMany({ where, select });
 
   for (const row of rows) {
@@ -480,10 +536,10 @@ async function computeDateBuckets(
     const start = periodStart(new Date(date), granularity).getTime();
     const bucket = buckets.find((b) => b.start === start);
     if (!bucket) continue;
-    bucket.value += aggregation === "sum" && sumField ? Number(row[sumField] ?? 0) : 1;
+    bucket.values.push(aggregation !== "count" && sumField ? Number(row[sumField] ?? 0) : 1);
   }
 
-  return buckets.map(({ label, value }) => ({ label, value }));
+  return buckets.map(({ label, values }) => ({ label, value: reduceValues(values, aggregation) }));
 }
 
 export async function getCustomChartsWithData() {
@@ -496,7 +552,7 @@ export async function getCustomChartsWithData() {
   return Promise.all(
     charts.map(async (chart) => {
       const entity = chart.entity as EntityKey;
-      const aggregation = chart.aggregation as "count" | "sum";
+      const aggregation = chart.aggregation as KpiAggregation;
       const filterConditions = (chart.filterConditions as ReportFilterCondition[] | null) ?? null;
       const sumField = chart.sumField ?? undefined;
       const field = fieldFor(entity, chart.groupByField);

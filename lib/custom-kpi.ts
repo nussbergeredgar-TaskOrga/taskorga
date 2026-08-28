@@ -9,6 +9,19 @@ export type EntityKey =
 
 export type FieldKind = "enum" | "text" | "number" | "date" | "relation";
 
+// Gemeinsame Aggregations-Typen fuer Kennzahlen UND Diagramme (siehe
+// lib/actions/custom-kpi.ts / lib/actions/custom-chart.ts) -- "count" braucht
+// kein Feld, die anderen vier je ein Zahlenfeld (sumField).
+export type KpiAggregation = "count" | "sum" | "avg" | "min" | "max";
+
+export const AGGREGATION_LABELS: Record<KpiAggregation, string> = {
+  count: "Anzahl",
+  sum: "Summe",
+  avg: "Durchschnitt",
+  min: "Minimum",
+  max: "Maximum",
+};
+
 export type EnumFieldOption = { value: string; label: string };
 
 // "customer" -> lib/actions/custom-chart.ts loest per prisma.customer.findMany
@@ -116,6 +129,7 @@ export const ENTITY_META: Record<EntityKey, { label: string; fields: FieldCatalo
       { key: "validUntil", label: "Gültig bis", kind: "date" },
       { key: "updatedAt", label: "Zuletzt geändert", kind: "date" },
       { key: "customerId", label: "Kunde", kind: "relation", relationModel: "customer" },
+      { key: "createdByUserId", label: "Ersteller", kind: "relation", relationModel: "user" },
     ],
   },
   projects: {
@@ -178,6 +192,7 @@ export const ENTITY_META: Record<EntityKey, { label: string; fields: FieldCatalo
       { key: "updatedAt", label: "Zuletzt geändert", kind: "date" },
       { key: "customerId", label: "Kunde", kind: "relation", relationModel: "customer" },
       { key: "projectId", label: "Auftrag", kind: "relation", relationModel: "project" },
+      { key: "createdByUserId", label: "Ersteller", kind: "relation", relationModel: "user" },
     ],
   },
   appointments: {

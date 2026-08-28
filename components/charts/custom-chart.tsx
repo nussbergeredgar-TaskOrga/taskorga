@@ -18,24 +18,35 @@ import {
   CartesianGrid,
   Tooltip,
   Legend,
+  LabelList,
 } from "recharts";
 import { entityStatusHref } from "@/lib/entity-links";
 import type { EntityKey } from "@/lib/custom-kpi";
 
 type ChartPoint = { label: string; value: number; status?: string };
 
-const PALETTE = ["#2F5FFF", "#16A34A", "#F0A020", "#E5484D", "#7C3AED", "#0EA5E9", "#DB2777", "#A8AFB8"];
+export const PALETTE = ["#2F5FFF", "#16A34A", "#F0A020", "#E5484D", "#7C3AED", "#0EA5E9", "#DB2777", "#A8AFB8"];
 
 export function CustomChart({
   chartType,
   data,
   valueSuffix,
   entity,
+  xAxisLabel,
+  yAxisLabel,
+  showValueLabels,
+  valueLabelFormat = "VALUE",
+  colors,
 }: {
   chartType: "bar" | "line" | "pie" | "area";
   data: ChartPoint[];
   valueSuffix?: string;
   entity?: EntityKey;
+  xAxisLabel?: string | null;
+  yAxisLabel?: string | null;
+  showValueLabels?: boolean;
+  valueLabelFormat?: "VALUE" | "PERCENT";
+  colors?: string[] | null;
 }) {
   const router = useRouter();
   const gradientId = `customChartBarGradient-${useId()}`;
@@ -49,9 +60,23 @@ export function CustomChart({
     );
   }
 
+  const total = data.reduce((sum, d) => sum + d.value, 0);
+  const colorAt = (i: number) => colors?.[i % colors.length] ?? PALETTE[i % PALETTE.length];
+
   const tickFormatter = (v: number) => (valueSuffix ? `${v.toLocaleString("de-DE")}${valueSuffix}` : String(v));
   const tooltipFormatter = (value: number) =>
     valueSuffix ? `${value.toLocaleString("de-DE")}${valueSuffix}` : String(value);
+  const valueLabelFormatter = (value: number) =>
+    valueLabelFormat === "PERCENT"
+      ? `${total > 0 ? Math.round((value / total) * 100) : 0}%`
+      : tooltipFormatter(value);
+
+  const xAxisProps = xAxisLabel
+    ? { label: { value: xAxisLabel, position: "insideBottom" as const, offset: -5, fontSize: 12, fill: "#5B636D" } }
+    : {};
+  const yAxisProps = yAxisLabel
+    ? { label: { value: yAxisLabel, angle: -90, position: "insideLeft" as const, fontSize: 12, fill: "#5B636D" } }
+    : {};
 
   // Balken/Punkte mit Status fuehren zur entsprechend gefilterten Liste;
   // andere Gruppierungen (Monat, freies Textfeld) haben noch keine passende
@@ -81,9 +106,11 @@ export function CustomChart({
             paddingAngle={2}
             onClick={clickable ? handlePieClick : undefined}
             className={clickable ? "cursor-pointer" : undefined}
+            label={showValueLabels ? ({ value }: { value: number }) => valueLabelFormatter(value) : undefined}
+            labelLine={showValueLabels}
           >
             {data.map((entry, i) => (
-              <Cell key={entry.label} fill={PALETTE[i % PALETTE.length]} />
+              <Cell key={entry.label} fill={colorAt(i)} />
             ))}
           </Pie>
           <Tooltip formatter={tooltipFormatter} contentStyle={{ borderRadius: 8, border: "1px solid #E8EAED", fontSize: 13 }} />
@@ -94,46 +121,54 @@ export function CustomChart({
   }
 
   if (chartType === "area") {
+    const areaColor = colors?.[0] ?? "#2F5FFF";
     return (
       <ResponsiveContainer width="100%" height={240}>
         <AreaChart data={data} onClick={clickable ? handleChartClick : undefined} className={clickable ? "cursor-pointer" : undefined}>
           <defs>
             <linearGradient id={areaGradientId} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#2F5FFF" stopOpacity={0.35} />
+              <stop offset="0%" stopColor={areaColor} stopOpacity={0.35} />
               <stop offset="100%" stopColor="#0FB9AE" stopOpacity={0.03} />
             </linearGradient>
           </defs>
           <CartesianGrid strokeDasharray="3 3" stroke="#E8EAED" vertical={false} />
-          <XAxis dataKey="label" tick={{ fontSize: 12, fill: "#5B636D" }} axisLine={{ stroke: "#E8EAED" }} tickLine={false} />
+          <XAxis dataKey="label" tick={{ fontSize: 12, fill: "#5B636D" }} axisLine={{ stroke: "#E8EAED" }} tickLine={false} {...xAxisProps} />
           <YAxis
             tick={{ fontSize: 12, fill: "#5B636D" }}
             axisLine={false}
             tickLine={false}
             width={60}
             tickFormatter={tickFormatter}
+            {...yAxisProps}
           />
           <Tooltip formatter={tooltipFormatter} contentStyle={{ borderRadius: 8, border: "1px solid #E8EAED", fontSize: 13 }} />
-          <Area type="monotone" dataKey="value" stroke="#2F5FFF" strokeWidth={2} fill={`url(#${areaGradientId})`} />
+          <Area type="monotone" dataKey="value" stroke={areaColor} strokeWidth={2} fill={`url(#${areaGradientId})`}>
+            {showValueLabels && <LabelList dataKey="value" position="top" formatter={valueLabelFormatter} fontSize={11} fill="#5B636D" />}
+          </Area>
         </AreaChart>
       </ResponsiveContainer>
     );
   }
 
   if (chartType === "line") {
+    const lineColor = colors?.[0] ?? "#2F5FFF";
     return (
       <ResponsiveContainer width="100%" height={240}>
         <LineChart data={data} onClick={clickable ? handleChartClick : undefined} className={clickable ? "cursor-pointer" : undefined}>
           <CartesianGrid strokeDasharray="3 3" stroke="#E8EAED" vertical={false} />
-          <XAxis dataKey="label" tick={{ fontSize: 12, fill: "#5B636D" }} axisLine={{ stroke: "#E8EAED" }} tickLine={false} />
+          <XAxis dataKey="label" tick={{ fontSize: 12, fill: "#5B636D" }} axisLine={{ stroke: "#E8EAED" }} tickLine={false} {...xAxisProps} />
           <YAxis
             tick={{ fontSize: 12, fill: "#5B636D" }}
             axisLine={false}
             tickLine={false}
             width={60}
             tickFormatter={tickFormatter}
+            {...yAxisProps}
           />
           <Tooltip formatter={tooltipFormatter} contentStyle={{ borderRadius: 8, border: "1px solid #E8EAED", fontSize: 13 }} />
-          <Line type="monotone" dataKey="value" stroke="#2F5FFF" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 5 }} />
+          <Line type="monotone" dataKey="value" stroke={lineColor} strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 5 }}>
+            {showValueLabels && <LabelList dataKey="value" position="top" formatter={valueLabelFormatter} fontSize={11} fill="#5B636D" />}
+          </Line>
         </LineChart>
       </ResponsiveContainer>
     );
@@ -149,16 +184,20 @@ export function CustomChart({
           </linearGradient>
         </defs>
         <CartesianGrid strokeDasharray="3 3" stroke="#E8EAED" vertical={false} />
-        <XAxis dataKey="label" tick={{ fontSize: 12, fill: "#5B636D" }} axisLine={{ stroke: "#E8EAED" }} tickLine={false} />
+        <XAxis dataKey="label" tick={{ fontSize: 12, fill: "#5B636D" }} axisLine={{ stroke: "#E8EAED" }} tickLine={false} {...xAxisProps} />
         <YAxis
           tick={{ fontSize: 12, fill: "#5B636D" }}
           axisLine={false}
           tickLine={false}
           width={60}
           tickFormatter={tickFormatter}
+          {...yAxisProps}
         />
         <Tooltip formatter={tooltipFormatter} contentStyle={{ borderRadius: 8, border: "1px solid #E8EAED", fontSize: 13 }} />
-        <Bar dataKey="value" fill={`url(#${gradientId})`} radius={[6, 6, 0, 0]} className={clickable ? "cursor-pointer" : undefined} />
+        <Bar dataKey="value" fill={colors && colors.length > 0 ? undefined : `url(#${gradientId})`} radius={[6, 6, 0, 0]} className={clickable ? "cursor-pointer" : undefined}>
+          {colors && colors.length > 0 && data.map((entry, i) => <Cell key={entry.label} fill={colorAt(i)} />)}
+          {showValueLabels && <LabelList dataKey="value" position="top" formatter={valueLabelFormatter} fontSize={11} fill="#5B636D" />}
+        </Bar>
       </BarChart>
     </ResponsiveContainer>
   );

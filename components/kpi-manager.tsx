@@ -9,6 +9,10 @@ import {
   deleteCustomKpi,
   duplicateCustomKpi,
   toggleKpiOnDashboard,
+  type KpiKind,
+  type FormulaOperator,
+  type FormulaTerm,
+  type FormulaBreakdownEntry,
 } from "@/lib/actions/custom-kpi";
 import {
   ENTITY_META,
@@ -19,7 +23,9 @@ import {
   numberFieldsFor,
   dateFieldsFor,
   statusOptionsFor,
+  AGGREGATION_LABELS,
   type EntityKey,
+  type KpiAggregation,
 } from "@/lib/custom-kpi";
 import { ReportFilterConditionsEditor } from "@/components/report-filter-conditions";
 import { useTour } from "@/components/dashboard-tour";
@@ -33,19 +39,61 @@ type Kpi = {
   sumField: string | null;
   statusValue: string | null;
   value: number;
+  previousValue?: number | null;
   onDashboard: boolean;
   dateRangeType: string;
   dateFrom?: Date | null;
   dateTo?: Date | null;
   dateField: string | null;
   filterConditions: unknown;
+  kind?: string;
+  formulaTerms?: unknown;
+  breakdown?: FormulaBreakdownEntry[] | null;
 };
 
+const OPERATOR_LABELS: Record<FormulaOperator, string> = { ADD: "+", SUBTRACT: "−" };
+
+// Trend-Badge: Vergleich zum Wert der unmittelbar vorherigen, gleich langen
+// Periode (siehe resolvePreviousDateRange in lib/actions/custom-kpi.ts).
+// "previousValue == null" heisst: kein sinnvoller Vergleich moeglich (z.B.
+// Zeitfenster "Gesamter Zeitraum").
+function TrendBadge({ value, previousValue }: { value: number; previousValue?: number | null }) {
+  if (previousValue == null) return null;
+
+  if (previousValue === 0) {
+    if (value === 0) return null;
+    return <span className="text-xs font-medium text-ink-500 whitespace-nowrap">neu</span>;
+  }
+
+  const deltaPercent = ((value - previousValue) / previousValue) * 100;
+  if (Math.abs(deltaPercent) < 0.5) {
+    return <span className="text-xs font-medium text-ink-300 whitespace-nowrap">–</span>;
+  }
+
+  const up = deltaPercent > 0;
+  return (
+    <span className={`text-xs font-medium whitespace-nowrap ${up ? "text-success" : "text-danger"}`}>
+      {up ? "▲" : "▼"} {Math.abs(Math.round(deltaPercent))} %
+    </span>
+  );
+}
+
 function describeKpi(kpi: Kpi) {
+  if (kpi.kind === "FORMULA") {
+    const rangeLabel = DATE_RANGE_OPTIONS.find((r) => r.value === kpi.dateRangeType)?.label;
+    const terms = (kpi.formulaTerms as FormulaTerm[] | null) ?? [];
+    const formula =
+      kpi.breakdown && kpi.breakdown.length > 0
+        ? kpi.breakdown.map((b, i) => (i === 0 ? b.label : `${OPERATOR_LABELS[b.operator]} ${b.label}`)).join(" ")
+        : `${terms.length} Kennzahl${terms.length !== 1 ? "en" : ""}`;
+    return `Formel: ${formula}${rangeLabel ? ` · ${rangeLabel}` : ""}`;
+  }
+
   const entity = kpi.entity as EntityKey;
   const meta = ENTITY_META[entity];
   const sumFieldEntry = kpi.sumField ? fieldFor(entity, kpi.sumField) : undefined;
-  const base = kpi.aggregation === "sum" ? `${sumFieldEntry?.label ?? "Betrag"} summiert` : "Anzahl";
+  const agg = kpi.aggregation as KpiAggregation;
+  const base = agg !== "count" ? `${AGGREGATION_LABELS[agg]}: ${sumFieldEntry?.label ?? "Betrag"}` : "Anzahl";
   const status = kpi.statusValue ? statusOptionsFor(entity).find((s) => s.value === kpi.statusValue)?.label : null;
   const rangeLabel = DATE_RANGE_OPTIONS.find((r) => r.value === kpi.dateRangeType)?.label;
   const range = kpi.dateRangeType && kpi.dateRangeType !== "ALL" ? rangeLabel : null;
@@ -61,19 +109,24 @@ function toDateInputValue(d?: Date | null) {
   return new Date(d).toISOString().slice(0, 10);
 }
 
-// Gemeinsames Formular für Neu anlegen UND Bearbeiten
+// Gemeinsames Formular für Neu anlegen UND Bearbeiten -- sowohl fuer direkte
+// Auswertungen (BASIC) als auch Formel-Kennzahlen (FORMULA, siehe Umschalter
+// oben im Formular).
 function KpiForm({
   initial,
+  allKpis,
   onCancel,
   onSaved,
 }: {
   initial?: Kpi;
+  allKpis: Kpi[];
   onCancel: () => void;
   onSaved: () => void;
 }) {
   const [label, setLabel] = useState(initial?.label ?? "");
+  const [kind, setKind] = useState<KpiKind>((initial?.kind as KpiKind) ?? "BASIC");
   const [entity, setEntity] = useState<EntityKey>((initial?.entity as EntityKey) ?? "inquiries");
-  const [aggregation, setAggregation] = useState<"count" | "sum">((initial?.aggregation as "count" | "sum") ?? "count");
+  const [aggregation, setAggregation] = useState<KpiAggregation>((initial?.aggregation as KpiAggregation) ?? "count");
   const [sumField, setSumField] = useState<string>(
     initial?.sumField ?? numberFieldsFor((initial?.entity as EntityKey) ?? "inquiries")[0]?.key ?? ""
   );
@@ -85,6 +138,10 @@ function KpiForm({
   const [conditions, setConditions] = useState<ReportFilterCondition[]>(
     (initial?.filterConditions as ReportFilterCondition[] | null) ?? []
   );
+  const availableBasicKpis = allKpis.filter((k) => k.kind !== "FORMULA" && k.id !== initial?.id);
+  const [formulaTerms, setFormulaTerms] = useState<FormulaTerm[]>(
+    (initial?.formulaTerms as FormulaTerm[] | null) ?? (availableBasicKpis[0] ? [{ kpiId: availableBasicKpis[0].id, operator: "ADD" }] : [])
+  );
   const [pending, startTransition] = useTransition();
   const tour = useTour();
 
@@ -94,12 +151,47 @@ function KpiForm({
   const numberFields = numberFieldsFor(entity);
   const dateFields = dateFieldsFor(entity);
 
+  function addFormulaTerm() {
+    if (!availableBasicKpis[0]) return;
+    setFormulaTerms((terms) => [...terms, { kpiId: availableBasicKpis[0].id, operator: "ADD" }]);
+  }
+  function updateFormulaTerm(index: number, patch: Partial<FormulaTerm>) {
+    setFormulaTerms((terms) => terms.map((t, i) => (i === index ? { ...t, ...patch } : t)));
+  }
+  function removeFormulaTerm(index: number) {
+    setFormulaTerms((terms) => terms.filter((_, i) => i !== index));
+  }
+
   function submit() {
     if (!label.trim()) return;
+
+    if (kind === "FORMULA") {
+      const terms = formulaTerms.filter((t) => t.kpiId);
+      if (terms.length === 0) return;
+      const payload = {
+        label,
+        kind: "FORMULA" as const,
+        formulaTerms: terms,
+        dateRangeType,
+        dateFrom: dateRangeType === "CUSTOM" ? dateFrom : undefined,
+        dateTo: dateRangeType === "CUSTOM" ? dateTo : undefined,
+      };
+      startTransition(async () => {
+        if (initial) {
+          await updateCustomKpi(initial.id, payload);
+        } else {
+          await createCustomKpi(payload);
+        }
+        onSaved();
+      });
+      return;
+    }
+
     const payload = {
       label,
+      kind: "BASIC" as const,
       entity,
-      aggregation: (aggregation === "sum" && numberFields.length > 0 ? "sum" : "count") as "count" | "sum",
+      aggregation: (aggregation !== "count" && numberFields.length > 0 ? aggregation : "count") as KpiAggregation,
       sumField: sumField || undefined,
       statusValue: statusValue || undefined,
       dateRangeType,
@@ -121,60 +213,108 @@ function KpiForm({
 
   return (
     <div className="rounded-lg border border-dashed border-ink-100 p-4 space-y-3 bg-ink-50">
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-        <input
-          value={label}
-          onChange={(e) => setLabel(e.target.value)}
-          placeholder="Name, z. B. Offene Angebote"
-          className="rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface"
-        />
-        <select
-          value={entity}
-          onChange={(e) => {
-            const next = e.target.value as EntityKey;
-            setEntity(next);
-            setStatusValue("");
-            setAggregation("count");
-            setSumField(numberFieldsFor(next)[0]?.key ?? "");
-            setDateField("");
-          }}
-          className="rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface"
+      <div className="flex rounded-lg border border-ink-100 bg-surface p-0.5 text-sm">
+        <button
+          type="button"
+          onClick={() => setKind("BASIC")}
+          className={`flex-1 rounded-md px-3 py-1.5 font-medium transition-colors ${
+            kind === "BASIC" ? "bg-brand-500 text-white" : "text-ink-500 hover:text-ink-900"
+          }`}
         >
-          {ENTITY_KEYS.map((key) => (
-            <option key={key} value={key}>
-              {ENTITY_META[key].label}
-            </option>
-          ))}
-        </select>
+          Direkte Auswertung
+        </button>
+        <button
+          type="button"
+          disabled={availableBasicKpis.length === 0}
+          title={availableBasicKpis.length === 0 ? "Lege zuerst mindestens eine direkte Kennzahl an." : undefined}
+          onClick={() => setKind("FORMULA")}
+          className={`flex-1 rounded-md px-3 py-1.5 font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+            kind === "FORMULA" ? "bg-brand-500 text-white" : "text-ink-500 hover:text-ink-900"
+          }`}
+        >
+          Formel aus Kennzahlen
+        </button>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-        <select
-          value={aggregation}
-          onChange={(e) => setAggregation(e.target.value as "count" | "sum")}
-          className="rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface"
-        >
-          <option value="count">Anzahl zählen</option>
-          {numberFields.length > 0 && <option value="sum">Betrag summieren</option>}
-        </select>
-        {aggregation === "sum" && numberFields.length > 0 ? (
+      <input
+        value={label}
+        onChange={(e) => setLabel(e.target.value)}
+        placeholder={kind === "FORMULA" ? "Name, z. B. Gewinn" : "Name, z. B. Offene Angebote"}
+        className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface"
+      />
+
+      {kind === "BASIC" ? (
+        <>
           <select
-            value={sumField}
-            onChange={(e) => setSumField(e.target.value)}
-            className="rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface"
+            value={entity}
+            onChange={(e) => {
+              const next = e.target.value as EntityKey;
+              setEntity(next);
+              setStatusValue("");
+              setAggregation("count");
+              setSumField(numberFieldsFor(next)[0]?.key ?? "");
+              setDateField("");
+            }}
+            className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface"
           >
-            {numberFields.map((f) => (
-              <option key={f.key} value={f.key}>
-                {f.label}
+            {ENTITY_KEYS.map((key) => (
+              <option key={key} value={key}>
+                {ENTITY_META[key].label}
               </option>
             ))}
           </select>
-        ) : (
-          statusOptions.length > 0 && (
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <select
+              value={aggregation}
+              onChange={(e) => setAggregation(e.target.value as KpiAggregation)}
+              className="rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface"
+            >
+              <option value="count">{AGGREGATION_LABELS.count}</option>
+              {numberFields.length > 0 && (
+                <>
+                  <option value="sum">{AGGREGATION_LABELS.sum}</option>
+                  <option value="avg">{AGGREGATION_LABELS.avg}</option>
+                  <option value="min">{AGGREGATION_LABELS.min}</option>
+                  <option value="max">{AGGREGATION_LABELS.max}</option>
+                </>
+              )}
+            </select>
+            {aggregation !== "count" && numberFields.length > 0 ? (
+              <select
+                value={sumField}
+                onChange={(e) => setSumField(e.target.value)}
+                className="rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface"
+              >
+                {numberFields.map((f) => (
+                  <option key={f.key} value={f.key}>
+                    {f.label}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              statusOptions.length > 0 && (
+                <select
+                  value={statusValue}
+                  onChange={(e) => setStatusValue(e.target.value)}
+                  className="rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface"
+                >
+                  <option value="">Alle Status</option>
+                  {statusOptions.map((s) => (
+                    <option key={s.value} value={s.value}>
+                      {s.label}
+                    </option>
+                  ))}
+                </select>
+              )
+            )}
+          </div>
+
+          {aggregation !== "count" && numberFields.length > 0 && statusOptions.length > 0 && (
             <select
               value={statusValue}
               onChange={(e) => setStatusValue(e.target.value)}
-              className="rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface"
+              className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface"
             >
               <option value="">Alle Status</option>
               {statusOptions.map((s) => (
@@ -183,23 +323,60 @@ function KpiForm({
                 </option>
               ))}
             </select>
-          )
-        )}
-      </div>
-
-      {aggregation === "sum" && numberFields.length > 0 && statusOptions.length > 0 && (
-        <select
-          value={statusValue}
-          onChange={(e) => setStatusValue(e.target.value)}
-          className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface"
-        >
-          <option value="">Alle Status</option>
-          {statusOptions.map((s) => (
-            <option key={s.value} value={s.value}>
-              {s.label}
-            </option>
+          )}
+        </>
+      ) : (
+        <div className="space-y-2 rounded-lg border border-ink-100 bg-surface p-3">
+          <label className="block text-xs text-ink-500">
+            Kennzahlen, die verrechnet werden (jede wird für das unten gewählte Zeitfenster neu berechnet)
+          </label>
+          {formulaTerms.map((term, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <span className="w-5 shrink-0 text-center font-mono text-sm text-ink-500">
+                {i === 0 ? "" : OPERATOR_LABELS[term.operator]}
+              </span>
+              {i > 0 && (
+                <select
+                  value={term.operator}
+                  onChange={(e) => updateFormulaTerm(i, { operator: e.target.value as FormulaOperator })}
+                  className="rounded-lg border border-ink-100 px-2 py-2 text-sm outline-none focus:border-brand-500 bg-surface"
+                >
+                  <option value="ADD">plus</option>
+                  <option value="SUBTRACT">minus</option>
+                </select>
+              )}
+              <select
+                value={term.kpiId}
+                onChange={(e) => updateFormulaTerm(i, { kpiId: e.target.value })}
+                className="min-w-0 flex-1 rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface"
+              >
+                {availableBasicKpis.map((k) => (
+                  <option key={k.id} value={k.id}>
+                    {k.label}
+                  </option>
+                ))}
+              </select>
+              {formulaTerms.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => removeFormulaTerm(i)}
+                  className="shrink-0 p-1.5 text-ink-300 hover:text-danger transition-colors"
+                  aria-label="Kennzahl entfernen"
+                >
+                  <Trash2 size={14} />
+                </button>
+              )}
+            </div>
           ))}
-        </select>
+          <button
+            type="button"
+            onClick={addFormulaTerm}
+            disabled={availableBasicKpis.length === 0}
+            className="flex items-center gap-1 text-xs font-medium text-brand-700 hover:underline disabled:opacity-40"
+          >
+            <Plus size={13} /> Kennzahl hinzufügen
+          </button>
+        </div>
       )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -217,7 +394,7 @@ function KpiForm({
             ))}
           </select>
         </div>
-        {dateFields.length > 1 && (
+        {kind === "BASIC" && dateFields.length > 1 && (
           <div>
             <label className="block text-xs text-ink-500 mb-1">Zeitfenster-Feld</label>
             <select
@@ -259,11 +436,11 @@ function KpiForm({
         </div>
       )}
 
-      <ReportFilterConditionsEditor fields={filterFields} conditions={conditions} onChange={setConditions} />
+      {kind === "BASIC" && <ReportFilterConditionsEditor fields={filterFields} conditions={conditions} onChange={setConditions} />}
 
       <div className="flex gap-2">
         <button
-          disabled={pending || !label.trim()}
+          disabled={pending || !label.trim() || (kind === "FORMULA" && formulaTerms.length === 0)}
           onClick={submit}
           className="rounded-lg bg-brand-500 text-white text-sm font-medium px-4 py-2 hover:bg-brand-600 disabled:opacity-60 transition-colors"
         >
@@ -362,7 +539,12 @@ function KpiRow({ kpi, onEdit }: { kpi: Kpi; onEdit: () => void }) {
   const tour = useTour();
   const [expanded, setExpanded] = useState(false);
 
-  const valueText = kpi.aggregation === "sum" ? `${kpi.value.toLocaleString("de-DE")} €` : kpi.value;
+  // Bei Formel-Kennzahlen gibt es keine eigene aggregation -- € nur, wenn alle
+  // verrechneten Terme selbst Betraege sind (siehe isCurrency in breakdown).
+  const isCurrency =
+    kpi.kind === "FORMULA" ? (kpi.breakdown?.length ? kpi.breakdown.every((b) => b.isCurrency) : false) : kpi.aggregation !== "count";
+  const valueText = isCurrency ? `${kpi.value.toLocaleString("de-DE", { maximumFractionDigits: 2 })} €` : kpi.value;
+  const formatBreakdownValue = (v: number) => (isCurrency ? `${v.toLocaleString("de-DE", { maximumFractionDigits: 2 })} €` : v);
 
   function toggleDashboard() {
     const addingToDashboard = !kpi.onDashboard;
@@ -403,19 +585,52 @@ function KpiRow({ kpi, onEdit }: { kpi: Kpi; onEdit: () => void }) {
     </button>
   );
 
+  const hasBreakdown = kpi.kind === "FORMULA" && (kpi.breakdown?.length ?? 0) > 0;
+  const breakdownPanel = hasBreakdown && (
+    <div className="space-y-1 rounded-lg bg-ink-50 px-3 py-2">
+      {kpi.breakdown!.map((b, i) => (
+        <div key={i} className="flex items-center justify-between gap-2 text-xs">
+          <span className="text-ink-500">
+            {i > 0 && <span className="font-mono">{OPERATOR_LABELS[b.operator]} </span>}
+            {b.label}
+          </span>
+          <span className="font-mono text-ink-700">{formatBreakdownValue(b.value)}</span>
+        </div>
+      ))}
+    </div>
+  );
+
   return (
     <div className="rounded-lg border border-ink-100">
-      {/* Desktop: unveraendert, immer vollstaendig sichtbar */}
-      <div className="hidden sm:flex items-center justify-between gap-3 px-3 py-2.5">
-        <div className="min-w-0">
-          <p className="text-sm font-medium text-ink-900 truncate">{kpi.label}</p>
-          <p className="text-xs text-ink-500 truncate">{describeKpi(kpi)}</p>
+      {/* Desktop: immer vollstaendig sichtbar, Formel-Kennzahlen zusaetzlich mit
+          aufklappbarer Aufschluesselung fuer volle Transparenz. */}
+      <div className="hidden sm:block">
+        <div className="flex items-center justify-between gap-3 px-3 py-2.5">
+          <button
+            type="button"
+            disabled={!hasBreakdown}
+            onClick={() => setExpanded((e) => !e)}
+            className="flex min-w-0 flex-1 items-center gap-1.5 text-left disabled:cursor-default"
+          >
+            {hasBreakdown && (
+              <ChevronDown
+                size={14}
+                className={`shrink-0 text-ink-300 transition-transform ${expanded ? "rotate-180" : ""}`}
+              />
+            )}
+            <span className="min-w-0">
+              <p className="text-sm font-medium text-ink-900 truncate">{kpi.label}</p>
+              <p className="text-xs text-ink-500 truncate">{describeKpi(kpi)}</p>
+            </span>
+          </button>
+          <div className="flex items-center gap-3 shrink-0">
+            <span className="font-mono text-sm font-medium text-ink-900">{valueText}</span>
+            <TrendBadge value={kpi.value} previousValue={kpi.previousValue} />
+            {dashboardToggleButton}
+            <KpiActionsMenu kpi={kpi} pending={pending} onEdit={onEdit} onDuplicate={handleDuplicate} onDelete={handleDelete} />
+          </div>
         </div>
-        <div className="flex items-center gap-3 shrink-0">
-          <span className="font-mono text-sm font-medium text-ink-900">{valueText}</span>
-          {dashboardToggleButton}
-          <KpiActionsMenu kpi={kpi} pending={pending} onEdit={onEdit} onDuplicate={handleDuplicate} onDelete={handleDelete} />
-        </div>
+        {expanded && hasBreakdown && <div className="px-3 pb-2.5">{breakdownPanel}</div>}
       </div>
 
       {/* Mobile: eingeklappt (nur Name), per Chevron ausklappbar */}
@@ -438,9 +653,13 @@ function KpiRow({ kpi, onEdit }: { kpi: Kpi; onEdit: () => void }) {
           <div className="space-y-2 px-3 pb-3">
             <p className="text-xs text-ink-500">{describeKpi(kpi)}</p>
             <div className="flex items-center justify-between gap-2">
-              <span className="font-mono text-sm font-medium text-ink-900">{valueText}</span>
+              <span className="flex items-center gap-2">
+                <span className="font-mono text-sm font-medium text-ink-900">{valueText}</span>
+                <TrendBadge value={kpi.value} previousValue={kpi.previousValue} />
+              </span>
               {dashboardToggleButton}
             </div>
+            {hasBreakdown && breakdownPanel}
           </div>
         )}
       </div>
@@ -463,7 +682,7 @@ export function KpiManager({ kpis }: { kpis: Kpi[] }) {
     <div className="space-y-3">
       {kpis.map((kpi) =>
         editingId === kpi.id ? (
-          <KpiForm key={kpi.id} initial={kpi} onCancel={() => setEditingId(null)} onSaved={closeAll} />
+          <KpiForm key={kpi.id} initial={kpi} allKpis={kpis} onCancel={() => setEditingId(null)} onSaved={closeAll} />
         ) : (
           <KpiRow key={kpi.id} kpi={kpi} onEdit={() => setEditingId(kpi.id)} />
         )
@@ -480,7 +699,7 @@ export function KpiManager({ kpis }: { kpis: Kpi[] }) {
           Neue Kennzahl erstellen
         </button>
       ) : (
-        <KpiForm onCancel={() => setShowCreateForm(false)} onSaved={closeAll} />
+        <KpiForm allKpis={kpis} onCancel={() => setShowCreateForm(false)} onSaved={closeAll} />
       )}
     </div>
   );

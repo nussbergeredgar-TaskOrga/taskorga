@@ -360,15 +360,42 @@ export default async function HeutePage({
       defaultAccent: "border-l-success",
       node: <ActivityFeed initialItems={recentActivities.items} initialHasMore={recentActivities.hasMore} />,
     },
-    ...customKpis.map((kpi) => ({
-      id: `custom:${kpi.id}`,
-      kpi: {
-        label: kpi.label,
-        value: kpi.aggregation === "sum" ? `${kpi.value.toLocaleString("de-DE")} €` : String(kpi.value),
-        accent: kpi.accent,
-        href: entityStatusHref(kpi.entity as EntityKey, kpi.statusValue),
-      },
-    })),
+    ...customKpis.map((kpi) => {
+      // Trend: gleiche Vergleichslogik wie in components/kpi-manager.tsx
+      // (TrendBadge), nur auf KpiCards zwei Zustaende (value/positive)
+      // reduziert -- kein "kein sinnvoller Vergleich"/"unveraendert" hier,
+      // das faellt einfach unter "kein Trend".
+      let trend: { value: string; positive: boolean } | undefined;
+      if (kpi.previousValue != null) {
+        if (kpi.previousValue === 0 && kpi.value > 0) {
+          trend = { value: "neu", positive: true };
+        } else if (kpi.previousValue !== 0) {
+          const deltaPercent = ((kpi.value - kpi.previousValue) / kpi.previousValue) * 100;
+          if (Math.abs(deltaPercent) >= 0.5) {
+            trend = { value: `${Math.abs(Math.round(deltaPercent))} %`, positive: deltaPercent > 0 };
+          }
+        }
+      }
+
+      // Formel-Kennzahlen haben keine eigene aggregation/entity (siehe
+      // lib/actions/custom-kpi.ts) -- € nur, wenn alle verrechneten Terme
+      // selbst Betraege sind; kein Klickziel (kein einzelner Datentyp).
+      const isCurrency =
+        kpi.kind === "FORMULA"
+          ? (kpi.breakdown?.length ?? 0) > 0 && kpi.breakdown!.every((b) => b.isCurrency)
+          : kpi.aggregation !== "count";
+
+      return {
+        id: `custom:${kpi.id}`,
+        kpi: {
+          label: kpi.label,
+          value: isCurrency ? `${kpi.value.toLocaleString("de-DE", { maximumFractionDigits: 2 })} €` : String(kpi.value),
+          accent: kpi.accent,
+          href: kpi.kind === "FORMULA" ? undefined : entityStatusHref(kpi.entity as EntityKey, kpi.statusValue),
+          trend,
+        },
+      };
+    }),
     ...customCharts.map((chart) => ({
       id: `chart:${chart.id}`,
       label: chart.label,
@@ -377,8 +404,13 @@ export default async function HeutePage({
         <CustomChart
           chartType={chart.chartType as "bar" | "line" | "pie" | "area"}
           data={chart.data}
-          valueSuffix={chart.aggregation === "sum" ? " €" : undefined}
+          valueSuffix={chart.aggregation !== "count" ? " €" : undefined}
           entity={chart.entity as EntityKey}
+          xAxisLabel={chart.xAxisLabel}
+          yAxisLabel={chart.yAxisLabel}
+          showValueLabels={chart.showValueLabels}
+          valueLabelFormat={chart.valueLabelFormat as "VALUE" | "PERCENT"}
+          colors={chart.colors as string[] | null}
         />
       ),
     })),

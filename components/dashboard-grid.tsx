@@ -62,7 +62,14 @@ type WidgetNodeEntry = {
   node?: React.ReactNode;
   headerAction?: React.ReactNode;
   defaultAccent?: string;
-  kpi?: { label: string; value: string; icon?: string; accent: string; href?: string };
+  kpi?: {
+    label: string;
+    value: string;
+    icon?: string;
+    accent: string;
+    href?: string;
+    trend?: { value: string; positive: boolean };
+  };
 };
 
 // Dezentes Punktraster als Ausrichtungshilfe im Bearbeiten-Modus -- reine
@@ -427,6 +434,7 @@ export function DashboardGrid({
                   icon={entry.kpi.icon ? ICONS[entry.kpi.icon] : undefined}
                   accent={w.accent ?? entry.kpi.accent}
                   href={entry.kpi.href}
+                  trend={entry.kpi.trend}
                 />
               ) : entry.node ? (
                 <div

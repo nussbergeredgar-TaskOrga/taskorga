@@ -947,7 +947,7 @@ model CustomKpi {
 
   label       String
   entity      String // "customers" | "inquiries" | "quotes" | "projects" | "invoices" | "appointments" | "expenses"
-  aggregation String // "count" | "sum"
+  aggregation String // "count" | "sum" | "avg" | "min" | "max"
   sumField    String?
   statusValue String?
   accent      String  @default("border-l-brand-500")
@@ -961,6 +961,14 @@ model CustomKpi {
   // verknuepft) ueber den Status-/Zeitraum-Filter hinaus -- siehe
   // lib/report-filters.ts fuer die genaue Form.
   filterConditions Json?
+
+  // "BASIC" (Standard, obige Felder gelten) | "FORMULA" (verrechnet mehrere
+  // bestehende BASIC-Kennzahlen, siehe formulaTerms) -- Formel-Kennzahlen
+  // duerfen nur BASIC-Kennzahlen referenzieren, keine anderen Formeln (siehe
+  // lib/actions/custom-kpi.ts computeFormulaValue).
+  kind String @default("BASIC")
+  // Nur bei kind="FORMULA" gesetzt: [{ kpiId: string, operator: "ADD"|"SUBTRACT" }, ...]
+  formulaTerms Json?
 
   createdAt DateTime @default(now())
 
@@ -987,10 +995,25 @@ model CustomChart {
   // Zusatzkonfiguration je nach Feld-Art: bei Datum {granularity,windowCount},
   // bei Zahl {bucketCount}, sonst null. Siehe GroupByConfig in lib/custom-kpi.ts.
   groupByConfig Json?
-  aggregation String // "count" | "sum"
+  aggregation String // "count" | "sum" | "avg" | "min" | "max"
   sumField    String?
   // Wie bei CustomKpi: zusaetzliche Bedingungen, siehe lib/report-filters.ts
   filterConditions Json?
+
+  // Freitext-Beschriftung der X-/Y-Achse (nur Balken/Linie/Flaeche, bei Kreis
+  // ignoriert). Null = keine eigene Beschriftung.
+  xAxisLabel String?
+  yAxisLabel String?
+  // Ob der Wert direkt am Balken/Segment/Punkt angezeigt wird.
+  showValueLabels Boolean @default(false)
+  // "VALUE" (Rohwert) | "PERCENT" (Anteil am Gesamtwert aller Buckets) --
+  // nur relevant, wenn showValueLabels = true.
+  valueLabelFormat String @default("VALUE")
+  // Frei waehlbare Farben, ein Hex-Code pro Bucket in Anzeige-Reihenfolge
+  // (string[]) -- null = Standardpalette/-verlauf. Nur im Bearbeiten-Modus
+  // waehlbar, da die tatsaechlichen Buckets erst nach dem ersten Speichern
+  // bekannt sind (siehe components/chart-manager.tsx).
+  colors Json?
 
   createdAt DateTime @default(now())
 

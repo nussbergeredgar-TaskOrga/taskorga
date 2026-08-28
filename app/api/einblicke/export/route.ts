@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { toCsv, csvNum, csvResponseHeaders } from "@/lib/csv";
 import { applyFilterConditions, type ReportFilterCondition } from "@/lib/report-filters";
 import { DATE_FIELD_BY_ENTITY, statusOptionsFor, type EntityKey } from "@/lib/custom-kpi";
+import { computeFormulaValueForRange, type FormulaTerm } from "@/lib/actions/custom-kpi";
 
 const MAX_ROWS = 5000;
 
@@ -191,6 +192,27 @@ export async function GET(request: Request) {
   if (kind === "kpi") {
     const kpi = await prisma.customKpi.findFirst({ where: { id, companyId } });
     if (!kpi) return NextResponse.json({ error: "Nicht gefunden." }, { status: 404 });
+
+    // Formel-Kennzahlen haben keine eigenen Datensaetze (mehrere verrechnete
+    // Kennzahlen, ggf. verschiedene Datentypen) -- statt Zeilen-Export gibt es
+    // hier die Aufschluesselung: eine Zeile je verrechneter Kennzahl plus
+    // Summenzeile, exakt wie in der Breakdown-Anzeige in components/kpi-manager.tsx.
+    if (kpi.kind === "FORMULA") {
+      const terms = (kpi.formulaTerms as FormulaTerm[] | null) ?? [];
+      const dateFilter = resolveDateRange(kpi.dateRangeType, kpi.dateFrom, kpi.dateTo);
+      const { value, breakdown } = await computeFormulaValueForRange(companyId, terms, dateFilter);
+      const opLabel = (op: "ADD" | "SUBTRACT") => (op === "SUBTRACT" ? "−" : "+");
+      const rows: string[][] = [
+        ["Kennzahl", "Operator", "Wert"],
+        ...breakdown.map((b) => [b.label, opLabel(b.operator), csvNum(b.value)]),
+        ["Gesamt", "", csvNum(value)],
+      ];
+      const filenameSafe = kpi.label.replace(/[^a-z0-9äöüß\-_]+/gi, "-").toLowerCase();
+      return new NextResponse(toCsv(rows), {
+        headers: csvResponseHeaders(`${filenameSafe || "formel"}-${new Date().toISOString().slice(0, 10)}.csv`),
+      });
+    }
+
     entity = kpi.entity as EntityKey;
     label = kpi.label;
     if (kpi.statusValue) where.status = kpi.statusValue;

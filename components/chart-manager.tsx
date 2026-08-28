@@ -10,8 +10,9 @@ import {
   duplicateCustomChart,
   toggleChartOnDashboard,
   type ChartType,
+  type ValueLabelFormat,
 } from "@/lib/actions/custom-chart";
-import { CustomChart } from "@/components/charts/custom-chart";
+import { CustomChart, PALETTE } from "@/components/charts/custom-chart";
 import { ReportFilterConditionsEditor } from "@/components/report-filter-conditions";
 import {
   ENTITY_META,
@@ -30,9 +31,11 @@ import {
   DEFAULT_BUCKET_COUNT,
   MIN_BUCKET_COUNT,
   MAX_BUCKET_COUNT,
+  AGGREGATION_LABELS,
   type EntityKey,
   type DateGranularity,
   type GroupByConfig,
+  type KpiAggregation,
 } from "@/lib/custom-kpi";
 import type { ReportFilterCondition } from "@/lib/report-filters";
 
@@ -48,6 +51,11 @@ type Chart = {
   filterConditions: unknown;
   data: { label: string; value: number; status?: string }[];
   onDashboard: boolean;
+  xAxisLabel: string | null;
+  yAxisLabel: string | null;
+  showValueLabels: boolean;
+  valueLabelFormat: string;
+  colors: unknown;
 };
 
 const CHART_TYPE_LABELS: Record<ChartType, string> = {
@@ -74,7 +82,8 @@ function describeChart(chart: Chart) {
   }
 
   const sumFieldEntry = chart.sumField ? fieldFor(entity, chart.sumField) : undefined;
-  const aggLabel = chart.aggregation === "sum" ? `${sumFieldEntry?.label ?? "Betrag"} summiert` : "Anzahl";
+  const agg = chart.aggregation as KpiAggregation;
+  const aggLabel = agg !== "count" ? `${AGGREGATION_LABELS[agg]}: ${sumFieldEntry?.label ?? "Betrag"}` : "Anzahl";
   const conditions = (chart.filterConditions as ReportFilterCondition[] | null) ?? [];
   const filterSuffix = conditions.length > 0 ? ` · ${conditions.length} Bedingung${conditions.length !== 1 ? "en" : ""}` : "";
   return `${meta?.label ?? chart.entity} · ${chartLabel} · ${groupLabel} · ${aggLabel}${filterSuffix}`;
@@ -106,12 +115,24 @@ function ChartForm({
   const [numberBucketCount, setNumberBucketCount] = useState<number>(
     initialConfig && "bucketCount" in initialConfig ? initialConfig.bucketCount : DEFAULT_BUCKET_COUNT
   );
-  const [aggregation, setAggregation] = useState((initial?.aggregation as "count" | "sum") ?? "count");
+  const [aggregation, setAggregation] = useState<KpiAggregation>((initial?.aggregation as KpiAggregation) ?? "count");
   const [sumField, setSumField] = useState<string>(
     initial?.sumField ?? numberFieldsFor((initial?.entity as EntityKey) ?? "invoices")[0]?.key ?? ""
   );
   const [conditions, setConditions] = useState<ReportFilterCondition[]>(
     (initial?.filterConditions as ReportFilterCondition[] | null) ?? []
+  );
+  const [xAxisLabel, setXAxisLabel] = useState(initial?.xAxisLabel ?? "");
+  const [yAxisLabel, setYAxisLabel] = useState(initial?.yAxisLabel ?? "");
+  const [showValueLabels, setShowValueLabels] = useState(initial?.showValueLabels ?? false);
+  const [valueLabelFormat, setValueLabelFormat] = useState<ValueLabelFormat>(
+    (initial?.valueLabelFormat as ValueLabelFormat) ?? "VALUE"
+  );
+  // Farben pro Bucket -- nur im Bearbeiten-Modus waehlbar, da die tatsaechlichen
+  // Buckets (initial.data) erst nach dem ersten Speichern bekannt sind.
+  const initialColors = (initial?.colors as string[] | null) ?? null;
+  const [colors, setColors] = useState<string[]>(
+    initial?.data.map((d, i) => initialColors?.[i] ?? PALETTE[i % PALETTE.length]) ?? []
   );
   const [pending, startTransition] = useTransition();
 
@@ -144,7 +165,7 @@ function ChartForm({
 
   function submit() {
     if (!label.trim() || !groupByField) return;
-    const effectiveAggregation = aggregation === "sum" && canSum ? "sum" : "count";
+    const effectiveAggregation: KpiAggregation = aggregation !== "count" && canSum ? aggregation : "count";
 
     let groupByConfig: GroupByConfig = null;
     if (selectedField?.kind === "date") {
@@ -159,9 +180,14 @@ function ChartForm({
       chartType,
       groupByField,
       groupByConfig,
-      aggregation: effectiveAggregation as "count" | "sum",
-      sumField: effectiveAggregation === "sum" ? sumField : undefined,
+      aggregation: effectiveAggregation,
+      sumField: effectiveAggregation !== "count" ? sumField : undefined,
       filterConditions: conditions.filter((c) => c.value.trim()),
+      xAxisLabel: chartType !== "pie" ? xAxisLabel.trim() || undefined : undefined,
+      yAxisLabel: chartType !== "pie" ? yAxisLabel.trim() || undefined : undefined,
+      showValueLabels,
+      valueLabelFormat,
+      colors: colors.length > 0 ? colors : undefined,
     };
     startTransition(async () => {
       if (initial) {
@@ -307,13 +333,20 @@ function ChartForm({
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         <select
           value={canSum ? aggregation : "count"}
-          onChange={(e) => setAggregation(e.target.value as "count" | "sum")}
+          onChange={(e) => setAggregation(e.target.value as KpiAggregation)}
           className="rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface"
         >
-          <option value="count">Anzahl zählen</option>
-          {canSum && <option value="sum">Betrag summieren</option>}
+          <option value="count">{AGGREGATION_LABELS.count}</option>
+          {canSum && (
+            <>
+              <option value="sum">{AGGREGATION_LABELS.sum}</option>
+              <option value="avg">{AGGREGATION_LABELS.avg}</option>
+              <option value="min">{AGGREGATION_LABELS.min}</option>
+              <option value="max">{AGGREGATION_LABELS.max}</option>
+            </>
+          )}
         </select>
-        {aggregation === "sum" && canSum && (
+        {aggregation !== "count" && canSum && (
           <select
             value={sumField}
             onChange={(e) => setSumField(e.target.value)}
@@ -327,6 +360,70 @@ function ChartForm({
           </select>
         )}
       </div>
+
+      {chartType !== "pie" && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <div>
+            <label className="block text-xs text-ink-500 mb-1">X-Achse (optional)</label>
+            <input
+              value={xAxisLabel}
+              onChange={(e) => setXAxisLabel(e.target.value)}
+              placeholder="Beschriftung"
+              className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-ink-500 mb-1">Y-Achse (optional)</label>
+            <input
+              value={yAxisLabel}
+              onChange={(e) => setYAxisLabel(e.target.value)}
+              placeholder="Beschriftung"
+              className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface"
+            />
+          </div>
+        </div>
+      )}
+
+      <div className="flex items-center gap-3">
+        <label className="flex items-center gap-1.5 text-sm text-ink-700">
+          <input
+            type="checkbox"
+            checked={showValueLabels}
+            onChange={(e) => setShowValueLabels(e.target.checked)}
+            className="rounded border-ink-100"
+          />
+          Werte direkt am Balken/Segment anzeigen
+        </label>
+        {showValueLabels && (
+          <select
+            value={valueLabelFormat}
+            onChange={(e) => setValueLabelFormat(e.target.value as ValueLabelFormat)}
+            className="rounded-lg border border-ink-100 px-2.5 py-1.5 text-sm outline-none focus:border-brand-500 bg-surface"
+          >
+            <option value="VALUE">Wert</option>
+            <option value="PERCENT">Anteil in %</option>
+          </select>
+        )}
+      </div>
+
+      {initial && initial.data.length > 0 && (
+        <div className="space-y-2">
+          <label className="block text-xs text-ink-500">Farben</label>
+          <div className="flex flex-wrap gap-2">
+            {initial.data.map((d, i) => (
+              <div key={d.label} className="flex items-center gap-1.5 rounded-lg border border-ink-100 px-2 py-1">
+                <input
+                  type="color"
+                  value={colors[i] ?? PALETTE[i % PALETTE.length]}
+                  onChange={(e) => setColors((prev) => prev.map((c, ci) => (ci === i ? e.target.value : c)))}
+                  className="h-6 w-8 cursor-pointer rounded border border-ink-100 bg-surface"
+                />
+                <span className="max-w-[8rem] truncate text-xs text-ink-500">{d.label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <ReportFilterConditionsEditor fields={filterFields} conditions={conditions} onChange={setConditions} />
 
@@ -420,8 +517,13 @@ function ChartCard({ chart, onEdit }: { chart: Chart; onEdit: () => void }) {
       <CustomChart
         chartType={chart.chartType as ChartType}
         data={chart.data}
-        valueSuffix={chart.aggregation === "sum" ? " €" : undefined}
+        valueSuffix={chart.aggregation !== "count" ? " €" : undefined}
         entity={chart.entity as EntityKey}
+        xAxisLabel={chart.xAxisLabel}
+        yAxisLabel={chart.yAxisLabel}
+        showValueLabels={chart.showValueLabels}
+        valueLabelFormat={chart.valueLabelFormat as "VALUE" | "PERCENT"}
+        colors={chart.colors as string[] | null}
       />
     </div>
   );

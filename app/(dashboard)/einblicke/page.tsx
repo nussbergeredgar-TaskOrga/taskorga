@@ -135,7 +135,11 @@ export default async function EinblickePage() {
             dateTo: k.dateTo,
             dateField: k.dateField,
             filterConditions: k.filterConditions,
+            kind: k.kind,
+            formulaTerms: k.formulaTerms,
+            breakdown: k.breakdown,
             value: k.value,
+            previousValue: k.previousValue,
             onDashboard: onDashboardIds.has(`custom:${k.id}`),
           }))}
         />
@@ -161,6 +165,11 @@ export default async function EinblickePage() {
             sumField: c.sumField,
             filterConditions: c.filterConditions,
             data: c.data,
+            xAxisLabel: c.xAxisLabel,
+            yAxisLabel: c.yAxisLabel,
+            showValueLabels: c.showValueLabels,
+            valueLabelFormat: c.valueLabelFormat,
+            colors: c.colors,
             onDashboard: onDashboardIds.has(`chart:${c.id}`),
           }))}
         />
