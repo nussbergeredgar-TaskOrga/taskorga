@@ -6,6 +6,7 @@ import { BrandColorStyle } from "@/components/brand-color-style";
 import { EmailVerificationBanner } from "@/components/email-verification-banner";
 import { TourProvider } from "@/components/dashboard-tour";
 import { getNavConfig, getNavLabels } from "@/lib/actions/nav";
+import { getAnnouncementsForBell } from "@/lib/actions/announcements";
 import { DEFAULT_NAV, NAV_CATALOG } from "@/lib/nav-items";
 import { getCurrentUserWithRole, getCurrentCompany } from "@/lib/session";
 import { hasPermission, type PermissionKey } from "@/lib/permissions";
@@ -20,11 +21,12 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const [user, savedConfig, labels, company] = await Promise.all([
+  const [user, savedConfig, labels, company, announcements] = await Promise.all([
     getCurrentUserWithRole(),
     getNavConfig(),
     getNavLabels(),
     getCurrentCompany(),
+    getAnnouncementsForBell(),
   ]);
 
   const allowedIds = new Set(
@@ -45,7 +47,12 @@ export default async function DashboardLayout({
         <BrandColorStyle color={company.appAccentColor} />
         <NavSidebar config={config} labels={labels} />
         <div className="flex flex-1 flex-col min-w-0">
-          <TopBar />
+          <TopBar
+            announcements={announcements.items}
+            hasUnseen={announcements.hasUnseen}
+            isAdmin={user.role?.name === "Admin"}
+            updateRequestedAt={company.updateRequestedAt}
+          />
           {!user.emailVerifiedAt && <EmailVerificationBanner email={user.email} />}
           <main className="flex-1 overflow-y-auto p-4 md:p-6 pb-20 md:pb-6">{children}</main>
         </div>

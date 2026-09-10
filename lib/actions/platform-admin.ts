@@ -2,6 +2,7 @@
 
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
+import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { assertNotLocked, recordFailedAttempt } from "@/lib/platform-lockout";
 import { deleteCompanyData } from "@/lib/company-deletion";
@@ -344,4 +345,36 @@ export async function updateSystemEmailSettings(
     data: update as Prisma.SystemEmailSettingsUpdateInput,
   });
   return { success: true };
+}
+
+// Ankuendigungs-Glocke im App-Header (components/top-bar.tsx): plattformweite
+// Mitteilungen an alle Kundenfirmen (neue Funktionen, neue Versionen), nur
+// hier ueber das Master-Passwort verwaltbar. Anzeige/Lesen laeuft separat
+// ueber lib/actions/announcements.ts (normale Session, kein Secret).
+export async function listAnnouncements(secret: string) {
+  await checkSecret(secret);
+  return prisma.announcement.findMany({ orderBy: { publishedAt: "desc" } });
+}
+
+export async function createAnnouncement(
+  secret: string,
+  data: { type: "FEATURE" | "VERSION"; teaser: string; title: string; body: string }
+) {
+  await checkSecret(secret);
+  if (!data.teaser.trim() || !data.title.trim() || !data.body.trim()) return;
+  await prisma.announcement.create({
+    data: {
+      type: data.type,
+      teaser: data.teaser.trim(),
+      title: data.title.trim(),
+      body: data.body.trim(),
+    },
+  });
+  revalidatePath("/", "layout");
+}
+
+export async function deleteAnnouncement(secret: string, id: string) {
+  await checkSecret(secret);
+  await prisma.announcement.delete({ where: { id } });
+  revalidatePath("/", "layout");
 }

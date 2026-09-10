@@ -3,7 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
-import { Ban, CheckCircle2, ChevronDown, Gift, LifeBuoy, Mail, Trash2 } from "lucide-react";
+import { Ban, CheckCircle2, ChevronDown, Gift, LifeBuoy, Mail, Megaphone, Trash2 } from "lucide-react";
 import {
   verifyPlatformSecret,
   listInviteCodes,
@@ -24,6 +24,9 @@ import {
   resetUserPasswordForAdmin,
   getSystemEmailSettingsForAdmin,
   updateSystemEmailSettings,
+  listAnnouncements,
+  createAnnouncement,
+  deleteAnnouncement,
 } from "@/lib/actions/platform-admin";
 import { CustomChart } from "@/components/charts/custom-chart";
 import { PasswordInput } from "@/components/password-input";
@@ -37,7 +40,18 @@ type Code = {
   usedCount: number;
 };
 
-type Tab = "codes" | "firmen" | "mails" | "support";
+type Tab = "codes" | "firmen" | "mails" | "support" | "ankuendigungen";
+
+type Announcement = {
+  id: string;
+  type: string;
+  teaser: string;
+  title: string;
+  body: string;
+  publishedAt: Date;
+};
+
+const ANNOUNCEMENT_TYPE_LABELS: Record<string, string> = { FEATURE: "Funktion", VERSION: "Version" };
 
 const TRIAL_DAYS_OPTIONS = [
   { value: 14, label: "2 Wochen" },
@@ -810,6 +824,121 @@ function SupportAccessTab() {
   );
 }
 
+function AnnouncementsTab({
+  secret,
+  announcements,
+  refresh,
+}: {
+  secret: string;
+  announcements: Announcement[];
+  refresh: () => void;
+}) {
+  const [pending, startTransition] = useTransition();
+  const [type, setType] = useState<"FEATURE" | "VERSION">("FEATURE");
+  const [teaser, setTeaser] = useState("");
+  const [title, setTitle] = useState("");
+  const [body, setBody] = useState("");
+
+  function publish() {
+    startTransition(async () => {
+      await createAnnouncement(secret, { type, teaser, title, body });
+      setTeaser("");
+      setTitle("");
+      setBody("");
+      refresh();
+    });
+  }
+
+  function remove(id: string) {
+    startTransition(async () => {
+      await deleteAnnouncement(secret, id);
+      refresh();
+    });
+  }
+
+  return (
+    <div className="space-y-8">
+      <div>
+        <h1 className="font-display font-semibold text-2xl text-ink-900">Ankündigungen</h1>
+        <p className="text-sm text-ink-500 mt-1">
+          Erscheinen in der Glocke oben rechts bei allen Kundenfirmen -- die Glocke blinkt, sobald hier
+          etwas Neues veröffentlicht wird.
+        </p>
+      </div>
+
+      <div className="bg-surface rounded-card border border-ink-100 shadow-card p-5 space-y-3">
+        <div className="flex rounded-lg border border-ink-100 p-0.5 text-sm w-fit">
+          <button
+            type="button"
+            onClick={() => setType("FEATURE")}
+            className={`rounded-md px-3 py-1.5 font-medium transition-colors ${
+              type === "FEATURE" ? "bg-brand-500 text-white" : "text-ink-500 hover:text-ink-900"
+            }`}
+          >
+            Funktion
+          </button>
+          <button
+            type="button"
+            onClick={() => setType("VERSION")}
+            className={`rounded-md px-3 py-1.5 font-medium transition-colors ${
+              type === "VERSION" ? "bg-brand-500 text-white" : "text-ink-500 hover:text-ink-900"
+            }`}
+          >
+            Version
+          </button>
+        </div>
+        <input
+          value={teaser}
+          onChange={(e) => setTeaser(e.target.value)}
+          placeholder="Teaser (2-3 Wörter, in der Glocken-Liste), z. B. „Neue Kennzahlen“"
+          className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500"
+        />
+        <input
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="Titel im Detail-Fenster"
+          className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500"
+        />
+        <textarea
+          value={body}
+          onChange={(e) => setBody(e.target.value)}
+          placeholder="Beschreibung -- bei „Version“ z. B. alle enthaltenen Funktionen und Kosten-Hinweise als Fließtext"
+          rows={4}
+          className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500"
+        />
+        <button
+          disabled={pending || !teaser.trim() || !title.trim() || !body.trim()}
+          onClick={publish}
+          className="flex items-center gap-1.5 rounded-lg bg-brand-500 text-white text-sm font-medium px-4 py-2.5 hover:bg-brand-600 disabled:opacity-60 transition-colors"
+        >
+          <Megaphone size={15} />
+          {pending ? "Wird veröffentlicht …" : "Veröffentlichen"}
+        </button>
+      </div>
+
+      <div className="space-y-2">
+        {announcements.length === 0 && <p className="text-sm text-ink-500">Noch keine Ankündigungen.</p>}
+        {announcements.map((a) => (
+          <div key={a.id} className="bg-surface rounded-card border border-ink-100 shadow-card p-4 flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <span className="text-xs font-medium text-brand-700">{ANNOUNCEMENT_TYPE_LABELS[a.type] ?? a.type}</span>
+              <p className="text-sm font-medium text-ink-900">{a.title}</p>
+              <p className="text-xs text-ink-500 mt-0.5">{new Date(a.publishedAt).toLocaleDateString("de-DE")}</p>
+            </div>
+            <button
+              disabled={pending}
+              onClick={() => remove(a.id)}
+              className="shrink-0 flex items-center gap-1 text-xs text-ink-500 hover:text-danger transition-colors"
+            >
+              <Trash2 size={13} /> Löschen
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function PlattformAdminPage() {
   const [secret, setSecret] = useState("");
   const [unlocked, setUnlocked] = useState(false);
@@ -818,6 +947,7 @@ export default function PlattformAdminPage() {
   const [emailInvites, setEmailInvites] = useState<EmailInviteOverview[]>([]);
   const [companies, setCompanies] = useState<CompanyOverview[]>([]);
   const [stats, setStats] = useState<PlatformStats | null>(null);
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [error, setError] = useState("");
 
   async function unlock() {
@@ -831,6 +961,15 @@ export default function PlattformAdminPage() {
     refreshCodes();
     refreshEmailInvites();
     refreshCompanies();
+    refreshAnnouncements();
+  }
+
+  async function refreshAnnouncements() {
+    try {
+      setAnnouncements(await listAnnouncements(secret));
+    } catch (err) {
+      handleSessionError(err);
+    }
   }
 
   async function refreshCodes() {
@@ -898,6 +1037,7 @@ export default function PlattformAdminPage() {
               ["firmen", "Firmen"],
               ["mails", "E-Mail-Vorlagen"],
               ["support", "Support-Zugriff"],
+              ["ankuendigungen", "Ankündigungen"],
             ] as [Tab, string][]
           ).map(([id, label]) => (
             <button
@@ -926,6 +1066,9 @@ export default function PlattformAdminPage() {
         )}
         {tab === "mails" && <EmailTemplatesTab secret={secret} />}
         {tab === "support" && <SupportAccessTab />}
+        {tab === "ankuendigungen" && (
+          <AnnouncementsTab secret={secret} announcements={announcements} refresh={refreshAnnouncements} />
+        )}
       </div>
     </div>
   );

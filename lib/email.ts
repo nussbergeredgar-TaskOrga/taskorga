@@ -127,6 +127,42 @@ export async function sendTeamInviteEmail({
   });
 }
 
+// Interne Betriebs-Benachrichtigung an den Betreiber (nicht konfigurierbar
+// wie die uebrigen System-Mails hier -- fester Text, nur die Kopf-/Fuss-Zeile
+// kommt aus getSystemEmailSettings() fuer ein einheitliches Aussehen).
+export async function sendUpdateRequestEmail({
+  companyName,
+  requesterName,
+  requesterEmail,
+}: {
+  companyName: string;
+  requesterName: string;
+  requesterEmail: string;
+}) {
+  const to = process.env.PLATFORM_OPERATOR_EMAIL;
+  if (!resend || !to) {
+    throw new Error("E-Mail-Versand für Update-Anfragen ist nicht eingerichtet (RESEND_API_KEY/PLATFORM_OPERATOR_EMAIL).");
+  }
+
+  const settings = await getSystemEmailSettings();
+
+  await resend.emails.send({
+    from: process.env.EMAIL_FROM || "TaskOrga <onboarding@resend.dev>",
+    to,
+    subject: `Update-Anfrage: ${companyName}`,
+    html: renderSystemEmail({
+      branding: settings,
+      bodyHtml: `
+        <p style="margin:0 0 14px;">„${companyName}" hat über den Admin-Bereich ein Update angefragt.</p>
+        <p style="margin:0 0 14px;">
+          <strong>Angefragt von:</strong> ${requesterName} (${requesterEmail})<br/>
+          <strong>Firma:</strong> ${companyName}
+        </p>
+      `,
+    }),
+  });
+}
+
 export async function sendPaymentReminderEmail({
   to,
   greeting,

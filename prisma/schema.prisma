@@ -88,6 +88,15 @@ model Company {
   // gesetzter dauerhafter kostenloser Zugriff -- unabhaengig vom Stripe-Status.
   billingExempt            Boolean @default(false)
 
+  // Markiert genau eine Firma: Edgars eigene interne Firma (siehe
+  // Setup-Skript), Ziel fuer automatisch angelegte Aufgaben aus
+  // "Update anfordern" (lib/actions/update-request.ts). Fuer alle
+  // Kundenfirmen false.
+  isPlatformOwner Boolean @default(false)
+  // Wann diese Firma zuletzt ein Update angefragt hat -- verhindert
+  // Mehrfach-Anfragen, siehe requestUpdate() in lib/actions/update-request.ts.
+  updateRequestedAt DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -276,6 +285,10 @@ model User {
   navConfig Json? // gespeicherte Reihenfolge/Sichtbarkeit der Navigationspunkte
   listViewConfig Json? // je Entitaet: Ansicht (Karten/Tabelle), Spalten (sichtbar/Reihenfolge/Breite)
   savedFilters   Json? // je Entitaet: gespeicherte, benannte Filter + aktiver Filter
+  // Wann dieser Nutzer die Ankuendigungs-Glocke zuletzt geoeffnet hat -- die
+  // Glocke blinkt, wenn es neuere Announcement.publishedAt gibt (oder dieses
+  // Feld noch nie gesetzt wurde). Siehe lib/actions/announcements.ts.
+  announcementsSeenAt DateTime?
 
   failedLoginAttempts Int       @default(0)
   lockedUntil         DateTime?
@@ -1194,4 +1207,20 @@ model Dashboard {
   defaultSlot Int?
 
   @@unique([userId, defaultSlot])
+}
+
+// Plattformweite Ankuendigung (Feature/Version), nicht pro Firma -- Edgars
+// Kommunikationskanal an alle Kundenfirmen ueber die Glocke im Header. Wird
+// nur ueber die Plattform-Verwaltung (Master-Passwort) angelegt/geloescht,
+// siehe lib/actions/platform-admin.ts.
+model Announcement {
+  id     String @id @default(cuid())
+  type   String // "FEATURE" | "VERSION"
+  teaser String // 2-3 Woerter, in der Glocken-Liste
+  title  String
+  body   String @db.Text // Freitext (bei VERSION auch mehrere Punkte + Kosten-Hinweis moeglich)
+
+  publishedAt DateTime @default(now())
+
+  @@index([publishedAt])
 }
