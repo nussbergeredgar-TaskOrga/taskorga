@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Trash2, Plus, LayoutGrid, Pencil, Copy, Download, ChevronDown, MoreVertical } from "lucide-react";
+import { Trash2, Plus, LayoutGrid, Pencil, Copy, Download, ChevronDown, MoreVertical, BarChart3 } from "lucide-react";
 import {
   createCustomKpi,
   updateCustomKpi,
@@ -566,12 +566,17 @@ function KpiActionsMenu({
   onEdit,
   onDuplicate,
   onDelete,
+  onCreateChart,
 }: {
   kpi: Kpi;
   pending: boolean;
   onEdit: () => void;
   onDuplicate: () => void;
   onDelete: () => void;
+  // Nur fuer BASIC-Kennzahlen gesetzt -- eine Formel hat keinen einzelnen
+  // Datentyp, den ein Diagramm uebernehmen koennte (siehe stattdessen die
+  // Diagramm-Buttons pro Term in der Aufschluesselung, breakdownPanel unten).
+  onCreateChart?: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -610,6 +615,17 @@ function KpiActionsMenu({
           >
             <Pencil size={14} /> Bearbeiten
           </button>
+          {onCreateChart && (
+            <button
+              onClick={() => {
+                setOpen(false);
+                onCreateChart();
+              }}
+              className="flex w-full items-center gap-2 px-3 py-1.5 text-sm text-ink-700 hover:bg-ink-50 transition-colors"
+            >
+              <BarChart3 size={14} /> Diagramm erstellen
+            </button>
+          )}
           <button
             disabled={pending}
             onClick={() => {
@@ -677,6 +693,12 @@ function KpiRow({ kpi, onEdit }: { kpi: Kpi; onEdit: () => void }) {
     });
   }
 
+  // Oeffnet das Diagramm-Erstellen-Formular vorausgefuellt mit den Daten der
+  // uebergebenen (BASIC-)Kennzahl -- siehe ChartManager in chart-manager.tsx.
+  function createChartFrom(kpiId: string) {
+    router.push(`/einblicke?prefillChart=${kpiId}`);
+  }
+
   function handleDelete() {
     if (confirm(`Kennzahl „${kpi.label}“ wirklich löschen?`)) {
       startTransition(async () => {
@@ -701,15 +723,33 @@ function KpiRow({ kpi, onEdit }: { kpi: Kpi; onEdit: () => void }) {
   );
 
   const hasBreakdown = kpi.kind === "FORMULA" && (kpi.breakdown?.length ?? 0) > 0;
+  // Gleiche Reihenfolge wie kpi.breakdown -- beide entstehen serverseitig aus
+  // derselben Terms-Schleife (computeFormulaValueForRange) -- so laesst sich
+  // pro Aufschluesselungs-Zeile die zugrunde liegende BASIC-Kennzahl fuer den
+  // "Diagramm erstellen"-Button wiederfinden.
+  const breakdownTerms = (kpi.formulaTerms as FormulaTerm[] | null) ?? [];
   const breakdownPanel = hasBreakdown && (
     <div className="space-y-1 rounded-lg bg-ink-50 px-3 py-2">
       {kpi.breakdown!.map((b, i) => (
         <div key={i} className="flex items-center justify-between gap-2 text-xs">
-          <span className="text-ink-500">
+          <span className="min-w-0 truncate text-ink-500">
             {i > 0 && <span className="font-mono">{OPERATOR_LABELS[b.operator]} </span>}
             {b.label}
           </span>
-          <span className="font-mono text-ink-700">{formatBreakdownValue(b)}</span>
+          <span className="flex shrink-0 items-center gap-2">
+            <span className="font-mono text-ink-700">{formatBreakdownValue(b)}</span>
+            {breakdownTerms[i]?.kpiId && (
+              <button
+                type="button"
+                onClick={() => createChartFrom(breakdownTerms[i].kpiId)}
+                className="p-0.5 text-ink-300 hover:text-brand-700 transition-colors"
+                aria-label={`Diagramm aus „${b.label}“ erstellen`}
+                title={`Diagramm aus „${b.label}“ erstellen`}
+              >
+                <BarChart3 size={13} />
+              </button>
+            )}
+          </span>
         </div>
       ))}
     </div>
@@ -742,7 +782,14 @@ function KpiRow({ kpi, onEdit }: { kpi: Kpi; onEdit: () => void }) {
             <span className="font-mono text-sm font-medium text-ink-900">{valueText}</span>
             <TrendBadge value={kpi.value} previousValue={kpi.previousValue} />
             {dashboardToggleButton}
-            <KpiActionsMenu kpi={kpi} pending={pending} onEdit={onEdit} onDuplicate={handleDuplicate} onDelete={handleDelete} />
+            <KpiActionsMenu
+            kpi={kpi}
+            pending={pending}
+            onEdit={onEdit}
+            onDuplicate={handleDuplicate}
+            onDelete={handleDelete}
+            onCreateChart={kpi.kind !== "FORMULA" ? () => createChartFrom(kpi.id) : undefined}
+          />
           </div>
         </div>
         {kpi.targetValue != null && (
@@ -767,7 +814,14 @@ function KpiRow({ kpi, onEdit }: { kpi: Kpi; onEdit: () => void }) {
             />
             <span className="truncate text-sm font-medium text-ink-900">{kpi.label}</span>
           </button>
-          <KpiActionsMenu kpi={kpi} pending={pending} onEdit={onEdit} onDuplicate={handleDuplicate} onDelete={handleDelete} />
+          <KpiActionsMenu
+            kpi={kpi}
+            pending={pending}
+            onEdit={onEdit}
+            onDuplicate={handleDuplicate}
+            onDelete={handleDelete}
+            onCreateChart={kpi.kind !== "FORMULA" ? () => createChartFrom(kpi.id) : undefined}
+          />
         </div>
         {expanded && (
           <div className="space-y-2 px-3 pb-3">

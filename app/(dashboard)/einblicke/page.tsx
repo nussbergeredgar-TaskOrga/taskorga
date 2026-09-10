@@ -11,6 +11,7 @@ import { PipelineChart } from "@/components/charts/pipeline-chart";
 import { InvoiceStatusChart } from "@/components/charts/invoice-status-chart";
 import Link from "next/link";
 import { FileText } from "lucide-react";
+import { Suspense } from "react";
 
 const PIPELINE_LABELS: Record<string, string> = {
   NEW: "Neu",
@@ -62,6 +63,24 @@ export default async function EinblickePage() {
   ]);
 
   const onDashboardIds = new Set((layout ?? []).filter((w) => w.visible).map((w) => w.id));
+
+  // Vorausfuell-Quellen fuer "Diagramm erstellen" an einer Kennzahl (siehe
+  // components/chart-manager.tsx) -- nur BASIC-Kennzahlen haben einen
+  // einzelnen Datentyp, den ein Diagramm uebernehmen kann. Status-/
+  // Zeitraum-Filter der Kennzahl werden bewusst nicht mituebernommen (siehe
+  // Kommentar an filterableFieldsFor in lib/custom-kpi.ts), stattdessen nur
+  // als Hinweis markiert.
+  const chartPrefillSources = kpis
+    .filter((k) => k.kind !== "FORMULA")
+    .map((k) => ({
+      id: k.id,
+      label: k.label,
+      entity: k.entity,
+      aggregation: k.aggregation,
+      sumField: k.sumField,
+      filterConditions: k.filterConditions,
+      hasStatusOrDateFilter: k.statusValue != null || (!!k.dateRangeType && k.dateRangeType !== "ALL"),
+    }));
 
   // Umsatz pro Monat (letzte 6 Monate) aus der konfigurierbaren Umsatz-Zusammensetzung
   const monthBuckets = monthRanges.map((r, i) => ({ month: r.label, umsatz: monthlyRevenue[i] }));
@@ -156,26 +175,29 @@ export default async function EinblickePage() {
           wählbaren Wertebereichen -- optional mit weiteren Bedingungen. Über das Raster-Symbol
           erscheint das Diagramm auch auf „Heute".
         </p>
-        <ChartManager
-          charts={customCharts.map((c) => ({
-            id: c.id,
-            label: c.label,
-            entity: c.entity,
-            chartType: c.chartType,
-            groupByField: c.groupByField,
-            groupByConfig: c.groupByConfig,
-            aggregation: c.aggregation,
-            sumField: c.sumField,
-            filterConditions: c.filterConditions,
-            data: c.data,
-            xAxisLabel: c.xAxisLabel,
-            yAxisLabel: c.yAxisLabel,
-            showValueLabels: c.showValueLabels,
-            valueLabelFormat: c.valueLabelFormat,
-            colors: c.colors,
-            onDashboard: onDashboardIds.has(`chart:${c.id}`),
-          }))}
-        />
+        <Suspense fallback={null}>
+          <ChartManager
+            charts={customCharts.map((c) => ({
+              id: c.id,
+              label: c.label,
+              entity: c.entity,
+              chartType: c.chartType,
+              groupByField: c.groupByField,
+              groupByConfig: c.groupByConfig,
+              aggregation: c.aggregation,
+              sumField: c.sumField,
+              filterConditions: c.filterConditions,
+              data: c.data,
+              xAxisLabel: c.xAxisLabel,
+              yAxisLabel: c.yAxisLabel,
+              showValueLabels: c.showValueLabels,
+              valueLabelFormat: c.valueLabelFormat,
+              colors: c.colors,
+              onDashboard: onDashboardIds.has(`chart:${c.id}`),
+            }))}
+            kpiSources={chartPrefillSources}
+          />
+        </Suspense>
       </div>
     </div>
   );

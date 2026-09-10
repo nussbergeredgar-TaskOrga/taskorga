@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState, useTransition } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Trash2, Plus, LayoutGrid, Pencil, Copy, Download } from "lucide-react";
 import {
   createCustomChart,
@@ -58,6 +58,21 @@ type Chart = {
   colors: unknown;
 };
 
+// Vorausfuell-Quelle fuer ein neues Diagramm, ausgehend von einer bestehenden
+// (BASIC-)Kennzahl -- siehe "Diagramm erstellen" in components/kpi-manager.tsx.
+// Nur das 1:1 Uebertragbare (Datentyp, Berechnung, Bedingungen); ein Status-/
+// Zeitraum-Filter der Kennzahl hat keine Entsprechung im Diagramm-Formular
+// und wird stattdessen nur als Hinweis markiert (hasStatusOrDateFilter).
+export type ChartKpiSource = {
+  id: string;
+  label: string;
+  entity: string;
+  aggregation: string;
+  sumField: string | null;
+  filterConditions: unknown;
+  hasStatusOrDateFilter: boolean;
+};
+
 const CHART_TYPE_LABELS: Record<ChartType, string> = {
   bar: "Balkendiagramm",
   line: "Liniendiagramm",
@@ -92,18 +107,25 @@ function describeChart(chart: Chart) {
 // Gemeinsames Formular für Neu anlegen UND Bearbeiten
 function ChartForm({
   initial,
+  prefill,
   onCancel,
   onSaved,
 }: {
   initial?: Chart;
+  // Startwerte fuer ein NEUES Diagramm, ausgehend von einer Kennzahl -- im
+  // Unterschied zu "initial" kein Bearbeiten eines bestehenden Diagramms.
+  prefill?: ChartKpiSource;
   onCancel: () => void;
   onSaved: () => void;
 }) {
-  const [label, setLabel] = useState(initial?.label ?? "");
-  const [entity, setEntity] = useState<EntityKey>((initial?.entity as EntityKey) ?? "invoices");
+  const [label, setLabel] = useState(initial?.label ?? prefill?.label ?? "");
+  const [entity, setEntity] = useState<EntityKey>(
+    (initial?.entity as EntityKey) ?? (prefill?.entity as EntityKey) ?? "invoices"
+  );
   const [chartType, setChartType] = useState<ChartType>((initial?.chartType as ChartType) ?? "bar");
   const [groupByField, setGroupByField] = useState<string>(
-    initial?.groupByField ?? defaultGroupByFieldFor((initial?.entity as EntityKey) ?? "invoices")
+    initial?.groupByField ??
+      defaultGroupByFieldFor((initial?.entity as EntityKey) ?? (prefill?.entity as EntityKey) ?? "invoices")
   );
   const initialConfig = (initial?.groupByConfig as GroupByConfig) ?? null;
   const [dateGranularity, setDateGranularity] = useState<DateGranularity>(
@@ -115,12 +137,19 @@ function ChartForm({
   const [numberBucketCount, setNumberBucketCount] = useState<number>(
     initialConfig && "bucketCount" in initialConfig ? initialConfig.bucketCount : DEFAULT_BUCKET_COUNT
   );
-  const [aggregation, setAggregation] = useState<KpiAggregation>((initial?.aggregation as KpiAggregation) ?? "count");
+  const [aggregation, setAggregation] = useState<KpiAggregation>(
+    (initial?.aggregation as KpiAggregation) ?? (prefill?.aggregation as KpiAggregation) ?? "count"
+  );
   const [sumField, setSumField] = useState<string>(
-    initial?.sumField ?? numberFieldsFor((initial?.entity as EntityKey) ?? "invoices")[0]?.key ?? ""
+    initial?.sumField ??
+      prefill?.sumField ??
+      numberFieldsFor((initial?.entity as EntityKey) ?? (prefill?.entity as EntityKey) ?? "invoices")[0]?.key ??
+      ""
   );
   const [conditions, setConditions] = useState<ReportFilterCondition[]>(
-    (initial?.filterConditions as ReportFilterCondition[] | null) ?? []
+    (initial?.filterConditions as ReportFilterCondition[] | null) ??
+      (prefill?.filterConditions as ReportFilterCondition[] | null) ??
+      []
   );
   const [xAxisLabel, setXAxisLabel] = useState(initial?.xAxisLabel ?? "");
   const [yAxisLabel, setYAxisLabel] = useState(initial?.yAxisLabel ?? "");
@@ -201,6 +230,13 @@ function ChartForm({
 
   return (
     <div className="rounded-lg border border-dashed border-ink-100 p-4 space-y-3 bg-ink-50">
+      {prefill && !initial && (
+        <p className="rounded-lg bg-brand-50 px-3 py-2 text-xs text-brand-700">
+          Vorausgefüllt aus Kennzahl „{prefill.label}“.
+          {prefill.hasStatusOrDateFilter &&
+            " Ein Status- oder Zeitraum-Filter der Kennzahl wurde nicht übernommen -- bei Bedarf unten über „Bedingung hinzufügen“ erneut setzen."}
+        </p>
+      )}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         <input
           value={label}
@@ -528,14 +564,31 @@ function ChartCard({ chart, onEdit }: { chart: Chart; onEdit: () => void }) {
   );
 }
 
-export function ChartManager({ charts }: { charts: Chart[] }) {
+export function ChartManager({ charts, kpiSources }: { charts: Chart[]; kpiSources: ChartKpiSource[] }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [prefill, setPrefill] = useState<ChartKpiSource | null>(null);
+
+  // "Diagramm erstellen" an einer Kennzahl (components/kpi-manager.tsx) navigiert
+  // hierher mit ?prefillChart=<kpiId> -- Formular direkt vorausgefuellt oeffnen
+  // und den Parameter wieder entfernen (kein erneutes Oeffnen bei Reload).
+  useEffect(() => {
+    const id = searchParams.get("prefillChart");
+    if (!id) return;
+    router.replace("/einblicke", { scroll: false });
+    const source = kpiSources.find((k) => k.id === id);
+    if (!source) return;
+    setPrefill(source);
+    setShowCreateForm(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   function closeAll() {
     setShowCreateForm(false);
     setEditingId(null);
+    setPrefill(null);
     router.refresh();
   }
 
@@ -564,7 +617,14 @@ export function ChartManager({ charts }: { charts: Chart[] }) {
           Neues Diagramm erstellen
         </button>
       ) : (
-        <ChartForm onCancel={() => setShowCreateForm(false)} onSaved={closeAll} />
+        <ChartForm
+          prefill={prefill ?? undefined}
+          onCancel={() => {
+            setShowCreateForm(false);
+            setPrefill(null);
+          }}
+          onSaved={closeAll}
+        />
       )}
     </div>
   );
