@@ -2,10 +2,34 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { getCurrentCompany } from "@/lib/session";
+import { getCurrentCompany, getCurrentUser } from "@/lib/session";
 import { getFieldConfig } from "@/lib/actions/field-config";
 import { FIELD_CATALOGS } from "@/lib/field-config-catalog";
+import { sendTaskAssignedEmail } from "@/lib/email";
 import type { TaskStatus, TaskPriority } from "@prisma/client";
+
+// Best-Effort-Benachrichtigung: ein E-Mail-Fehler (z.B. Resend nicht
+// konfiguriert) darf das Anlegen der Aufgabe nicht verhindern, deshalb
+// try/catch statt den Fehler durchzureichen.
+async function notifyTaskAssigned(taskId: string, assigneeId: string, creatorId: string, creatorName: string) {
+  if (assigneeId === creatorId) return;
+  try {
+    const assignee = await prisma.user.findUnique({ where: { id: assigneeId }, select: { name: true, email: true } });
+    if (!assignee) return;
+    const task = await prisma.task.findUnique({ where: { id: taskId }, select: { title: true } });
+    if (!task) return;
+    const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
+    await sendTaskAssignedEmail({
+      to: assignee.email,
+      assigneeName: assignee.name,
+      taskTitle: task.title,
+      creatorName,
+      taskUrl: `${baseUrl}/aufgaben/${taskId}`,
+    });
+  } catch (err) {
+    console.error("Zuweisungs-Mail konnte nicht verschickt werden:", err);
+  }
+}
 
 export type FreeTaskInput = {
   title: string;
@@ -42,7 +66,7 @@ export async function createFreeTask(data: FreeTaskInput) {
   const requiredError = await checkRequiredTaskFields(data);
   if (requiredError) return { error: requiredError };
 
-  const company = await getCurrentCompany();
+  const [company, currentUser] = await Promise.all([getCurrentCompany(), getCurrentUser()]);
 
   const task = await prisma.task.create({
     data: {
@@ -52,6 +76,7 @@ export async function createFreeTask(data: FreeTaskInput) {
       dueDate: data.dueDate ? new Date(data.dueDate) : null,
       priority: data.priority || "NORMAL",
       assigneeId: data.assigneeId || null,
+      createdByUserId: currentUser.id,
       customerId: data.customerId || null,
       inquiryId: data.linkType === "inquiryId" ? data.linkId || null : null,
       quoteId: data.linkType === "quoteId" ? data.linkId || null : null,
@@ -60,6 +85,13 @@ export async function createFreeTask(data: FreeTaskInput) {
       appointmentId: data.linkType === "appointmentId" ? data.linkId || null : null,
     },
   });
+
+  if (data.assigneeId) {
+    // Bewusst awaited (nicht "fire and forget") -- in einer Serverless-
+    // Funktion koennte der Prozess sonst vor Abschluss des Mailversands
+    // beendet werden. Fehler werden intern abgefangen (Best-Effort).
+    await notifyTaskAssigned(task.id, data.assigneeId, currentUser.id, currentUser.name ?? "Ein Kollege");
+  }
 
   revalidatePath("/aufgaben");
   revalidatePath("/heute");

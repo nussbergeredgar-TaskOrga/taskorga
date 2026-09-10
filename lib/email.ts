@@ -163,6 +163,91 @@ export async function sendUpdateRequestEmail({
   });
 }
 
+// Wenn eine andere Person eine Aufgabe fuer jemanden anlegt (nicht bei
+// Selbstzuweisung, siehe lib/actions/free-tasks.ts). Fester Text wie bei den
+// uebrigen internen Benachrichtigungen hier, nicht ueber getSystemEmailSettings()
+// konfigurierbar (das ist fuer kundenseitige Vorlagen gedacht).
+export async function sendTaskAssignedEmail({
+  to,
+  assigneeName,
+  taskTitle,
+  creatorName,
+  taskUrl,
+}: {
+  to: string;
+  assigneeName: string;
+  taskTitle: string;
+  creatorName: string;
+  taskUrl: string;
+}) {
+  if (!resend) {
+    throw new Error("E-Mail-Versand ist nicht eingerichtet (RESEND_API_KEY).");
+  }
+
+  const settings = await getSystemEmailSettings();
+
+  await resend.emails.send({
+    from: process.env.EMAIL_FROM || "TaskOrga <onboarding@resend.dev>",
+    to,
+    subject: `Neue Aufgabe: ${taskTitle}`,
+    html: renderSystemEmail({
+      branding: settings,
+      greetingName: assigneeName,
+      bodyHtml: `
+        <p style="margin:0 0 14px;">${creatorName} hat dir eine neue Aufgabe zugewiesen.</p>
+        <p style="margin:0 0 14px;"><strong>${taskTitle}</strong></p>
+        <p style="margin:0 0 14px;"><a href="${taskUrl}" style="color:#2F5FFF;">${taskUrl}</a></p>
+      `,
+    }),
+  });
+}
+
+// Ueberfaellige Aufgabe, ausgeloest vom taeglichen Cron-Lauf (siehe
+// app/api/cron/task-escalations/route.ts) -- levelLabel ist die konfigurierte
+// Eskalationsstufe (TaskEscalationLevel.label), an Zustaendigen und/oder
+// zusaetzliche Empfaenger.
+export async function sendTaskOverdueEmail({
+  to,
+  recipientName,
+  taskTitle,
+  dueDate,
+  daysOverdue,
+  levelLabel,
+  taskUrl,
+}: {
+  to: string;
+  recipientName?: string;
+  taskTitle: string;
+  dueDate: string;
+  daysOverdue: number;
+  levelLabel: string;
+  taskUrl: string;
+}) {
+  if (!resend) {
+    throw new Error("E-Mail-Versand ist nicht eingerichtet (RESEND_API_KEY).");
+  }
+
+  const settings = await getSystemEmailSettings();
+
+  await resend.emails.send({
+    from: process.env.EMAIL_FROM || "TaskOrga <onboarding@resend.dev>",
+    to,
+    subject: `Überfällige Aufgabe (${levelLabel}): ${taskTitle}`,
+    html: renderSystemEmail({
+      branding: settings,
+      greetingName: recipientName,
+      bodyHtml: `
+        <p style="margin:0 0 14px;">Diese Aufgabe ist seit ${daysOverdue} Tag${daysOverdue === 1 ? "" : "en"} überfällig (${levelLabel}).</p>
+        <p style="margin:0 0 14px;">
+          <strong>${taskTitle}</strong><br/>
+          Fällig am: ${dueDate}
+        </p>
+        <p style="margin:0 0 14px;"><a href="${taskUrl}" style="color:#2F5FFF;">${taskUrl}</a></p>
+      `,
+    }),
+  });
+}
+
 export async function sendPaymentReminderEmail({
   to,
   greeting,

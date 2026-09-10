@@ -10,9 +10,11 @@ import { SettingsSection } from "@/components/settings-section";
 import { DataPrivacySection } from "@/components/data-privacy-section";
 import { SupportAccessGenerator } from "@/components/support-access-generator";
 import { BillingOverview } from "@/components/billing-overview";
+import { TaskEscalationLevelsManager } from "@/components/task-escalation-levels-manager";
 import { getNavLabels } from "@/lib/actions/nav";
 import { getWorkingHours, getAbsences } from "@/lib/actions/schedule";
 import { getActiveSupportAccessCode } from "@/lib/actions/support-access";
+import { getTaskEscalationLevels } from "@/lib/actions/task-escalation-levels";
 
 export default async function FirmaSettingsPage({
   searchParams,
@@ -21,7 +23,7 @@ export default async function FirmaSettingsPage({
 }) {
   const admin = await requireAdmin();
 
-  const [company, users, navLabels, nonAdminRoles, activeSupportAccessCode] = await Promise.all([
+  const [company, users, navLabels, nonAdminRoles, activeSupportAccessCode, taskEscalationLevels] = await Promise.all([
     prisma.company.findUniqueOrThrow({ where: { id: admin.companyId } }),
     prisma.user.findMany({
       where: { companyId: admin.companyId },
@@ -34,6 +36,7 @@ export default async function FirmaSettingsPage({
       orderBy: { name: "asc" },
     }),
     getActiveSupportAccessCode(),
+    getTaskEscalationLevels(),
   ]);
 
   const validUserIds = new Set(users.map((u) => u.id));
@@ -131,6 +134,13 @@ export default async function FirmaSettingsPage({
           seatCount={users.length}
           returnUrl={`${process.env.NEXTAUTH_URL || "http://localhost:3000"}/einstellungen/firma`}
         />
+      </SettingsSection>
+
+      <SettingsSection
+        title="Aufgaben-Eskalation"
+        description="Wann eine E-Mail geht, wenn eine Aufgabe überfällig ist, und wer sie zusätzlich bekommt."
+      >
+        <TaskEscalationLevelsManager levels={taskEscalationLevels} />
       </SettingsSection>
 
       <SettingsSection

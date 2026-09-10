@@ -199,6 +199,10 @@ export async function signUp(_prevState: SignupState, formData: FormData): Promi
     ],
   });
 
+  await prisma.taskEscalationLevel.create({
+    data: { companyId: company.id, label: "Überfällig", order: 1, daysOverdue: 1, notifyAssignee: true },
+  });
+
   if (inviteId) {
     await prisma.inviteCode.update({
       where: { id: inviteId },

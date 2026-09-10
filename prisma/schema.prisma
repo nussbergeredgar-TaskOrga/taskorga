@@ -119,6 +119,7 @@ model Company {
   customKpis  CustomKpi[]
   documentTemplates DocumentTemplate[]
   reminderLevels    ReminderLevel[]
+  taskEscalationLevels TaskEscalationLevel[]
   itemTemplates     ItemTemplate[]
   appointmentTypes  AppointmentTypeOption[]
   fieldConfigs      FieldConfig[]
@@ -325,6 +326,7 @@ model User {
   updatedAt DateTime @updatedAt
 
   assignedTasks   Task[]        @relation("TaskAssignee")
+  createdTasks    Task[]        @relation("TaskCreator")
   assignedAppointments Appointment[] @relation("AppointmentAssignee")
   createdQuotes   Quote[]
   createdInvoices Invoice[]
@@ -788,6 +790,17 @@ model Task {
   assigneeId String?
   assignee   User?   @relation("TaskAssignee", fields: [assigneeId], references: [id])
 
+  // Wer die Aufgabe angelegt hat -- bestehende Aufgaben (vor Einfuehrung
+  // dieses Felds) bleiben null. Steuert die Zuweisungs-Mail (siehe
+  // lib/actions/free-tasks.ts): nur wenn assigneeId gesetzt UND != createdByUserId.
+  createdByUserId String?
+  createdBy       User?   @relation("TaskCreator", fields: [createdByUserId], references: [id])
+
+  // Hoechste bereits per E-Mail gemeldete Eskalationsstufe (TaskEscalationLevel.order),
+  // 0 = noch keine. Verhindert Doppel-Mails beim taeglichen Cron-Lauf, siehe
+  // app/api/cron/task-escalations/route.ts -- gleiches Prinzip wie Invoice.reminderLevel.
+  escalationLevelSent Int @default(0)
+
   // genau eine dieser Relationen ist gesetzt (Anwendungslogik prüft das)
   customerId    String?
   customer      Customer?    @relation(fields: [customerId], references: [id])
@@ -1118,6 +1131,28 @@ model ReminderLevel {
   order        Int
   daysAfterDue Int     @default(0) // Empfehlung: ab wann diese Stufe sinnvoll ist
   introText    String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([companyId, order])
+}
+
+// Eskalationsstufen fuer ueberfaellige Aufgaben (Task.dueDate < jetzt, Status nicht
+// erledigt/abgebrochen) -- analog zu ReminderLevel bei Rechnungsmahnungen, aber
+// automatisch per taeglichem Cron ausgeloest statt per Klick, siehe
+// app/api/cron/task-escalations/route.ts. Task.escalationLevelSent haelt fest, bis
+// zu welcher Stufe (order) fuer eine Aufgabe schon gemailt wurde.
+model TaskEscalationLevel {
+  id        String   @id @default(cuid())
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id])
+
+  label          String
+  order          Int
+  daysOverdue    Int     @default(1) // ab wie vielen Tagen ueberfaellig diese Stufe greift
+  notifyAssignee Boolean @default(true)
+  extraRecipients String[] @default([]) // zusaetzliche E-Mail-Adressen dieser Stufe
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

@@ -33,6 +33,7 @@ export async function createLinkedTask(
   data: { title: string; dueDate?: string }
 ) {
   if (!data.title.trim()) return;
+  const user = await getCurrentUser();
   const company = await getCurrentCompany();
   if (!(await verifyLinkOwnership(company.id, link))) return;
 
@@ -41,6 +42,7 @@ export async function createLinkedTask(
       companyId: company.id,
       title: data.title.trim(),
       dueDate: data.dueDate ? new Date(data.dueDate) : null,
+      createdByUserId: user.id,
       customerId: link.customerId || null,
       quoteId: link.quoteId || null,
       projectId: link.projectId || null,
