@@ -6,28 +6,32 @@ import { getCurrentCompany, getCurrentUser } from "@/lib/session";
 import { getFieldConfig } from "@/lib/actions/field-config";
 import { FIELD_CATALOGS } from "@/lib/field-config-catalog";
 import { sendTaskAssignedEmail } from "@/lib/email";
+import { sendPushToUser } from "@/lib/push";
 import type { TaskStatus, TaskPriority } from "@prisma/client";
 
-// Best-Effort-Benachrichtigung: ein E-Mail-Fehler (z.B. Resend nicht
-// konfiguriert) darf das Anlegen der Aufgabe nicht verhindern, deshalb
+// Best-Effort-Benachrichtigung: ein Fehler bei Mail ODER Push (z.B. Resend
+// nicht konfiguriert) darf das Anlegen der Aufgabe nicht verhindern, deshalb
 // try/catch statt den Fehler durchzureichen.
 async function notifyTaskAssigned(taskId: string, assigneeId: string, creatorId: string, creatorName: string) {
   if (assigneeId === creatorId) return;
+  const assignee = await prisma.user.findUnique({ where: { id: assigneeId }, select: { name: true, email: true } });
+  if (!assignee) return;
+  const task = await prisma.task.findUnique({ where: { id: taskId }, select: { title: true } });
+  if (!task) return;
+  const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
+  const taskUrl = `${baseUrl}/aufgaben/${taskId}`;
+
+  // Getrennte try/catch je Kanal -- ein Mail-Fehler (z.B. Resend nicht
+  // konfiguriert) soll den Push-Versand nicht mit verhindern und umgekehrt.
   try {
-    const assignee = await prisma.user.findUnique({ where: { id: assigneeId }, select: { name: true, email: true } });
-    if (!assignee) return;
-    const task = await prisma.task.findUnique({ where: { id: taskId }, select: { title: true } });
-    if (!task) return;
-    const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
-    await sendTaskAssignedEmail({
-      to: assignee.email,
-      assigneeName: assignee.name,
-      taskTitle: task.title,
-      creatorName,
-      taskUrl: `${baseUrl}/aufgaben/${taskId}`,
-    });
+    await sendTaskAssignedEmail({ to: assignee.email, assigneeName: assignee.name, taskTitle: task.title, creatorName, taskUrl });
   } catch (err) {
     console.error("Zuweisungs-Mail konnte nicht verschickt werden:", err);
+  }
+  try {
+    await sendPushToUser(assigneeId, { title: "Neue Aufgabe", body: task.title, url: taskUrl });
+  } catch (err) {
+    console.error("Zuweisungs-Push konnte nicht verschickt werden:", err);
   }
 }
 

@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { assertNotLocked, recordFailedAttempt } from "@/lib/platform-lockout";
 import { deleteCompanyData } from "@/lib/company-deletion";
 import { sendPlatformInviteEmail } from "@/lib/email";
+import { sendPushToAllSubscribers } from "@/lib/push";
 import { getSystemEmailSettings } from "@/lib/system-email-settings";
 import type { Prisma, SystemEmailSettings } from "@prisma/client";
 
@@ -362,7 +363,7 @@ export async function createAnnouncement(
 ) {
   await checkSecret(secret);
   if (!data.teaser.trim() || !data.title.trim() || !data.body.trim()) return;
-  await prisma.announcement.create({
+  const announcement = await prisma.announcement.create({
     data: {
       type: data.type,
       teaser: data.teaser.trim(),
@@ -372,6 +373,18 @@ export async function createAnnouncement(
     },
   });
   revalidatePath("/", "layout");
+
+  // Push an alle Nutzer mit aktiviertem Push (ueber alle Firmen) -- eigener
+  // try/catch, ein Push-Fehler soll das Veroeffentlichen nicht scheitern lassen.
+  try {
+    await sendPushToAllSubscribers({
+      title: announcement.teaser,
+      body: announcement.title,
+      url: "/heute",
+    });
+  } catch (err) {
+    console.error("Push fuer neue Ankuendigung fehlgeschlagen:", err);
+  }
 }
 
 export async function deleteAnnouncement(secret: string, id: string) {

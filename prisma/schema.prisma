@@ -327,6 +327,7 @@ model User {
 
   assignedTasks   Task[]        @relation("TaskAssignee")
   createdTasks    Task[]        @relation("TaskCreator")
+  pushSubscriptions PushSubscription[]
   assignedAppointments Appointment[] @relation("AppointmentAssignee")
   createdQuotes   Quote[]
   createdInvoices Invoice[]
@@ -1263,4 +1264,19 @@ model Announcement {
   publishedAt DateTime @default(now())
 
   @@index([publishedAt])
+}
+
+// Ein Eintrag pro Geraet/Browser, das Web-Push-Benachrichtigungen fuer diesen
+// Nutzer abonniert hat (siehe components/push-notification-toggle.tsx,
+// lib/push.ts). endpoint identifiziert den Push-Dienst-Kanal des Browsers
+// eindeutig -- ein Nutzer kann mehrere Eintraege haben (Handy, Laptop, ...).
+model PushSubscription {
+  id       String @id @default(cuid())
+  userId   String
+  user     User   @relation(fields: [userId], references: [id])
+  endpoint String @unique
+  p256dh   String
+  auth     String
+
+  createdAt DateTime @default(now())
 }

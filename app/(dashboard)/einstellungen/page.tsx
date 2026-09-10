@@ -6,6 +6,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { FontSizeToggle } from "@/components/font-size-toggle";
 import { AppColorForm } from "@/components/app-color-form";
 import { NavConfigManager } from "@/components/nav-config-manager";
+import { PushNotificationToggle } from "@/components/push-notification-toggle";
 import { SettingsSection } from "@/components/settings-section";
 import { getNavConfig } from "@/lib/actions/nav";
 import { DEFAULT_NAV } from "@/lib/nav-items";
@@ -29,6 +30,13 @@ export default async function MeinKontoPage() {
         description="Zusätzlicher Code aus einer Authenticator-App beim Login (z. B. Google Authenticator, Authy)."
       >
         <TwoFactorSettings initialEnabled={user.twoFactorEnabled} />
+      </SettingsSection>
+
+      <SettingsSection
+        title="Push-Benachrichtigungen (dieses Gerät)"
+        description="Direkt-Benachrichtigungen für zugewiesene und überfällige Aufgaben sowie neue Ankündigungen -- gilt nur für dieses Gerät/diesen Browser."
+      >
+        <PushNotificationToggle />
       </SettingsSection>
 
       <SettingsSection

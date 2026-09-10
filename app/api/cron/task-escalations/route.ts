@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sendTaskOverdueEmail } from "@/lib/email";
+import { sendPushToUser } from "@/lib/push";
 
 // Von Vercel Cron einmal taeglich aufgerufen (vercel.json), kein eingeloggter
 // Nutzer -- Absicherung wie bei app/api/webhooks/stripe/route.ts, nur per
@@ -76,6 +77,21 @@ export async function GET(request: Request) {
       await prisma.task.update({ where: { id: task.id }, data: { escalationLevelSent: level.order } });
     } catch (err) {
       console.error(`Ueberfaellig-Mail fuer Aufgabe ${task.id} fehlgeschlagen:`, err);
+    }
+
+    // Push nur an den Zustaendigen (nicht an extraRecipients -- das sind evtl.
+    // keine TaskOrga-Nutzer und haben daher kein Push-Abo). Eigener try/catch,
+    // damit ein Push-Fehler den obigen Mail-Versand/escalationLevelSent nicht beeinflusst.
+    if (level.notifyAssignee) {
+      try {
+        await sendPushToUser(task.assigneeId!, {
+          title: `Überfällige Aufgabe (${level.label})`,
+          body: task.title,
+          url: taskUrl,
+        });
+      } catch (err) {
+        console.error(`Ueberfaellig-Push fuer Aufgabe ${task.id} fehlgeschlagen:`, err);
+      }
     }
   }
 
