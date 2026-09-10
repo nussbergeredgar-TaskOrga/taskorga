@@ -115,56 +115,64 @@ export function TopBar({
   }, []);
 
   return (
-    <header className="h-16 shrink-0 border-b border-ink-100 bg-surface flex items-center gap-4 px-4 md:px-6">
-      <form onSubmit={handleSearch} className="flex-1 max-w-xl">
-        <div className="relative">
-          <button
-            type="submit"
-            aria-label="Suchen"
-            className="absolute left-2.5 top-1/2 -translate-y-1/2 p-1 rounded text-ink-300 hover:text-brand-600 transition-colors"
-          >
-            <Search size={16} />
-          </button>
-          <input
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Suchen … z. B. „Müller Wallbox Februar“"
-            className="w-full rounded-lg border border-ink-100 bg-ink-50 py-2 pl-9 pr-3 text-sm placeholder:text-ink-300 focus:bg-surface focus:border-brand-500 outline-none transition-colors"
-          />
-        </div>
-      </form>
+    <header className="h-16 shrink-0 border-b border-ink-100 bg-surface grid grid-cols-[1fr_auto_1fr] items-center gap-4 px-4 md:px-6">
+      {/* Linke Spalte bewusst leer -- gleich breit wie die rechte, damit die
+          mittlere Spalte (Suche) tatsaechlich mittig sitzt statt nur "linksbuendig
+          mit Rest rechts". */}
+      <div />
 
-      <div ref={newMenuRef} className="relative">
-        <button
-          onClick={() => setNewMenuOpen((o) => !o)}
-          className="flex items-center gap-1.5 rounded-lg bg-brand-500 text-white text-sm font-medium px-3 sm:px-3.5 py-2 hover:bg-brand-600 transition-colors shrink-0"
-          aria-label="Neu anlegen"
-        >
-          <Plus size={16} />
-          <span className="hidden sm:inline">Neu</span>
-        </button>
-
-        {newMenuOpen && (
-          <div className="absolute right-0 mt-1 w-56 rounded-lg border border-ink-100 bg-surface shadow-cardHover py-1.5 z-30">
-            {NEW_ITEMS.map((item) => {
-              const Icon = item.icon;
-              return (
-                <Link
-                  key={item.href + item.label}
-                  href={item.href}
-                  onClick={() => setNewMenuOpen(false)}
-                  className="flex items-center gap-2.5 px-3.5 py-2 text-sm text-ink-700 hover:bg-ink-50 transition-colors"
-                >
-                  <Icon size={15} className="text-ink-300" />
-                  {item.label}
-                </Link>
-              );
-            })}
+      <div className="flex items-center gap-3 justify-self-center w-full max-w-xl">
+        <form onSubmit={handleSearch} className="flex-1">
+          <div className="relative">
+            <button
+              type="submit"
+              aria-label="Suchen"
+              className="absolute left-2.5 top-1/2 -translate-y-1/2 p-1 rounded text-ink-300 hover:text-brand-600 transition-colors"
+            >
+              <Search size={16} />
+            </button>
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Suchen … z. B. „Müller Wallbox Februar“"
+              className="w-full rounded-lg border border-ink-100 bg-ink-50 py-2 pl-9 pr-3 text-sm placeholder:text-ink-300 focus:bg-surface focus:border-brand-500 outline-none transition-colors"
+            />
           </div>
-        )}
+        </form>
+
+        <div ref={newMenuRef} className="relative">
+          <button
+            onClick={() => setNewMenuOpen((o) => !o)}
+            className="flex items-center gap-1.5 rounded-lg bg-brand-500 text-white text-sm font-medium px-3 sm:px-3.5 py-2 hover:bg-brand-600 transition-colors shrink-0"
+            aria-label="Neu anlegen"
+          >
+            <Plus size={16} />
+            <span className="hidden sm:inline">Neu</span>
+          </button>
+
+          {newMenuOpen && (
+            <div className="absolute right-0 mt-1 w-56 rounded-lg border border-ink-100 bg-surface shadow-cardHover py-1.5 z-30">
+              {NEW_ITEMS.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <Link
+                    key={item.href + item.label}
+                    href={item.href}
+                    onClick={() => setNewMenuOpen(false)}
+                    className="flex items-center gap-2.5 px-3.5 py-2 text-sm text-ink-700 hover:bg-ink-50 transition-colors"
+                  >
+                    <Icon size={15} className="text-ink-300" />
+                    {item.label}
+                  </Link>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </div>
 
+      <div className="flex items-center gap-2 justify-self-end">
       <div ref={bellRef} className="relative">
         <button
           onClick={toggleBell}
@@ -248,6 +256,7 @@ export function TopBar({
       >
         <LogOut size={18} />
       </button>
+      </div>
     </header>
   );
 }

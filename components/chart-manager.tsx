@@ -738,6 +738,17 @@ export function ChartManager({ charts, kpiSources }: { charts: Chart[]; kpiSourc
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
+  // Deep-Link von einer Dashboard-Kachel (#chart-<id>, siehe
+  // app/(dashboard)/heute/page.tsx) -- nutzt denselben Scroll-/Hervorhebungs-
+  // Mechanismus wie nach dem Neu-Erstellen eines Diagramms (Effekt unten).
+  // Nur beim ersten Mount lesen, nicht bei jeder Navigation danach.
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (!hash.startsWith("#chart-")) return;
+    setScrollToChartId(hash.slice("#chart-".length));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // router.refresh() (in closeAll) laedt die Server-Daten neu, aber asynchron
   // -- erst wenn das neue Diagramm tatsaechlich in "charts" ankommt, kann
   // dorthin gescrollt werden. Danach kurze Hervorhebung, dann zuruecksetzen.

@@ -60,6 +60,9 @@ type WidgetNodeEntry = {
   // bewusst ein fertiges ReactNode statt einer Funktion -- Funktionen lassen
   // sich nicht von der Server- in die Client-Komponente reichen.
   node?: React.ReactNode;
+  // Macht bei node-Kacheln den Titel klickbar (z.B. eigene Diagramme -> Detail-
+  // /Bearbeiten-Ansicht in Einblicke). Bei KPI-Kacheln uebernimmt stattdessen kpi.href.
+  href?: string;
   headerAction?: React.ReactNode;
   defaultAccent?: string;
   kpi?: {
@@ -447,7 +450,13 @@ export function DashboardGrid({
                 >
                   <div className="flex items-center justify-between mb-3">
                     <h2 className="font-display font-semibold text-ink-900">
-                      {w.label ?? entry.label ?? WIDGET_LABELS[w.id] ?? w.id}
+                      {entry.href ? (
+                        <Link href={entry.href} className="hover:text-brand-700 hover:underline transition-colors">
+                          {w.label ?? entry.label ?? WIDGET_LABELS[w.id] ?? w.id}
+                        </Link>
+                      ) : (
+                        w.label ?? entry.label ?? WIDGET_LABELS[w.id] ?? w.id
+                      )}
                     </h2>
                     {entry.headerAction}
                   </div>

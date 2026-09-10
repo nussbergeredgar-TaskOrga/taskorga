@@ -153,6 +153,9 @@ export default async function HeutePage({
     id: string;
     label?: string;
     node?: React.ReactNode;
+    // Macht bei "node"-Kacheln (z.B. eigene Diagramme) den Titel klickbar --
+    // fuehrt zur Detailansicht/Bearbeitung in Einblicke, siehe custom charts unten.
+    href?: string;
     headerAction?: React.ReactNode;
     defaultAccent?: string;
     kpi?: { label: string; value: string; icon?: string; accent: string; href?: string };
@@ -437,6 +440,9 @@ export default async function HeutePage({
       id: `chart:${chart.id}`,
       label: chart.label,
       defaultAccent: "border-l-brand-500",
+      // Anker springt direkt zum Diagramm statt nur zu Einblicke (ChartManager
+      // liest #chart-<id> beim Laden, siehe components/chart-manager.tsx).
+      href: `/einblicke#chart-${chart.id}`,
       node: (
         <CustomChart
           chartType={chart.chartType as "bar" | "line" | "pie" | "area"}
