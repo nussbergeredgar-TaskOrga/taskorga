@@ -1219,6 +1219,11 @@ model Announcement {
   teaser String // 2-3 Woerter, in der Glocken-Liste
   title  String
   body   String @db.Text // Freitext (bei VERSION auch mehrere Punkte + Kosten-Hinweis moeglich)
+  // Nur bei type "VERSION" gesetzt (z.B. "1.2") -- steuert, ob "Update
+  // anfordern" im Glocken-Dropdown angezeigt wird (siehe requestUpdate()/
+  // TopBar: neuer als Company.updateRequestedAt -> Button sichtbar, sonst
+  // "aktuellste Version" Hinweis statt Button).
+  version String?
 
   publishedAt DateTime @default(now())
 

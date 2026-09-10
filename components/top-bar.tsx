@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Search, Bell, Plus, LogOut, Users, Inbox, FileText, Briefcase, Calendar, ListTodo, Wallet, X, Megaphone } from "lucide-react";
 import { signOut, useSession } from "next-auth/react";
-import { markAnnouncementsSeen, type AnnouncementItem } from "@/lib/actions/announcements";
+import { markAnnouncementsSeen, type AnnouncementItem, type LatestVersion } from "@/lib/actions/announcements";
 import { requestUpdate } from "@/lib/actions/update-request";
 
 const NEW_ITEMS = [
@@ -45,11 +45,13 @@ function AnnouncementDetailModal({ item, onClose }: { item: AnnouncementItem; on
 export function TopBar({
   announcements,
   hasUnseen,
+  latestVersion,
   isAdmin,
   updateRequestedAt,
 }: {
   announcements: AnnouncementItem[];
   hasUnseen: boolean;
+  latestVersion: LatestVersion;
   isAdmin: boolean;
   updateRequestedAt: Date | null;
 }) {
@@ -65,6 +67,11 @@ export function TopBar({
   const [selectedAnnouncement, setSelectedAnnouncement] = useState<AnnouncementItem | null>(null);
   const [requestedAt, setRequestedAt] = useState(updateRequestedAt);
   const [requestPending, startRequestTransition] = useTransition();
+
+  // "Update anfordern" nur, wenn es ueberhaupt eine Versions-Ankuendigung
+  // gibt UND diese neuer ist als die letzte Anfrage dieser Firma -- sonst
+  // laeuft man ja schon auf der aktuellsten Version.
+  const newVersionAvailable = latestVersion && (!requestedAt || latestVersion.publishedAt > requestedAt);
 
   const initials = session?.user?.name
     ? session.user.name.split(" ").map((p) => p[0]).slice(0, 2).join("").toUpperCase()
@@ -199,20 +206,20 @@ export function TopBar({
               </div>
             )}
 
-            {isAdmin && (
+            {isAdmin && latestVersion && (
               <div className="mt-1 border-t border-ink-100 px-3.5 pt-2">
-                {requestedAt ? (
-                  <p className="py-1 text-xs text-ink-300">
-                    Update angefragt am {requestedAt.toLocaleDateString("de-DE")}
-                  </p>
-                ) : (
+                {newVersionAvailable ? (
                   <button
                     disabled={requestPending}
                     onClick={handleRequestUpdate}
                     className="py-1 text-xs font-medium text-brand-700 hover:underline disabled:opacity-60"
                   >
-                    {requestPending ? "Wird gesendet …" : "Update anfordern"}
+                    {requestPending ? "Wird gesendet …" : `Update anfordern (Version ${latestVersion.version})`}
                   </button>
+                ) : (
+                  <p className="py-1 text-xs text-ink-300">
+                    Du nutzt bereits die aktuellste Version ({latestVersion.version}).
+                  </p>
                 )}
               </div>
             )}

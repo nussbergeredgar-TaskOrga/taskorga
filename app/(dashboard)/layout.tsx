@@ -50,6 +50,7 @@ export default async function DashboardLayout({
           <TopBar
             announcements={announcements.items}
             hasUnseen={announcements.hasUnseen}
+            latestVersion={announcements.latestVersion}
             isAdmin={user.role?.name === "Admin"}
             updateRequestedAt={company.updateRequestedAt}
           />

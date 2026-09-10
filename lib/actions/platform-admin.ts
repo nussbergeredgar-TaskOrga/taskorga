@@ -358,7 +358,7 @@ export async function listAnnouncements(secret: string) {
 
 export async function createAnnouncement(
   secret: string,
-  data: { type: "FEATURE" | "VERSION"; teaser: string; title: string; body: string }
+  data: { type: "FEATURE" | "VERSION"; teaser: string; title: string; body: string; version?: string }
 ) {
   await checkSecret(secret);
   if (!data.teaser.trim() || !data.title.trim() || !data.body.trim()) return;
@@ -368,6 +368,7 @@ export async function createAnnouncement(
       teaser: data.teaser.trim(),
       title: data.title.trim(),
       body: data.body.trim(),
+      version: data.type === "VERSION" ? data.version?.trim() || null : null,
     },
   });
   revalidatePath("/", "layout");

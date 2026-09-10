@@ -48,6 +48,7 @@ type Announcement = {
   teaser: string;
   title: string;
   body: string;
+  version: string | null;
   publishedAt: Date;
 };
 
@@ -838,13 +839,15 @@ function AnnouncementsTab({
   const [teaser, setTeaser] = useState("");
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
+  const [version, setVersion] = useState("");
 
   function publish() {
     startTransition(async () => {
-      await createAnnouncement(secret, { type, teaser, title, body });
+      await createAnnouncement(secret, { type, teaser, title, body, version });
       setTeaser("");
       setTitle("");
       setBody("");
+      setVersion("");
       refresh();
     });
   }
@@ -887,6 +890,14 @@ function AnnouncementsTab({
             Version
           </button>
         </div>
+        {type === "VERSION" && (
+          <input
+            value={version}
+            onChange={(e) => setVersion(e.target.value)}
+            placeholder="Versionsnummer, z. B. 1.2 -- steuert, wann „Update anfordern“ angezeigt wird"
+            className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500"
+          />
+        )}
         <input
           value={teaser}
           onChange={(e) => setTeaser(e.target.value)}
@@ -907,7 +918,7 @@ function AnnouncementsTab({
           className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500"
         />
         <button
-          disabled={pending || !teaser.trim() || !title.trim() || !body.trim()}
+          disabled={pending || !teaser.trim() || !title.trim() || !body.trim() || (type === "VERSION" && !version.trim())}
           onClick={publish}
           className="flex items-center gap-1.5 rounded-lg bg-brand-500 text-white text-sm font-medium px-4 py-2.5 hover:bg-brand-600 disabled:opacity-60 transition-colors"
         >
@@ -921,7 +932,10 @@ function AnnouncementsTab({
         {announcements.map((a) => (
           <div key={a.id} className="bg-surface rounded-card border border-ink-100 shadow-card p-4 flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <span className="text-xs font-medium text-brand-700">{ANNOUNCEMENT_TYPE_LABELS[a.type] ?? a.type}</span>
+              <span className="text-xs font-medium text-brand-700">
+                {ANNOUNCEMENT_TYPE_LABELS[a.type] ?? a.type}
+                {a.version ? ` ${a.version}` : ""}
+              </span>
               <p className="text-sm font-medium text-ink-900">{a.title}</p>
               <p className="text-xs text-ink-500 mt-0.5">{new Date(a.publishedAt).toLocaleDateString("de-DE")}</p>
             </div>
