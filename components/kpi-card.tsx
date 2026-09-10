@@ -9,6 +9,7 @@ export function KpiCard({
   trend,
   accent = "border-l-brand-500",
   href,
+  progress,
 }: {
   label: string;
   value: string;
@@ -16,6 +17,10 @@ export function KpiCard({
   trend?: { value: string; positive: boolean };
   accent?: string;
   href?: string;
+  // Fertig formatiert vom Server geliefert (Prozent + Text) -- keine
+  // Formatier-Funktion als Prop, die liesse sich nicht von der Server- in
+  // die Client-Komponente (DashboardGrid) reichen.
+  progress?: { pct: number; text: string };
 }) {
   const content = (
     <>
@@ -39,6 +44,17 @@ export function KpiCard({
           </span>
         )}
       </div>
+      {progress && (
+        <div className="mt-2">
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-ink-100">
+            <div
+              className={cn("h-full rounded-full", progress.pct >= 100 ? "bg-success" : "bg-brand-500")}
+              style={{ width: `${progress.pct}%` }}
+            />
+          </div>
+          <p className="mt-1 text-xs text-ink-500">{progress.text}</p>
+        </div>
+      )}
     </>
   );
 

@@ -116,20 +116,26 @@ export default async function HeutePage({
   const customChartWidgetIds = customCharts.map((c) => `chart:${c.id}`);
   const allDefaultIds = [...DEFAULT_WIDGETS.map((w) => w.id), ...customKpiWidgetIds, ...customChartWidgetIds];
 
-  // Neue Standard-Kacheln und neu erstellte eigene Kacheln ergänzen, falls sie
-  // in der gespeicherten Konfiguration noch fehlen. Gelöschte eigene Kacheln
-  // werden ausgefiltert. Bei einem ganz neuen Konto (noch keine gespeicherte
-  // Anordnung) ist DEFAULT_WIDGETS bereits die vollständige Basis — hier
-  // dürfen keine "fehlenden" Standard-Kacheln nochmal ergänzt werden.
+  // Neue Standard-Kacheln ergaenzen, falls sie in der gespeicherten
+  // Konfiguration noch fehlen (z.B. nach einem Produkt-Update). Gelöschte
+  // eigene Kacheln werden unten ausgefiltert. Bei einem ganz neuen Konto
+  // (noch keine gespeicherte Anordnung) ist DEFAULT_WIDGETS bereits die
+  // vollständige Basis — hier dürfen keine "fehlenden" Standard-Kacheln
+  // nochmal ergänzt werden.
   const baseLayout = savedLayout ?? DEFAULT_WIDGETS;
   const savedIds = new Set(baseLayout.map((w) => w.id));
   const missingDefaults = savedLayout ? DEFAULT_WIDGETS.filter((w) => !savedIds.has(w.id)) : [];
+  // Neu erstellte eigene Kennzahlen/Diagramme NICHT automatisch sichtbar
+  // machen -- nur als (unsichtbarer) Layout-Eintrag ergaenzen, damit sie in
+  // der "weitere Kachel hinzufuegen"-Auswahl auftauchen. Sichtbar werden sie
+  // erst, wenn der Nutzer sie ueber "Zum Dashboard hinzufuegen" (Einblicke)
+  // oder das Raster-Symbol bewusst auswaehlt.
   const missingCustomKpis = customKpiWidgetIds
     .filter((id) => !savedIds.has(id))
-    .map((id) => ({ id, visible: true, size: "sm" as const, order: 0 }));
+    .map((id) => ({ id, visible: false, size: "sm" as const, order: 0 }));
   const missingCustomCharts = customChartWidgetIds
     .filter((id) => !savedIds.has(id))
-    .map((id) => ({ id, visible: true, size: "md" as const, order: 0 }));
+    .map((id) => ({ id, visible: false, size: "md" as const, order: 0 }));
   const missing = [...missingDefaults, ...missingCustomKpis, ...missingCustomCharts].map((w, i) => ({
     ...w,
     order: baseLayout.length + i,
@@ -379,19 +385,36 @@ export default async function HeutePage({
 
       // Formel-Kennzahlen haben keine eigene aggregation/entity (siehe
       // lib/actions/custom-kpi.ts) -- Anzeigeformat kommt vom Server
-      // (displayFormat, explizit gewaehlt oder hergeleitet); kein Klickziel
-      // (kein einzelner Datentyp).
-      let value: string;
-      if (kpi.kind === "FORMULA") {
-        value =
-          kpi.displayFormat === "CURRENCY"
-            ? `${kpi.value.toLocaleString("de-DE", { maximumFractionDigits: 2 })} €`
-            : kpi.displayFormat === "PERCENT"
-              ? `${Math.round(kpi.value * 100)} %`
-              : String(Math.round(kpi.value * 100) / 100);
-      } else {
-        value = kpi.aggregation !== "count" ? `${kpi.value.toLocaleString("de-DE", { maximumFractionDigits: 2 })} €` : String(kpi.value);
+      // (displayFormat, explizit gewaehlt oder hergeleitet).
+      // Gleiche Formatierung wie formatValue/formatFormulaValue in
+      // components/kpi-manager.tsx -- eigene kleine Kopie, da diese Datei eine
+      // Server-Komponente ist und keine Funktion aus einer "use client"-Datei
+      // uebernehmen kann.
+      function formatKpiNumber(n: number): string {
+        if (kpi.kind === "FORMULA") {
+          if (kpi.displayFormat === "CURRENCY") return `${n.toLocaleString("de-DE", { maximumFractionDigits: 2 })} €`;
+          if (kpi.displayFormat === "PERCENT") return `${Math.round(n * 100)} %`;
+          return String(Math.round(n * 100) / 100);
+        }
+        return kpi.aggregation !== "count" ? `${n.toLocaleString("de-DE", { maximumFractionDigits: 2 })} €` : String(n);
       }
+      const value = formatKpiNumber(kpi.value);
+
+      // Fortschrittsbalken zum optionalen Sollwert -- Prozentsatz und Text
+      // fertig vom Server berechnet (siehe Kommentar an KpiCard.progress).
+      const progress =
+        kpi.targetValue != null
+          ? {
+              pct:
+                kpi.targetValue === 0
+                  ? kpi.value > 0
+                    ? 100
+                    : 0
+                  : Math.min(100, Math.round((kpi.value / kpi.targetValue) * 100)),
+              text: `${formatKpiNumber(kpi.value)} von ${formatKpiNumber(kpi.targetValue)}`,
+            }
+          : undefined;
+      if (progress) progress.text += ` (${progress.pct} %)`;
 
       return {
         id: `custom:${kpi.id}`,
@@ -399,8 +422,12 @@ export default async function HeutePage({
           label: kpi.label,
           value,
           accent: kpi.accent,
-          href: kpi.kind === "FORMULA" ? undefined : entityStatusHref(kpi.entity as EntityKey, kpi.statusValue),
+          // Formel-Kennzahlen haben kein einzelnes Klickziel wie BASIC-Kennzahlen
+          // (kein einzelner Datentyp/Status) -- Link zu Einblicke, wo die
+          // Aufschluesselung der einzelnen Terme sichtbar ist.
+          href: kpi.kind === "FORMULA" ? "/einblicke" : entityStatusHref(kpi.entity as EntityKey, kpi.statusValue),
           trend,
+          progress,
         },
       };
     }),

@@ -69,6 +69,7 @@ type WidgetNodeEntry = {
     accent: string;
     href?: string;
     trend?: { value: string; positive: boolean };
+    progress?: { pct: number; text: string };
   };
 };
 
@@ -435,6 +436,7 @@ export function DashboardGrid({
                   accent={w.accent ?? entry.kpi.accent}
                   href={entry.kpi.href}
                   trend={entry.kpi.trend}
+                  progress={entry.kpi.progress}
                 />
               ) : entry.node ? (
                 <div
