@@ -377,11 +377,14 @@ export async function createAnnouncement(
   // Push an alle Nutzer mit aktiviertem Push (ueber alle Firmen) -- eigener
   // try/catch, ein Push-Fehler soll das Veroeffentlichen nicht scheitern lassen.
   try {
-    await sendPushToAllSubscribers({
-      title: announcement.teaser,
-      body: announcement.title,
-      url: "/heute",
-    });
+    await sendPushToAllSubscribers(
+      {
+        title: announcement.teaser,
+        body: announcement.title,
+        url: "/heute",
+      },
+      "announcement"
+    );
   } catch (err) {
     console.error("Push fuer neue Ankuendigung fehlgeschlagen:", err);
   }

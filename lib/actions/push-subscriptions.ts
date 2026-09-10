@@ -20,3 +20,15 @@ export async function deletePushSubscription(endpoint: string) {
   const user = await getCurrentUser();
   await prisma.pushSubscription.deleteMany({ where: { endpoint, userId: user.id } });
 }
+
+export type PushPreferences = {
+  pushTaskAssigned: boolean;
+  pushTaskOverdue: boolean;
+  pushAnnouncements: boolean;
+  pushDailyAppointments: boolean;
+};
+
+export async function updatePushPreferences(prefs: PushPreferences) {
+  const user = await getCurrentUser();
+  await prisma.user.update({ where: { id: user.id }, data: prefs });
+}

@@ -2,7 +2,7 @@
   "regions": ["fra1"],
   "crons": [
     {
-      "path": "/api/cron/task-escalations",
+      "path": "/api/cron/daily",
       "schedule": "0 7 * * *"
     }
   ]

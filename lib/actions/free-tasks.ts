@@ -29,7 +29,7 @@ async function notifyTaskAssigned(taskId: string, assigneeId: string, creatorId:
     console.error("Zuweisungs-Mail konnte nicht verschickt werden:", err);
   }
   try {
-    await sendPushToUser(assigneeId, { title: "Neue Aufgabe", body: task.title, url: taskUrl });
+    await sendPushToUser(assigneeId, { title: "Neue Aufgabe", body: task.title, url: taskUrl }, "taskAssigned");
   } catch (err) {
     console.error("Zuweisungs-Push konnte nicht verschickt werden:", err);
   }

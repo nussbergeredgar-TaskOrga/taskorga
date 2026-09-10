@@ -322,6 +322,17 @@ model User {
   // Support-Zugriff (das ist keine Anmeldung dieser Person selbst).
   lastLoginAt DateTime?
 
+  // Push-Kategorien (gelten fuer alle Geraete dieses Nutzers gleichermassen,
+  // die Geraete-Aktivierung selbst ist pro Browser/PushSubscription). Siehe
+  // sendPushToUser()/sendPushToAllSubscribers() in lib/push.ts. Die ersten
+  // drei sind Default an (bereits bestehende Auslöser, kein Verhaltenswechsel
+  // fuer Nutzer die Push schon aktiviert haben), die neue Termin-
+  // Zusammenfassung ist bewusstes Opt-in.
+  pushTaskAssigned      Boolean @default(true)
+  pushTaskOverdue       Boolean @default(true)
+  pushAnnouncements     Boolean @default(true)
+  pushDailyAppointments Boolean @default(false)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

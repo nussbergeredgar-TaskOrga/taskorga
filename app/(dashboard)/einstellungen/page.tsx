@@ -33,10 +33,17 @@ export default async function MeinKontoPage() {
       </SettingsSection>
 
       <SettingsSection
-        title="Push-Benachrichtigungen (dieses Gerät)"
-        description="Direkt-Benachrichtigungen für zugewiesene und überfällige Aufgaben sowie neue Ankündigungen -- gilt nur für dieses Gerät/diesen Browser."
+        title="Push-Benachrichtigungen"
+        description="Aktivieren/Deaktivieren gilt nur für dieses Gerät/diesen Browser -- die Kategorien darunter gelten für alle deine Geräte."
       >
-        <PushNotificationToggle />
+        <PushNotificationToggle
+          initialPreferences={{
+            pushTaskAssigned: user.pushTaskAssigned,
+            pushTaskOverdue: user.pushTaskOverdue,
+            pushAnnouncements: user.pushAnnouncements,
+            pushDailyAppointments: user.pushDailyAppointments,
+          }}
+        />
       </SettingsSection>
 
       <SettingsSection

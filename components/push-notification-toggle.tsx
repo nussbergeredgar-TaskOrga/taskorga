@@ -2,9 +2,21 @@
 
 import { useEffect, useState } from "react";
 import { Bell, BellOff, Smartphone } from "lucide-react";
-import { savePushSubscription, deletePushSubscription } from "@/lib/actions/push-subscriptions";
+import {
+  savePushSubscription,
+  deletePushSubscription,
+  updatePushPreferences,
+  type PushPreferences,
+} from "@/lib/actions/push-subscriptions";
 
 type Status = "checking" | "unsupported" | "ios-needs-install" | "subscribed" | "unsubscribed";
+
+const CATEGORY_LABELS: { key: keyof PushPreferences; label: string }[] = [
+  { key: "pushTaskAssigned", label: "Aufgabe zugewiesen" },
+  { key: "pushTaskOverdue", label: "Aufgabe überfällig" },
+  { key: "pushAnnouncements", label: "Neue Ankündigungen" },
+  { key: "pushDailyAppointments", label: "Heutige Termine" },
+];
 
 // Push-Payload-Schluessel (VAPID) ist base64url-kodiert, die Browser-API
 // braucht aber ein Uint8Array -- Standard-Konvertierung fuer Web Push.
@@ -23,10 +35,24 @@ function isIosNotStandalone(): boolean {
   return isIOS && !isStandalone;
 }
 
-export function PushNotificationToggle() {
+export function PushNotificationToggle({ initialPreferences }: { initialPreferences: PushPreferences }) {
   const [status, setStatus] = useState<Status>("checking");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
+  const [preferences, setPreferences] = useState(initialPreferences);
+
+  // Sofort-Speichern pro Checkbox, kein Speichern-Button -- gleiches Muster
+  // wie toggleKpiOnDashboard/toggleChartOnDashboard.
+  async function togglePreference(key: keyof PushPreferences) {
+    const next = { ...preferences, [key]: !preferences[key] };
+    setPreferences(next);
+    try {
+      await updatePushPreferences(next);
+    } catch {
+      setPreferences(preferences);
+      setError("Änderung konnte nicht gespeichert werden.");
+    }
+  }
 
   useEffect(() => {
     async function check() {
@@ -130,6 +156,20 @@ export function PushNotificationToggle() {
         </button>
       )}
       {error && <p className="text-xs text-danger">{error}</p>}
+
+      <div className="pt-2 space-y-1.5">
+        {CATEGORY_LABELS.map(({ key, label }) => (
+          <label key={key} className="flex items-center gap-2 text-sm text-ink-700">
+            <input
+              type="checkbox"
+              checked={preferences[key]}
+              onChange={() => togglePreference(key)}
+              className="rounded border-ink-200 text-brand-600 focus:ring-brand-500"
+            />
+            {label}
+          </label>
+        ))}
+      </div>
     </div>
   );
 }
