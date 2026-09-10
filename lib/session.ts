@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { getServerSession } from "next-auth/next";
 import type { Session } from "next-auth";
 import { redirect } from "next/navigation";
@@ -8,8 +9,13 @@ import { hasPermission, type PermissionKey } from "@/lib/permissions";
 /**
  * Liefert die Firma des eingeloggten Nutzers. Leitet zu /login um,
  * wenn niemand eingeloggt ist.
+ *
+ * React.cache() dedupliziert Mehrfachaufrufe INNERHALB derselben Anfrage
+ * (z.B. einmal aus dem Dashboard-Layout, einmal aus getNavLabels()) -- ohne
+ * das wurden Session+DB-Abfrage bei jeder Dashboard-Navigation unnoetig
+ * doppelt ausgefuehrt.
  */
-export async function getCurrentCompany() {
+export const getCurrentCompany = cache(async function getCurrentCompany() {
   const session = (await getServerSession(authOptions)) as Session | null;
   if (!session?.user?.companyId) {
     redirect("/login");
@@ -37,19 +43,19 @@ export async function getCurrentCompany() {
   }
 
   return company;
-}
+});
 
 /** Liefert den eingeloggten Nutzer. Leitet zu /login um, wenn nicht eingeloggt. */
-export async function getCurrentUser() {
+export const getCurrentUser = cache(async function getCurrentUser() {
   const session = (await getServerSession(authOptions)) as Session | null;
   if (!session?.user) {
     redirect("/login");
   }
   return session.user;
-}
+});
 
 /** Liefert den eingeloggten Nutzer inkl. Rolle aus der Datenbank (immer aktuell). */
-export async function getCurrentUserWithRole() {
+export const getCurrentUserWithRole = cache(async function getCurrentUserWithRole() {
   const user = await getCurrentUser();
   const dbUser = await prisma.user.findUnique({
     where: { id: user.id },
@@ -57,7 +63,7 @@ export async function getCurrentUserWithRole() {
   });
   if (!dbUser) redirect("/login");
   return dbUser;
-}
+});
 
 /** Nur für Admins zugänglich. Leitet Mitarbeiter zu /heute um. */
 export async function requireAdmin() {

@@ -53,7 +53,7 @@ export async function createCustomChart(data: CustomChartInput) {
 
   if (data.kind === "FORMULA") {
     if (!data.sourceKpiId) return;
-    await prisma.customChart.create({
+    const created = await prisma.customChart.create({
       data: {
         companyId: company.id,
         label: data.label.trim(),
@@ -76,12 +76,12 @@ export async function createCustomChart(data: CustomChartInput) {
     });
     revalidatePath("/einblicke");
     revalidatePath("/heute");
-    return;
+    return created.id;
   }
 
   if (!data.entity || !data.groupByField || !data.aggregation) return;
 
-  await prisma.customChart.create({
+  const created = await prisma.customChart.create({
     data: {
       companyId: company.id,
       label: data.label.trim(),
@@ -103,6 +103,7 @@ export async function createCustomChart(data: CustomChartInput) {
 
   revalidatePath("/einblicke");
   revalidatePath("/heute");
+  return created.id;
 }
 
 export async function updateCustomChart(id: string, data: CustomChartInput) {

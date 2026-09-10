@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { NAV_CATALOG, type NavItemConfig } from "@/lib/nav-items";
 import { ICON_MAP } from "@/lib/nav-icons";
+import { APP_VERSION } from "@/lib/app-version";
 
 export function NavSidebar({ config, labels }: { config: NavItemConfig[]; labels?: Record<string, string> }) {
   const pathname = usePathname();
@@ -42,6 +43,7 @@ export function NavSidebar({ config, labels }: { config: NavItemConfig[]; labels
           );
         })}
       </nav>
+      <div className="px-6 py-3 text-xs text-ink-300">Version {APP_VERSION}</div>
     </aside>
   );
 }

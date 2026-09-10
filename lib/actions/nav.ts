@@ -2,16 +2,15 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { getCurrentUser, requireAdmin, getCurrentCompany } from "@/lib/session";
+import { getCurrentUser, getCurrentUserWithRole, requireAdmin, getCurrentCompany } from "@/lib/session";
 import type { NavItemConfig } from "@/lib/nav-items";
 
 export async function getNavConfig(): Promise<NavItemConfig[] | null> {
-  const user = await getCurrentUser();
-  const dbUser = await prisma.user.findUnique({
-    where: { id: user.id },
-    select: { navConfig: true },
-  });
-  const config = dbUser?.navConfig as { items?: NavItemConfig[] } | null;
+  // getCurrentUserWithRole() ist per React.cache() dedupliziert -- im
+  // Dashboard-Layout ohnehin schon aufgerufen, hier also kein zusaetzlicher
+  // DB-Roundtrip (navConfig ist bereits Teil des dort geladenen Nutzers).
+  const dbUser = await getCurrentUserWithRole();
+  const config = dbUser.navConfig as { items?: NavItemConfig[] } | null;
   return config?.items ?? null;
 }
 

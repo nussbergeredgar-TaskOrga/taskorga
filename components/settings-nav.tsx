@@ -16,7 +16,7 @@ export function SettingsNav({ isAdmin }: { isAdmin: boolean }) {
   const visible = TABS.filter((t) => !t.adminOnly || isAdmin);
 
   return (
-    <div className="flex gap-1 border-b border-ink-100 overflow-x-auto">
+    <div className="flex gap-1 border-b border-ink-100 overflow-x-auto overflow-y-hidden [touch-action:pan-x]">
       {visible.map((tab) => {
         const active =
           tab.href === "/einstellungen" ? pathname === "/einstellungen" : pathname?.startsWith(tab.href);

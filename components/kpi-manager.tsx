@@ -654,7 +654,7 @@ function KpiActionsMenu({
   );
 }
 
-function KpiRow({ kpi, onEdit }: { kpi: Kpi; onEdit: () => void }) {
+function KpiRow({ kpi, highlighted, onEdit }: { kpi: Kpi; highlighted?: boolean; onEdit: () => void }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const tour = useTour();
@@ -758,7 +758,12 @@ function KpiRow({ kpi, onEdit }: { kpi: Kpi; onEdit: () => void }) {
   );
 
   return (
-    <div className="rounded-lg border border-ink-100">
+    <div
+      id={`kpi-${kpi.id}`}
+      className={`rounded-lg border transition-colors duration-700 ${
+        highlighted ? "border-brand-500 ring-2 ring-brand-500 ring-offset-2" : "border-ink-100"
+      }`}
+    >
       {/* Desktop: immer vollstaendig sichtbar, Formel-Kennzahlen zusaetzlich mit
           aufklappbarer Aufschluesselung fuer volle Transparenz. */}
       <div className="hidden sm:block">
@@ -850,6 +855,19 @@ export function KpiManager({ kpis }: { kpis: Kpi[] }) {
   const router = useRouter();
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  // Deep-Link von einer Dashboard-Kachel (z.B. Formel-Kennzahl, #kpi-<id>) --
+  // direkt dorthin scrollen und kurz hervorheben statt nur auf der Seite zu
+  // landen. Nur beim ersten Mount lesen, nicht bei jeder Navigation danach.
+  const [highlightedId, setHighlightedId] = useState<string | null>(null);
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (!hash.startsWith("#kpi-")) return;
+    const id = hash.slice("#kpi-".length);
+    document.getElementById(hash.slice(1))?.scrollIntoView({ behavior: "smooth", block: "center" });
+    setHighlightedId(id);
+    const timeout = setTimeout(() => setHighlightedId(null), 2000);
+    return () => clearTimeout(timeout);
+  }, []);
 
   function closeAll() {
     setShowCreateForm(false);
@@ -863,7 +881,7 @@ export function KpiManager({ kpis }: { kpis: Kpi[] }) {
         editingId === kpi.id ? (
           <KpiForm key={kpi.id} initial={kpi} allKpis={kpis} onCancel={() => setEditingId(null)} onSaved={closeAll} />
         ) : (
-          <KpiRow key={kpi.id} kpi={kpi} onEdit={() => setEditingId(kpi.id)} />
+          <KpiRow key={kpi.id} kpi={kpi} highlighted={kpi.id === highlightedId} onEdit={() => setEditingId(kpi.id)} />
         )
       )}
       {kpis.length === 0 && <p className="text-sm text-ink-500">Noch keine eigenen Kennzahlen erstellt.</p>}

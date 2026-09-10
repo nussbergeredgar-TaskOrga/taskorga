@@ -425,7 +425,9 @@ export default async function HeutePage({
           // Formel-Kennzahlen haben kein einzelnes Klickziel wie BASIC-Kennzahlen
           // (kein einzelner Datentyp/Status) -- Link zu Einblicke, wo die
           // Aufschluesselung der einzelnen Terme sichtbar ist.
-          href: kpi.kind === "FORMULA" ? "/einblicke" : entityStatusHref(kpi.entity as EntityKey, kpi.statusValue),
+          // Anker springt direkt zur Kennzahl statt nur zur Einblicke-Seite
+          // (KpiRow traegt id={`kpi-${kpi.id}`}, siehe components/kpi-manager.tsx).
+          href: kpi.kind === "FORMULA" ? `/einblicke#kpi-${kpi.id}` : entityStatusHref(kpi.entity as EntityKey, kpi.statusValue),
           trend,
           progress,
         },

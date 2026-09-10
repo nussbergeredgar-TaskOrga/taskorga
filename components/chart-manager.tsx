@@ -134,7 +134,10 @@ function ChartForm({
   // Verfuegbare Formel-Kennzahlen als Quelle fuer kind "FORMULA".
   formulaKpis: { id: string; label: string }[];
   onCancel: () => void;
-  onSaved: () => void;
+  // Bei einer Neuanlage wird die id des neu erzeugten Diagramms mitgegeben,
+  // damit ChartManager dorthin scrollen kann (siehe scrollToChartId unten).
+  // Beim Bearbeiten (initial gesetzt) kein Argument -- man ist schon dort.
+  onSaved: (newId?: string) => void;
 }) {
   const [kind, setKind] = useState<ChartKind>((initial?.kind as ChartKind) ?? (prefill?.kind === "FORMULA" ? "FORMULA" : "BASIC"));
   const [sourceKpiId, setSourceKpiId] = useState<string>(
@@ -235,10 +238,11 @@ function ChartForm({
       startTransition(async () => {
         if (initial) {
           await updateCustomChart(initial.id, payload);
+          onSaved();
         } else {
-          await createCustomChart(payload);
+          const newId = await createCustomChart(payload);
+          onSaved(newId);
         }
-        onSaved();
       });
       return;
     }
@@ -272,10 +276,11 @@ function ChartForm({
     startTransition(async () => {
       if (initial) {
         await updateCustomChart(initial.id, payload);
+        onSaved();
       } else {
-        await createCustomChart(payload);
+        const newId = await createCustomChart(payload);
+        onSaved(newId);
       }
-      onSaved();
     });
   }
 
@@ -612,17 +617,27 @@ function ChartForm({
 function ChartCard({
   chart,
   kpiLabelById,
+  highlighted,
   onEdit,
 }: {
   chart: Chart;
   kpiLabelById: Map<string, string>;
+  // Kurzzeitig hervorgehoben, direkt nach dem Erstellen aus einer Kennzahl
+  // heraus (siehe scrollToChartId in ChartManager) -- damit man sieht, WELCHES
+  // der neu erzeugte Eintrag ist, statt ihn selbst suchen zu muessen.
+  highlighted?: boolean;
   onEdit: () => void;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
 
   return (
-    <div className="min-w-0 rounded-card border border-ink-100 bg-surface p-5 shadow-card space-y-3">
+    <div
+      id={`chart-${chart.id}`}
+      className={`min-w-0 rounded-card border bg-surface p-5 shadow-card space-y-3 transition-colors duration-700 ${
+        highlighted ? "border-brand-500 ring-2 ring-brand-500 ring-offset-2" : "border-ink-100"
+      }`}
+    >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h3 className="font-display font-semibold text-ink-900 truncate">{chart.label}</h3>
@@ -705,6 +720,9 @@ export function ChartManager({ charts, kpiSources }: { charts: Chart[]; kpiSourc
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [prefill, setPrefill] = useState<ChartKpiSource | null>(null);
+  // Nach dem Erstellen aus einer Kennzahl heraus: id des neuen Diagramms,
+  // damit direkt dorthin gescrollt wird, statt es selbst suchen zu muessen.
+  const [scrollToChartId, setScrollToChartId] = useState<string | null>(null);
 
   // "Diagramm erstellen" an einer Kennzahl (components/kpi-manager.tsx) navigiert
   // hierher mit ?prefillChart=<kpiId> -- Formular direkt vorausgefuellt oeffnen
@@ -720,10 +738,22 @@ export function ChartManager({ charts, kpiSources }: { charts: Chart[]; kpiSourc
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
-  function closeAll() {
+  // router.refresh() (in closeAll) laedt die Server-Daten neu, aber asynchron
+  // -- erst wenn das neue Diagramm tatsaechlich in "charts" ankommt, kann
+  // dorthin gescrollt werden. Danach kurze Hervorhebung, dann zuruecksetzen.
+  useEffect(() => {
+    if (!scrollToChartId) return;
+    if (!charts.some((c) => c.id === scrollToChartId)) return;
+    document.getElementById(`chart-${scrollToChartId}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    const timeout = setTimeout(() => setScrollToChartId(null), 2000);
+    return () => clearTimeout(timeout);
+  }, [charts, scrollToChartId]);
+
+  function closeAll(newChartId?: string) {
     setShowCreateForm(false);
     setEditingId(null);
     setPrefill(null);
+    if (newChartId) setScrollToChartId(newChartId);
     router.refresh();
   }
 
@@ -739,7 +769,13 @@ export function ChartManager({ charts, kpiSources }: { charts: Chart[]; kpiSourc
               <ChartForm initial={chart} formulaKpis={formulaKpis} onCancel={() => setEditingId(null)} onSaved={closeAll} />
             </div>
           ) : (
-            <ChartCard key={chart.id} chart={chart} kpiLabelById={kpiLabelById} onEdit={() => setEditingId(chart.id)} />
+            <ChartCard
+              key={chart.id}
+              chart={chart}
+              kpiLabelById={kpiLabelById}
+              highlighted={chart.id === scrollToChartId}
+              onEdit={() => setEditingId(chart.id)}
+            />
           )
         )}
       </div>
