@@ -170,10 +170,14 @@ function KpiForm({
 }) {
   const [label, setLabel] = useState(initial?.label ?? "");
   const [kind, setKind] = useState<KpiKind>((initial?.kind as KpiKind) ?? "BASIC");
-  const [entity, setEntity] = useState<EntityKey>((initial?.entity as EntityKey) ?? "inquiries");
+  // "|| " statt "?? " -- bei Formel-Kennzahlen ist initial.entity ein leerer
+  // String (die Spalte ist in der DB nicht nullable, siehe entity: "" in
+  // createCustomKpi/updateCustomKpi), kein null/undefined. "??" wuerde den
+  // leeren String durchlassen und ENTITY_META[""] crashen lassen.
+  const [entity, setEntity] = useState<EntityKey>((initial?.entity as EntityKey) || "inquiries");
   const [aggregation, setAggregation] = useState<KpiAggregation>((initial?.aggregation as KpiAggregation) ?? "count");
   const [sumField, setSumField] = useState<string>(
-    initial?.sumField ?? numberFieldsFor((initial?.entity as EntityKey) ?? "inquiries")[0]?.key ?? ""
+    initial?.sumField ?? numberFieldsFor((initial?.entity as EntityKey) || "inquiries")[0]?.key ?? ""
   );
   const [statusValue, setStatusValue] = useState(initial?.statusValue ?? "");
   const [dateRangeType, setDateRangeType] = useState(initial?.dateRangeType ?? "ALL");
