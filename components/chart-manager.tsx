@@ -11,6 +11,7 @@ import {
   toggleChartOnDashboard,
   type ChartType,
   type ValueLabelFormat,
+  type ChartKind,
 } from "@/lib/actions/custom-chart";
 import { CustomChart, PALETTE } from "@/components/charts/custom-chart";
 import { ReportFilterConditionsEditor } from "@/components/report-filter-conditions";
@@ -42,6 +43,7 @@ import type { ReportFilterCondition } from "@/lib/report-filters";
 type Chart = {
   id: string;
   label: string;
+  kind: string;
   entity: string;
   chartType: string;
   groupByField: string;
@@ -49,6 +51,7 @@ type Chart = {
   aggregation: string;
   sumField: string | null;
   filterConditions: unknown;
+  sourceKpiId: string | null;
   data: { label: string; value: number; status?: string }[];
   onDashboard: boolean;
   xAxisLabel: string | null;
@@ -59,18 +62,21 @@ type Chart = {
 };
 
 // Vorausfuell-Quelle fuer ein neues Diagramm, ausgehend von einer bestehenden
-// (BASIC-)Kennzahl -- siehe "Diagramm erstellen" in components/kpi-manager.tsx.
-// Nur das 1:1 Uebertragbare (Datentyp, Berechnung, Bedingungen); ein Status-/
-// Zeitraum-Filter der Kennzahl hat keine Entsprechung im Diagramm-Formular
-// und wird stattdessen nur als Hinweis markiert (hasStatusOrDateFilter).
+// Kennzahl -- siehe "Diagramm erstellen" in components/kpi-manager.tsx. Bei
+// "BASIC" das 1:1 Uebertragbare (Datentyp, Berechnung, Bedingungen); ein
+// Status-/Zeitraum-Filter der Kennzahl hat keine Entsprechung im
+// Diagramm-Formular und wird stattdessen nur als Hinweis markiert
+// (hasStatusOrDateFilter). Bei "FORMULA" nur id/label als Quelle fuer einen
+// Verlauf -- siehe computeFormulaTrendBuckets in lib/actions/custom-chart.ts.
 export type ChartKpiSource = {
   id: string;
   label: string;
-  entity: string;
-  aggregation: string;
-  sumField: string | null;
-  filterConditions: unknown;
-  hasStatusOrDateFilter: boolean;
+  kind: "BASIC" | "FORMULA";
+  entity?: string;
+  aggregation?: string;
+  sumField?: string | null;
+  filterConditions?: unknown;
+  hasStatusOrDateFilter?: boolean;
 };
 
 const CHART_TYPE_LABELS: Record<ChartType, string> = {
@@ -82,7 +88,16 @@ const CHART_TYPE_LABELS: Record<ChartType, string> = {
 
 const GRANULARITIES = Object.keys(GRANULARITY_LABELS) as DateGranularity[];
 
-function describeChart(chart: Chart) {
+function describeChart(chart: Chart, kpiLabelById: Map<string, string>) {
+  if (chart.kind === "FORMULA") {
+    const sourceLabel = (chart.sourceKpiId && kpiLabelById.get(chart.sourceKpiId)) || "gelöschte Kennzahl";
+    const chartLabel = CHART_TYPE_LABELS[chart.chartType as ChartType] ?? chart.chartType;
+    const config = chart.groupByConfig as GroupByConfig;
+    const period =
+      config && "granularity" in config ? `Pro ${GRANULARITY_LABELS[config.granularity]}, letzte ${config.windowCount}` : "";
+    return `Verlauf: ${sourceLabel} · ${chartLabel}${period ? ` · ${period}` : ""}`;
+  }
+
   const entity = chart.entity as EntityKey;
   const meta = ENTITY_META[entity];
   const chartLabel = CHART_TYPE_LABELS[chart.chartType as ChartType] ?? chart.chartType;
@@ -108,6 +123,7 @@ function describeChart(chart: Chart) {
 function ChartForm({
   initial,
   prefill,
+  formulaKpis,
   onCancel,
   onSaved,
 }: {
@@ -115,9 +131,15 @@ function ChartForm({
   // Startwerte fuer ein NEUES Diagramm, ausgehend von einer Kennzahl -- im
   // Unterschied zu "initial" kein Bearbeiten eines bestehenden Diagramms.
   prefill?: ChartKpiSource;
+  // Verfuegbare Formel-Kennzahlen als Quelle fuer kind "FORMULA".
+  formulaKpis: { id: string; label: string }[];
   onCancel: () => void;
   onSaved: () => void;
 }) {
+  const [kind, setKind] = useState<ChartKind>((initial?.kind as ChartKind) ?? (prefill?.kind === "FORMULA" ? "FORMULA" : "BASIC"));
+  const [sourceKpiId, setSourceKpiId] = useState<string>(
+    initial?.sourceKpiId ?? (prefill?.kind === "FORMULA" ? prefill.id : formulaKpis[0]?.id ?? "")
+  );
   const [label, setLabel] = useState(initial?.label ?? prefill?.label ?? "");
   const [entity, setEntity] = useState<EntityKey>(
     (initial?.entity as EntityKey) ?? (prefill?.entity as EntityKey) ?? "invoices"
@@ -193,7 +215,35 @@ function ChartForm({
   }
 
   function submit() {
-    if (!label.trim() || !groupByField) return;
+    if (!label.trim()) return;
+
+    if (kind === "FORMULA") {
+      if (!sourceKpiId) return;
+      const effectiveChartType = chartType === "pie" ? "bar" : chartType;
+      const payload = {
+        label,
+        kind: "FORMULA" as const,
+        sourceKpiId,
+        chartType: effectiveChartType,
+        groupByConfig: { granularity: dateGranularity, windowCount: dateWindowCount },
+        xAxisLabel: xAxisLabel.trim() || undefined,
+        yAxisLabel: yAxisLabel.trim() || undefined,
+        showValueLabels,
+        valueLabelFormat,
+        colors: colors.length > 0 ? colors : undefined,
+      };
+      startTransition(async () => {
+        if (initial) {
+          await updateCustomChart(initial.id, payload);
+        } else {
+          await createCustomChart(payload);
+        }
+        onSaved();
+      });
+      return;
+    }
+
+    if (!groupByField) return;
     const effectiveAggregation: KpiAggregation = aggregation !== "count" && canSum ? aggregation : "count";
 
     let groupByConfig: GroupByConfig = null;
@@ -205,6 +255,7 @@ function ChartForm({
 
     const payload = {
       label,
+      kind: "BASIC" as const,
       entity,
       chartType,
       groupByField,
@@ -237,25 +288,66 @@ function ChartForm({
             " Ein Status- oder Zeitraum-Filter der Kennzahl wurde nicht übernommen -- bei Bedarf unten über „Bedingung hinzufügen“ erneut setzen."}
         </p>
       )}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+
+      <div className="flex rounded-lg border border-ink-100 bg-surface p-0.5 text-sm">
+        <button
+          type="button"
+          onClick={() => setKind("BASIC")}
+          className={`flex-1 rounded-md px-3 py-1.5 font-medium transition-colors ${
+            kind === "BASIC" ? "bg-brand-500 text-white" : "text-ink-500 hover:text-ink-900"
+          }`}
+        >
+          Datentyp
+        </button>
+        <button
+          type="button"
+          disabled={formulaKpis.length === 0}
+          title={formulaKpis.length === 0 ? "Lege zuerst eine Formel-Kennzahl an." : undefined}
+          onClick={() => setKind("FORMULA")}
+          className={`flex-1 rounded-md px-3 py-1.5 font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+            kind === "FORMULA" ? "bg-brand-500 text-white" : "text-ink-500 hover:text-ink-900"
+          }`}
+        >
+          Formel-Kennzahl (Verlauf)
+        </button>
+      </div>
+
+      <div className={`grid grid-cols-1 gap-2 ${kind === "BASIC" ? "sm:grid-cols-2" : ""}`}>
         <input
           value={label}
           onChange={(e) => setLabel(e.target.value)}
-          placeholder="Name, z. B. Rechnungen nach Status"
+          placeholder={kind === "FORMULA" ? "Name, z. B. Gewinn pro Monat" : "Name, z. B. Rechnungen nach Status"}
           className="rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface"
         />
+        {kind === "BASIC" && (
+          <select
+            value={entity}
+            onChange={(e) => handleEntityChange(e.target.value as EntityKey)}
+            className="rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface"
+          >
+            {ENTITY_KEYS.map((key) => (
+              <option key={key} value={key}>
+                {ENTITY_META[key].label}
+              </option>
+            ))}
+          </select>
+        )}
+      </div>
+
+      {kind === "FORMULA" && (
         <select
-          value={entity}
-          onChange={(e) => handleEntityChange(e.target.value as EntityKey)}
-          className="rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface"
+          value={sourceKpiId}
+          onChange={(e) => setSourceKpiId(e.target.value)}
+          className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface"
         >
-          {ENTITY_KEYS.map((key) => (
-            <option key={key} value={key}>
-              {ENTITY_META[key].label}
+          {formulaKpis.length === 0 && <option value="">Keine Formel-Kennzahl vorhanden</option>}
+          {formulaKpis.map((k) => (
+            <option key={k.id} value={k.id}>
+              {k.label}
             </option>
           ))}
         </select>
-      </div>
+      )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         <select
@@ -266,62 +358,64 @@ function ChartForm({
           <option value="bar">Balkendiagramm</option>
           <option value="line">Liniendiagramm</option>
           <option value="area">Flächendiagramm</option>
-          <option value="pie">Kreisdiagramm</option>
+          {kind === "BASIC" && <option value="pie">Kreisdiagramm</option>}
         </select>
-        <select
-          value={groupByField}
-          onChange={(e) => handleGroupByFieldChange(e.target.value)}
-          className="rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface"
-        >
-          {enumFieldsFor(entity).length > 0 && (
-            <optgroup label="Status/Kategorie">
-              {enumFieldsFor(entity).map((f) => (
-                <option key={f.key} value={f.key}>
-                  {f.label}
-                </option>
-              ))}
-            </optgroup>
-          )}
-          {textFieldsFor(entity).length > 0 && (
-            <optgroup label="Text">
-              {textFieldsFor(entity).map((f) => (
-                <option key={f.key} value={f.key}>
-                  {f.label}
-                </option>
-              ))}
-            </optgroup>
-          )}
-          {numberFieldsFor(entity).length > 0 && (
-            <optgroup label="Zahl">
-              {numberFieldsFor(entity).map((f) => (
-                <option key={f.key} value={f.key}>
-                  {f.label}
-                </option>
-              ))}
-            </optgroup>
-          )}
-          {dateFieldsFor(entity).length > 0 && (
-            <optgroup label="Datum">
-              {dateFieldsFor(entity).map((f) => (
-                <option key={f.key} value={f.key}>
-                  {f.label}
-                </option>
-              ))}
-            </optgroup>
-          )}
-          {relationFieldsFor(entity).length > 0 && (
-            <optgroup label="Verknüpfung">
-              {relationFieldsFor(entity).map((f) => (
-                <option key={f.key} value={f.key}>
-                  {f.label}
-                </option>
-              ))}
-            </optgroup>
-          )}
-        </select>
+        {kind === "BASIC" && (
+          <select
+            value={groupByField}
+            onChange={(e) => handleGroupByFieldChange(e.target.value)}
+            className="rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface"
+          >
+            {enumFieldsFor(entity).length > 0 && (
+              <optgroup label="Status/Kategorie">
+                {enumFieldsFor(entity).map((f) => (
+                  <option key={f.key} value={f.key}>
+                    {f.label}
+                  </option>
+                ))}
+              </optgroup>
+            )}
+            {textFieldsFor(entity).length > 0 && (
+              <optgroup label="Text">
+                {textFieldsFor(entity).map((f) => (
+                  <option key={f.key} value={f.key}>
+                    {f.label}
+                  </option>
+                ))}
+              </optgroup>
+            )}
+            {numberFieldsFor(entity).length > 0 && (
+              <optgroup label="Zahl">
+                {numberFieldsFor(entity).map((f) => (
+                  <option key={f.key} value={f.key}>
+                    {f.label}
+                  </option>
+                ))}
+              </optgroup>
+            )}
+            {dateFieldsFor(entity).length > 0 && (
+              <optgroup label="Datum">
+                {dateFieldsFor(entity).map((f) => (
+                  <option key={f.key} value={f.key}>
+                    {f.label}
+                  </option>
+                ))}
+              </optgroup>
+            )}
+            {relationFieldsFor(entity).length > 0 && (
+              <optgroup label="Verknüpfung">
+                {relationFieldsFor(entity).map((f) => (
+                  <option key={f.key} value={f.key}>
+                    {f.label}
+                  </option>
+                ))}
+              </optgroup>
+            )}
+          </select>
+        )}
       </div>
 
-      {selectedField?.kind === "date" && (
+      {kind === "FORMULA" && (
         <div className="grid grid-cols-2 gap-2">
           <select
             value={dateGranularity}
@@ -350,7 +444,36 @@ function ChartForm({
         </div>
       )}
 
-      {selectedField?.kind === "number" && (
+      {kind === "BASIC" && selectedField?.kind === "date" && (
+        <div className="grid grid-cols-2 gap-2">
+          <select
+            value={dateGranularity}
+            onChange={(e) => handleGranularityChange(e.target.value as DateGranularity)}
+            className="rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface"
+          >
+            {GRANULARITIES.map((g) => (
+              <option key={g} value={g}>
+                Pro {GRANULARITY_LABELS[g]}
+              </option>
+            ))}
+          </select>
+          <input
+            type="number"
+            min={2}
+            max={MAX_WINDOW_COUNT[dateGranularity]}
+            value={dateWindowCount}
+            onChange={(e) =>
+              setDateWindowCount(
+                Math.max(2, Math.min(MAX_WINDOW_COUNT[dateGranularity], Number(e.target.value) || 2))
+              )
+            }
+            placeholder="Anzahl Perioden"
+            className="rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface"
+          />
+        </div>
+      )}
+
+      {kind === "BASIC" && selectedField?.kind === "number" && (
         <input
           type="number"
           min={MIN_BUCKET_COUNT}
@@ -366,6 +489,7 @@ function ChartForm({
         />
       )}
 
+      {kind === "BASIC" && (
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         <select
           value={canSum ? aggregation : "count"}
@@ -396,6 +520,7 @@ function ChartForm({
           </select>
         )}
       </div>
+      )}
 
       {chartType !== "pie" && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -461,11 +586,13 @@ function ChartForm({
         </div>
       )}
 
-      <ReportFilterConditionsEditor fields={filterFields} conditions={conditions} onChange={setConditions} />
+      {kind === "BASIC" && (
+        <ReportFilterConditionsEditor fields={filterFields} conditions={conditions} onChange={setConditions} />
+      )}
 
       <div className="flex gap-2">
         <button
-          disabled={pending || !label.trim()}
+          disabled={pending || !label.trim() || (kind === "FORMULA" && !sourceKpiId)}
           onClick={submit}
           className="rounded-lg bg-brand-500 text-white text-sm font-medium px-4 py-2 hover:bg-brand-600 disabled:opacity-60 transition-colors"
         >
@@ -482,7 +609,15 @@ function ChartForm({
   );
 }
 
-function ChartCard({ chart, onEdit }: { chart: Chart; onEdit: () => void }) {
+function ChartCard({
+  chart,
+  kpiLabelById,
+  onEdit,
+}: {
+  chart: Chart;
+  kpiLabelById: Map<string, string>;
+  onEdit: () => void;
+}) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
 
@@ -491,7 +626,7 @@ function ChartCard({ chart, onEdit }: { chart: Chart; onEdit: () => void }) {
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h3 className="font-display font-semibold text-ink-900 truncate">{chart.label}</h3>
-          <p className="text-xs text-ink-500 truncate">{describeChart(chart)}</p>
+          <p className="text-xs text-ink-500 truncate">{describeChart(chart, kpiLabelById)}</p>
         </div>
         <div className="flex items-center gap-1 shrink-0">
           <button
@@ -592,16 +727,19 @@ export function ChartManager({ charts, kpiSources }: { charts: Chart[]; kpiSourc
     router.refresh();
   }
 
+  const formulaKpis = kpiSources.filter((k) => k.kind === "FORMULA").map((k) => ({ id: k.id, label: k.label }));
+  const kpiLabelById = new Map(kpiSources.map((k) => [k.id, k.label]));
+
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {charts.map((chart) =>
           editingId === chart.id ? (
             <div key={chart.id} className="lg:col-span-2">
-              <ChartForm initial={chart} onCancel={() => setEditingId(null)} onSaved={closeAll} />
+              <ChartForm initial={chart} formulaKpis={formulaKpis} onCancel={() => setEditingId(null)} onSaved={closeAll} />
             </div>
           ) : (
-            <ChartCard key={chart.id} chart={chart} onEdit={() => setEditingId(chart.id)} />
+            <ChartCard key={chart.id} chart={chart} kpiLabelById={kpiLabelById} onEdit={() => setEditingId(chart.id)} />
           )
         )}
       </div>
@@ -619,6 +757,7 @@ export function ChartManager({ charts, kpiSources }: { charts: Chart[]; kpiSourc
       ) : (
         <ChartForm
           prefill={prefill ?? undefined}
+          formulaKpis={formulaKpis}
           onCancel={() => {
             setShowCreateForm(false);
             setPrefill(null);

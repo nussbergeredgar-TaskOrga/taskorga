@@ -1,0 +1,2 @@
+ALTER TABLE "CustomChart" ADD COLUMN "kind" TEXT NOT NULL DEFAULT 'BASIC';
+ALTER TABLE "CustomChart" ADD COLUMN "sourceKpiId" TEXT;

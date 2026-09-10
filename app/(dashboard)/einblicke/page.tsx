@@ -65,22 +65,26 @@ export default async function EinblickePage() {
   const onDashboardIds = new Set((layout ?? []).filter((w) => w.visible).map((w) => w.id));
 
   // Vorausfuell-Quellen fuer "Diagramm erstellen" an einer Kennzahl (siehe
-  // components/chart-manager.tsx) -- nur BASIC-Kennzahlen haben einen
-  // einzelnen Datentyp, den ein Diagramm uebernehmen kann. Status-/
-  // Zeitraum-Filter der Kennzahl werden bewusst nicht mituebernommen (siehe
-  // Kommentar an filterableFieldsFor in lib/custom-kpi.ts), stattdessen nur
-  // als Hinweis markiert.
-  const chartPrefillSources = kpis
-    .filter((k) => k.kind !== "FORMULA")
-    .map((k) => ({
-      id: k.id,
-      label: k.label,
-      entity: k.entity,
-      aggregation: k.aggregation,
-      sumField: k.sumField,
-      filterConditions: k.filterConditions,
-      hasStatusOrDateFilter: k.statusValue != null || (!!k.dateRangeType && k.dateRangeType !== "ALL"),
-    }));
+  // components/chart-manager.tsx). BASIC-Kennzahlen haben einen einzelnen
+  // Datentyp, den ein Diagramm uebernehmen kann (Status-/Zeitraum-Filter der
+  // Kennzahl werden bewusst nicht mituebernommen, siehe Kommentar an
+  // filterableFieldsFor in lib/custom-kpi.ts -- stattdessen nur als Hinweis
+  // markiert). Formel-Kennzahlen liefern nur id/label als Quelle fuer ein
+  // Verlaufs-Diagramm (computeFormulaTrendBuckets).
+  const chartPrefillSources = kpis.map((k) =>
+    k.kind === "FORMULA"
+      ? { id: k.id, label: k.label, kind: "FORMULA" as const }
+      : {
+          id: k.id,
+          label: k.label,
+          kind: "BASIC" as const,
+          entity: k.entity,
+          aggregation: k.aggregation,
+          sumField: k.sumField,
+          filterConditions: k.filterConditions,
+          hasStatusOrDateFilter: k.statusValue != null || (!!k.dateRangeType && k.dateRangeType !== "ALL"),
+        }
+  );
 
   // Umsatz pro Monat (letzte 6 Monate) aus der konfigurierbaren Umsatz-Zusammensetzung
   const monthBuckets = monthRanges.map((r, i) => ({ month: r.label, umsatz: monthlyRevenue[i] }));
@@ -180,6 +184,8 @@ export default async function EinblickePage() {
             charts={customCharts.map((c) => ({
               id: c.id,
               label: c.label,
+              kind: c.kind,
+              sourceKpiId: c.sourceKpiId,
               entity: c.entity,
               chartType: c.chartType,
               groupByField: c.groupByField,

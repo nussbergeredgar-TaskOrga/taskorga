@@ -573,9 +573,11 @@ function KpiActionsMenu({
   onEdit: () => void;
   onDuplicate: () => void;
   onDelete: () => void;
-  // Nur fuer BASIC-Kennzahlen gesetzt -- eine Formel hat keinen einzelnen
-  // Datentyp, den ein Diagramm uebernehmen koennte (siehe stattdessen die
-  // Diagramm-Buttons pro Term in der Aufschluesselung, breakdownPanel unten).
+  // Bei BASIC-Kennzahlen ein datengetriebenes Diagramm, bei Formel-
+  // Kennzahlen ein Verlaufs-Diagramm ueber mehrere Perioden (siehe
+  // ChartForm.kind === "FORMULA" in chart-manager.tsx). Zusaetzlich gibt es
+  // bei Formeln pro Term in der Aufschluesselung (breakdownPanel unten) einen
+  // eigenen Button fuer ein Diagramm der jeweiligen Basis-Kennzahl.
   onCreateChart?: () => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -788,7 +790,7 @@ function KpiRow({ kpi, onEdit }: { kpi: Kpi; onEdit: () => void }) {
             onEdit={onEdit}
             onDuplicate={handleDuplicate}
             onDelete={handleDelete}
-            onCreateChart={kpi.kind !== "FORMULA" ? () => createChartFrom(kpi.id) : undefined}
+            onCreateChart={() => createChartFrom(kpi.id)}
           />
           </div>
         </div>
@@ -820,7 +822,7 @@ function KpiRow({ kpi, onEdit }: { kpi: Kpi; onEdit: () => void }) {
             onEdit={onEdit}
             onDuplicate={handleDuplicate}
             onDelete={handleDelete}
-            onCreateChart={kpi.kind !== "FORMULA" ? () => createChartFrom(kpi.id) : undefined}
+            onCreateChart={() => createChartFrom(kpi.id)}
           />
         </div>
         {expanded && (

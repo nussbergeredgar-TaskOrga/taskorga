@@ -994,20 +994,29 @@ model CustomChart {
   company   Company  @relation(fields: [companyId], references: [id])
 
   label       String
-  entity      String // siehe EntityKey in lib/custom-kpi.ts
+  // "BASIC" (Datensaetze eines Datentyps gruppiert, bisheriges Verhalten) |
+  // "FORMULA" (Verlauf einer Formel-Kennzahl ueber mehrere Perioden, siehe
+  // sourceKpiId). Gleiche Benennung wie CustomKpi.kind.
+  kind        String @default("BASIC")
+  entity      String // siehe EntityKey in lib/custom-kpi.ts -- bei kind "FORMULA" Platzhalter ""
   chartType   String // "bar" | "line" | "pie" | "area"
   // Immer gesetzt -- welches Feld aus lib/custom-kpi.ts ENTITY_META gruppiert
   // wird (auch fuer Status: dort schlicht "status"). Die Feld-Art (enum/text/
   // number/date/relation) wird beim Lesen aus dem Katalog nachgeschlagen,
-  // nicht hier gespeichert.
+  // nicht hier gespeichert. Bei kind "FORMULA" Platzhalter "".
   groupByField String
   // Zusatzkonfiguration je nach Feld-Art: bei Datum {granularity,windowCount},
   // bei Zahl {bucketCount}, sonst null. Siehe GroupByConfig in lib/custom-kpi.ts.
+  // Bei kind "FORMULA" ebenfalls {granularity,windowCount} -- Perioden des Verlaufs.
   groupByConfig Json?
-  aggregation String // "count" | "sum" | "avg" | "min" | "max"
+  aggregation String // "count" | "sum" | "avg" | "min" | "max" -- bei kind "FORMULA" Platzhalter "count"
   sumField    String?
   // Wie bei CustomKpi: zusaetzliche Bedingungen, siehe lib/report-filters.ts
   filterConditions Json?
+  // Quelle bei kind "FORMULA" -- CustomKpi.id einer Formel-Kennzahl. Lose
+  // Referenz ohne FK (wie CustomKpi.formulaTerms), damit eine geloeschte
+  // Kennzahl das Diagramm nicht zum Absturz bringt (siehe getCustomChartsWithData).
+  sourceKpiId String?
 
   // Freitext-Beschriftung der X-/Y-Achse (nur Balken/Linie/Flaeche, bei Kreis
   // ignoriert). Null = keine eigene Beschriftung.

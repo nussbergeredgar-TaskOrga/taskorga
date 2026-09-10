@@ -18,36 +18,74 @@ import {
 } from "@/lib/custom-kpi";
 import { applyFilterConditions, type ReportFilterCondition } from "@/lib/report-filters";
 import { entityStatusHref, entityDetailHref } from "@/lib/entity-links";
+import { computeFormulaValueForRange, type FormulaTerm } from "@/lib/actions/custom-kpi";
 import { Prisma } from "@prisma/client";
 
 export type ChartType = "bar" | "line" | "pie" | "area";
 export type ValueLabelFormat = "VALUE" | "PERCENT";
+export type ChartKind = "BASIC" | "FORMULA";
 
 export type CustomChartInput = {
   label: string;
-  entity: EntityKey;
-  chartType: ChartType;
-  groupByField: string;
-  groupByConfig?: GroupByConfig;
-  aggregation: KpiAggregation;
+  kind?: ChartKind;
+  // BASIC:
+  entity?: EntityKey;
+  groupByField?: string;
+  aggregation?: KpiAggregation;
   sumField?: string;
   filterConditions?: ReportFilterCondition[];
+  // Beide Arten:
+  chartType: ChartType;
+  groupByConfig?: GroupByConfig;
   xAxisLabel?: string;
   yAxisLabel?: string;
   showValueLabels?: boolean;
   valueLabelFormat?: ValueLabelFormat;
   // Ein Hex-Code pro Bucket in Anzeige-Reihenfolge -- siehe components/charts/custom-chart.tsx.
   colors?: string[];
+  // FORMULA: die dargestellte Formel-Kennzahl (CustomKpi.id, kind "FORMULA").
+  sourceKpiId?: string;
 };
 
 export async function createCustomChart(data: CustomChartInput) {
-  if (!data.label.trim() || !data.groupByField) return;
+  if (!data.label.trim()) return;
   const company = await getCurrentCompany();
+
+  if (data.kind === "FORMULA") {
+    if (!data.sourceKpiId) return;
+    await prisma.customChart.create({
+      data: {
+        companyId: company.id,
+        label: data.label.trim(),
+        kind: "FORMULA",
+        // entity/groupByField/aggregation sind NOT NULL im Schema, bei einem
+        // Formel-Verlauf aber irrelevant -- Platzhalter, siehe CustomKpi.kind
+        // "FORMULA" in lib/actions/custom-kpi.ts (gleiches Muster).
+        entity: "",
+        groupByField: "",
+        aggregation: "count",
+        sourceKpiId: data.sourceKpiId,
+        groupByConfig: data.groupByConfig ?? Prisma.JsonNull,
+        chartType: data.chartType,
+        xAxisLabel: data.xAxisLabel || null,
+        yAxisLabel: data.yAxisLabel || null,
+        showValueLabels: data.showValueLabels ?? false,
+        valueLabelFormat: data.valueLabelFormat || "VALUE",
+        colors: data.colors && data.colors.length > 0 ? data.colors : undefined,
+      },
+    });
+    revalidatePath("/einblicke");
+    revalidatePath("/heute");
+    return;
+  }
+
+  if (!data.entity || !data.groupByField || !data.aggregation) return;
 
   await prisma.customChart.create({
     data: {
       companyId: company.id,
       label: data.label.trim(),
+      kind: "BASIC",
       entity: data.entity,
       chartType: data.chartType,
       groupByField: data.groupByField,
@@ -68,13 +106,43 @@ export async function createCustomChart(data: CustomChartInput) {
 }
 
 export async function updateCustomChart(id: string, data: CustomChartInput) {
-  if (!data.label.trim() || !data.groupByField) return;
+  if (!data.label.trim()) return;
   const company = await getCurrentCompany();
+
+  if (data.kind === "FORMULA") {
+    if (!data.sourceKpiId) return;
+    await prisma.customChart.updateMany({
+      where: { id, companyId: company.id },
+      data: {
+        label: data.label.trim(),
+        kind: "FORMULA",
+        entity: "",
+        groupByField: "",
+        aggregation: "count",
+        sumField: null,
+        filterConditions: Prisma.JsonNull,
+        sourceKpiId: data.sourceKpiId,
+        groupByConfig: data.groupByConfig ?? Prisma.JsonNull,
+        chartType: data.chartType,
+        xAxisLabel: data.xAxisLabel || null,
+        yAxisLabel: data.yAxisLabel || null,
+        showValueLabels: data.showValueLabels ?? false,
+        valueLabelFormat: data.valueLabelFormat || "VALUE",
+        colors: data.colors && data.colors.length > 0 ? data.colors : Prisma.JsonNull,
+      },
+    });
+    revalidatePath("/einblicke");
+    revalidatePath("/heute");
+    return;
+  }
+
+  if (!data.entity || !data.groupByField || !data.aggregation) return;
 
   await prisma.customChart.updateMany({
     where: { id, companyId: company.id },
     data: {
       label: data.label.trim(),
+      kind: "BASIC",
       entity: data.entity,
       chartType: data.chartType,
       groupByField: data.groupByField,
@@ -83,6 +151,7 @@ export async function updateCustomChart(id: string, data: CustomChartInput) {
       sumField: data.aggregation !== "count" ? data.sumField || null : null,
       filterConditions:
         data.filterConditions && data.filterConditions.length > 0 ? data.filterConditions : Prisma.JsonNull,
+      sourceKpiId: null,
       xAxisLabel: data.xAxisLabel || null,
       yAxisLabel: data.yAxisLabel || null,
       showValueLabels: data.showValueLabels ?? false,
@@ -108,6 +177,7 @@ export async function duplicateCustomChart(id: string) {
     data: {
       companyId: company.id,
       label: `${original.label} (Kopie)`,
+      kind: original.kind,
       entity: original.entity,
       chartType: original.chartType,
       groupByField: original.groupByField,
@@ -115,6 +185,7 @@ export async function duplicateCustomChart(id: string) {
       aggregation: original.aggregation,
       sumField: original.sumField,
       filterConditions: original.filterConditions ?? undefined,
+      sourceKpiId: original.sourceKpiId,
       xAxisLabel: original.xAxisLabel,
       yAxisLabel: original.yAxisLabel,
       showValueLabels: original.showValueLabels,
@@ -551,6 +622,40 @@ async function computeDateBuckets(
   return buckets.map(({ label, values }) => ({ label, value: reduceValues(values, aggregation) }));
 }
 
+// Verlauf einer Formel-Kennzahl ueber mehrere Perioden -- fuer jede Periode
+// wird die Formel neu berechnet (computeFormulaValueForRange, siehe
+// lib/actions/custom-kpi.ts), statt wie computeDateBuckets Datensaetze EINES
+// Datentyps zu gruppieren (eine Formel hat keinen einzelnen Datentyp). Gleiche
+// Perioden-Helfer (periodStart/addPeriods/periodLabel) wie computeDateBuckets.
+// Kein href je Bucket -- kein sinnvolles Einzel-Klickziel pro Periode.
+async function computeFormulaTrendBuckets(
+  companyId: string,
+  sourceKpiId: string | null,
+  granularity: DateGranularity,
+  windowCount: number
+): Promise<{ label: string; value: number }[]> {
+  if (!sourceKpiId) return [];
+  const kpi = await prisma.customKpi.findFirst({ where: { id: sourceKpiId, companyId, kind: "FORMULA" } });
+  if (!kpi) return [];
+  const terms = (kpi.formulaTerms as FormulaTerm[] | null) ?? [];
+
+  const now = new Date();
+  const starts: Date[] = [];
+  for (let i = windowCount - 1; i >= 0; i--) {
+    starts.push(periodStart(addPeriods(now, granularity, -i), granularity));
+  }
+
+  return Promise.all(
+    starts.map(async (start, i) => {
+      // Letzte, laufende Periode endet "jetzt"; alle anderen an der Grenze zur
+      // naechsten Periode.
+      const end = i + 1 < starts.length ? new Date(starts[i + 1].getTime() - 1) : now;
+      const { value } = await computeFormulaValueForRange(companyId, terms, { gte: start, lte: end }, kpi.formulaDisplayFormat);
+      return { label: periodLabel(start, granularity), value };
+    })
+  );
+}
+
 export async function getCustomChartsWithData() {
   const company = await getCurrentCompany();
   const charts = await prisma.customChart.findMany({
@@ -560,14 +665,23 @@ export async function getCustomChartsWithData() {
 
   return Promise.all(
     charts.map(async (chart) => {
+      const config = chart.groupByConfig as GroupByConfig;
+
+      let data: { label: string; value: number; href?: string }[] = [];
+
+      if (chart.kind === "FORMULA") {
+        const granularity = config && "granularity" in config ? config.granularity : "month";
+        const windowCount = config && "windowCount" in config ? config.windowCount : DEFAULT_WINDOW_COUNT[granularity];
+        data = await computeFormulaTrendBuckets(company.id, chart.sourceKpiId, granularity, windowCount);
+        return { ...chart, data };
+      }
+
       const entity = chart.entity as EntityKey;
       const aggregation = chart.aggregation as KpiAggregation;
       const filterConditions = (chart.filterConditions as ReportFilterCondition[] | null) ?? null;
       const sumField = chart.sumField ?? undefined;
       const field = fieldFor(entity, chart.groupByField);
-      const config = chart.groupByConfig as GroupByConfig;
 
-      let data: { label: string; value: number; href?: string }[] = [];
       if (field) {
         if (field.kind === "enum") {
           data = await computeEnumBuckets(company.id, entity, field.key, field.options, aggregation, sumField, filterConditions);
