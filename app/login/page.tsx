@@ -199,6 +199,10 @@ function LoginForm() {
             Impressum
           </Link>
           <span>·</span>
+          <Link href="/agb" className="hover:underline">
+            AGB
+          </Link>
+          <span>·</span>
           <Link href="/datenschutz" className="hover:underline">
             Datenschutz
           </Link>

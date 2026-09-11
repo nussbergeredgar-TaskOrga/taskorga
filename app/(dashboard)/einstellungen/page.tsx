@@ -10,6 +10,7 @@ import { PushNotificationToggle } from "@/components/push-notification-toggle";
 import { SettingsSection } from "@/components/settings-section";
 import { getNavConfig } from "@/lib/actions/nav";
 import { DEFAULT_NAV } from "@/lib/nav-items";
+import Link from "next/link";
 
 export default async function MeinKontoPage() {
   const user = await getCurrentUserWithRole();
@@ -73,6 +74,23 @@ export default async function MeinKontoPage() {
         description="Lege fest, welche Menüpunkte bei dir angezeigt werden und in welcher Reihenfolge (nur bei dir, persönliche Einstellung)."
       >
         <NavConfigManager initialConfig={navConfig ?? DEFAULT_NAV} />
+      </SettingsSection>
+
+      <SettingsSection title="Rechtliches" description="Impressum, Vertragsbedingungen und Datenschutz.">
+        <div className="flex flex-col gap-2 text-sm">
+          <Link href="/impressum" target="_blank" className="text-brand-700 hover:underline">
+            Impressum
+          </Link>
+          <Link href="/agb" target="_blank" className="text-brand-700 hover:underline">
+            Allgemeine Geschäftsbedingungen (AGB)
+          </Link>
+          <Link href="/avv" target="_blank" className="text-brand-700 hover:underline">
+            Auftragsverarbeitungsvertrag (AVV)
+          </Link>
+          <Link href="/datenschutz" target="_blank" className="text-brand-700 hover:underline">
+            Datenschutzerklärung
+          </Link>
+        </div>
       </SettingsSection>
     </div>
   );

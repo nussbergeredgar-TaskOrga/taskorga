@@ -43,7 +43,22 @@ export function NavSidebar({ config, labels }: { config: NavItemConfig[]; labels
           );
         })}
       </nav>
-      <div className="px-6 py-3 text-xs text-ink-300">Version {APP_VERSION}</div>
+      <div className="px-6 py-3 text-xs text-ink-300 space-y-1">
+        <div>Version {APP_VERSION}</div>
+        <div className="space-x-1.5">
+          <Link href="/impressum" target="_blank" className="hover:underline hover:text-ink-500">
+            Impressum
+          </Link>
+          <span>·</span>
+          <Link href="/agb" target="_blank" className="hover:underline hover:text-ink-500">
+            AGB
+          </Link>
+          <span>·</span>
+          <Link href="/datenschutz" target="_blank" className="hover:underline hover:text-ink-500">
+            Datenschutz
+          </Link>
+        </div>
+      </div>
     </aside>
   );
 }

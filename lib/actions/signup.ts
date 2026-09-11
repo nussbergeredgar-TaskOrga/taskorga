@@ -35,6 +35,13 @@ const signupSchema = z.object({
   // lib/actions/platform-admin.ts), unabhaengig vom oben stehenden, anonymen
   // Einladungscode-System -- bestimmt bei Gueltigkeit die Testdauer.
   invite: z.string().nullish(),
+  // Checkbox-Wert eines Browsers ist bei Haekchen "on", ansonsten fehlt das
+  // Feld im FormData komplett (formData.get() liefert dann null) -- deshalb
+  // .nullish() statt .optional() (wie bei inviteCode/invite oben) und
+  // Pruefung auf exakt "on".
+  agbAccepted: z.string().nullish().refine((v) => v === "on", {
+    message: "Bitte AGB, AVV und Datenschutzerklärung akzeptieren.",
+  }),
 });
 
 // Fuer die Registrierungsseite: liefert die hinterlegte E-Mail-Adresse einer
@@ -61,6 +68,7 @@ export async function signUp(_prevState: SignupState, formData: FormData): Promi
     password: formData.get("password"),
     inviteCode: formData.get("inviteCode"),
     invite: formData.get("invite"),
+    agbAccepted: formData.get("agbAccepted"),
   });
 
   if (!parsed.success) {
@@ -147,6 +155,7 @@ export async function signUp(_prevState: SignupState, formData: FormData): Promi
       email: parsed.data.email,
       passwordHash,
       roleId: adminRole.id,
+      agbAcceptedAt: new Date(),
     },
   });
 

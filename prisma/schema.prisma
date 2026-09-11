@@ -318,6 +318,11 @@ model User {
   // ist dem Admin schon bekannt), ebenso bereits bestehende Nutzer (siehe Migration).
   emailVerifiedAt DateTime?
 
+  // Wann der registrierende Nutzer AGB, AVV und Datenschutzerklaerung bei der
+  // Registrierung akzeptiert hat (siehe lib/actions/signup.ts) -- Nachweis des
+  // Vertragsschlusses, nicht nur eine clientseitige Checkbox ohne Beleg.
+  agbAcceptedAt DateTime?
+
   // Pflicht-Einfuehrungstour (siehe lib/onboarding-steps.ts, lib/actions/onboarding.ts).
   // Laeuft fuer jeden neuen Nutzer beim ersten Login, in zwei Varianten je nach
   // Rolle. onboardingStep haelt den aktuellen Schritt waehrend der Tour,
