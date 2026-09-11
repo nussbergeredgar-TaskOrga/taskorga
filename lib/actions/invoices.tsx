@@ -19,6 +19,7 @@ const invoiceSchema = z.object({
   customerId: z.string().min(1, "Bitte einen Kunden auswählen"),
   contactId: z.string().optional(),
   projectId: z.string().optional(),
+  quoteId: z.string().optional(),
   discountValue: z.string().optional(),
   discountType: z.string().optional(),
 });
@@ -57,6 +58,7 @@ export async function createInvoice(
     customerId: formData.get("customerId"),
     contactId: formData.get("contactId") || undefined,
     projectId: formData.get("projectId") || undefined,
+    quoteId: formData.get("quoteId") || undefined,
     discountValue: formData.get("discountValue") || undefined,
     discountType: formData.get("discountType") || undefined,
   });
@@ -101,6 +103,12 @@ export async function createInvoice(
       return { message: "Auftrag nicht gefunden." };
     }
   }
+  if (parsed.data.quoteId) {
+    const quote = await prisma.quote.findFirst({ where: { id: parsed.data.quoteId, companyId: company.id } });
+    if (!quote) {
+      return { message: "Angebot nicht gefunden." };
+    }
+  }
   const discountValue = Number(parsed.data.discountValue) || 0;
   const discountType = parsed.data.discountType === "PERCENT" ? "PERCENT" : "AMOUNT";
   const { netAfterDiscount, grossAfterDiscount, avgTaxRate } = computeInvoiceTotals(
@@ -117,6 +125,7 @@ export async function createInvoice(
         contactId: parsed.data.contactId || null,
         createdByUserId: user.id,
         projectId: parsed.data.projectId || null,
+        quoteId: parsed.data.quoteId || null,
         number,
         status: "DRAFT",
         totalNet: netAfterDiscount,
@@ -143,6 +152,7 @@ export async function createInvoice(
 
   revalidatePath("/finanzen");
   if (parsed.data.projectId) revalidatePath(`/arbeit/${parsed.data.projectId}`);
+  if (parsed.data.quoteId) revalidatePath(`/angebote/${parsed.data.quoteId}`);
   redirect(`/finanzen/${invoice.id}`);
 }
 

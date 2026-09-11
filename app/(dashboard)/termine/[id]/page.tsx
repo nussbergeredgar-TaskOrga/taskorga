@@ -18,6 +18,7 @@ export default async function TerminDetailPage({ params }: { params: { id: strin
     include: {
       customer: true,
       inquiry: { select: { id: true, title: true } },
+      project: { select: { id: true, number: true, title: true } },
       assignee: { select: { id: true, name: true } },
       comments: { orderBy: { createdAt: "desc" }, include: { user: true } },
       tasks: { orderBy: { createdAt: "desc" } },
@@ -25,7 +26,7 @@ export default async function TerminDetailPage({ params }: { params: { id: strin
   });
   if (!appointment) notFound();
 
-  const [users, customers, appointmentTypes, fieldConfig] = await Promise.all([
+  const [users, customers, projects, appointmentTypes, fieldConfig] = await Promise.all([
     prisma.user.findMany({
       where: { companyId: company.id },
       select: { id: true, name: true },
@@ -35,6 +36,11 @@ export default async function TerminDetailPage({ params }: { params: { id: strin
       where: { companyId: company.id },
       select: { id: true, name: true },
       orderBy: { name: "asc" },
+    }),
+    prisma.project.findMany({
+      where: { companyId: company.id },
+      select: { id: true, number: true, title: true, customerId: true },
+      orderBy: { number: "asc" },
     }),
     getAppointmentTypes(),
     getFieldConfig("appointment"),
@@ -69,6 +75,14 @@ export default async function TerminDetailPage({ params }: { params: { id: strin
                 </Link>
               </>
             )}
+            {appointment.project && (
+              <>
+                {" · "}
+                <Link href={`/arbeit/${appointment.project.id}`} className="hover:underline">
+                  {appointment.project.number}
+                </Link>
+              </>
+            )}
           </p>
           <p className="text-sm text-ink-500 mt-1 font-mono">
             {appointment.scheduledAt?.toLocaleDateString("de-DE")}
@@ -91,6 +105,7 @@ export default async function TerminDetailPage({ params }: { params: { id: strin
             <AppointmentEditForm
               appointmentId={appointment.id}
               customers={customers}
+              projects={projects}
               appointmentTypes={appointmentTypes}
               fieldConfig={fieldConfig}
               initial={{
@@ -99,6 +114,7 @@ export default async function TerminDetailPage({ params }: { params: { id: strin
                 type: appointment.type,
                 scheduledAt: appointment.scheduledAt,
                 endAt: appointment.endAt,
+                projectId: appointment.project?.id ?? null,
                 amount: appointment.amount != null ? Number(appointment.amount) : null,
               }}
             />

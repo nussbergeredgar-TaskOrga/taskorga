@@ -18,12 +18,14 @@ function toTimeInput(d: Date) {
 export function AppointmentEditForm({
   appointmentId,
   customers,
+  projects,
   appointmentTypes,
   fieldConfig,
   initial,
 }: {
   appointmentId: string;
   customers: { id: string; name: string }[];
+  projects: { id: string; number: string; title: string; customerId: string }[];
   appointmentTypes: { id: string; label: string }[];
   fieldConfig?: FieldConfigMap;
   initial: {
@@ -32,13 +34,16 @@ export function AppointmentEditForm({
     type: string;
     scheduledAt: Date;
     endAt: Date;
+    projectId: string | null;
     amount: number | null;
   };
 }) {
   const fc = (key: string) => fieldConfig?.[key] ?? DEFAULT_FIELD_STATE;
   const [editing, setEditing] = useState(false);
   const [customerId, setCustomerId] = useState(initial.customerId);
+  const [projectId, setProjectId] = useState(initial.projectId ?? "");
   const [type, setType] = useState(initial.type);
+  const relevantProjects = projects.filter((p) => p.customerId === customerId);
   const titleRef = useRef<HTMLInputElement>(null);
   const startDateRef = useRef<HTMLInputElement>(null);
   const startTimeRef = useRef<HTMLInputElement>(null);
@@ -76,6 +81,7 @@ export function AppointmentEditForm({
         type,
         startAt: `${startDate}T${startTime}`,
         endAt: `${endDate}T${endTime}`,
+        projectId: projectId || null,
         amount: amountRef.current?.value,
       });
       if (result?.error) {
@@ -115,9 +121,30 @@ export function AppointmentEditForm({
             customers={customers}
             name="customerId"
             defaultCustomerId={customerId}
-            onSelect={(id) => setCustomerId(id)}
+            onSelect={(id) => {
+              setCustomerId(id);
+              setProjectId("");
+            }}
           />
         </div>
+
+        {relevantProjects.length > 0 && (
+          <div>
+            <label className="block text-xs text-ink-500 mb-1">Zugehöriger Auftrag</label>
+            <select
+              value={projectId}
+              onChange={(e) => setProjectId(e.target.value)}
+              className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface"
+            >
+              <option value="">Kein zugehöriger Auftrag</option>
+              {relevantProjects.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.number} — {p.title}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
         <div>
           <label className="block text-xs text-ink-500 mb-1">Titel</label>

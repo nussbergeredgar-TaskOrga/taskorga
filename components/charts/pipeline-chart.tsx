@@ -1,9 +1,19 @@
 "use client";
 
 import { useId } from "react";
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
+import { useRouter } from "next/navigation";
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Cell } from "recharts";
 
-export function PipelineChart({ data }: { data: { label: string; anzahl: number }[] }) {
+// WON/LOST haben eigene Seiten, die uebrigen Status sind nur als
+// Kanban-Spalten auf /anfragen selbst darstellbar (keine URL-Filterung pro
+// Workflow-Schritt vorhanden) -- fuehrt dorthin, statt gar nicht klickbar zu sein.
+const STATUS_HREF: Record<string, string> = {
+  WON: "/anfragen/gewonnen",
+  LOST: "/anfragen/verloren",
+};
+
+export function PipelineChart({ data }: { data: { label: string; status: string; anzahl: number }[] }) {
+  const router = useRouter();
   const gradientId = `pipelineBarGradient-${useId()}`;
   return (
     <ResponsiveContainer width="100%" height={280}>
@@ -25,7 +35,20 @@ export function PipelineChart({ data }: { data: { label: string; anzahl: number 
           width={90}
         />
         <Tooltip contentStyle={{ borderRadius: 8, border: "1px solid #E8EAED", fontSize: 13 }} />
-        <Bar dataKey="anzahl" fill={`url(#${gradientId})`} radius={[0, 6, 6, 0]} />
+        <Bar
+          dataKey="anzahl"
+          fill={`url(#${gradientId})`}
+          radius={[0, 6, 6, 0]}
+          cursor="pointer"
+          onClick={(entry: any) => {
+            const status = entry?.payload?.status ?? entry?.status;
+            router.push(STATUS_HREF[status as string] ?? "/anfragen");
+          }}
+        >
+          {data.map((d) => (
+            <Cell key={d.status} />
+          ))}
+        </Bar>
       </BarChart>
     </ResponsiveContainer>
   );

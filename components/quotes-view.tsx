@@ -137,22 +137,26 @@ export function QuotesView({
       ) : (
         <div className="space-y-2">
           {filtered.map((q) => (
-            <Link
+            <div
               key={q.id}
-              href={`/angebote/${q.id}`}
               className={`flex items-center justify-between rounded-lg border-l-4 bg-surface p-4 shadow-card hover:shadow-cardHover transition-shadow ${statusColor[q.status] ?? ""}`}
             >
               <div>
-                <p className="font-medium text-ink-900">{q.title}</p>
+                <Link href={`/angebote/${q.id}`} className="font-medium text-ink-900 hover:underline">
+                  {q.title}
+                </Link>
                 <p className="text-sm text-ink-500">
-                  {q.customerName} · {q.number}
+                  <Link href={`/kunden/${q.customerId}`} className="hover:underline">
+                    {q.customerName}
+                  </Link>{" "}
+                  · {q.number}
                 </p>
               </div>
-              <div className="text-right">
+              <Link href={`/angebote/${q.id}`} className="text-right">
                 <p className="font-mono text-sm font-medium text-ink-900">{q.totalGross.toLocaleString("de-DE")} €</p>
                 <p className="text-xs text-ink-500">{QUOTE_STATUS_LABELS[q.status] ?? q.status}</p>
-              </div>
-            </Link>
+              </Link>
+            </div>
           ))}
         </div>
       )}

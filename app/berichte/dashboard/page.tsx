@@ -5,6 +5,8 @@ import { getCustomChartsWithData } from "@/lib/actions/custom-chart";
 import { getDashboardLayout } from "@/lib/actions/dashboard";
 import { CustomChart } from "@/components/charts/custom-chart";
 import { PrintButton } from "@/components/print-button";
+import { entityStatusHref } from "@/lib/entity-links";
+import type { EntityKey } from "@/lib/custom-kpi";
 
 export default async function DashboardBerichtPage() {
   await requirePermission("einblicke");
@@ -55,22 +57,32 @@ export default async function DashboardBerichtPage() {
         <>
           {selectedKpis.length > 0 && (
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8 print:break-inside-avoid">
-              {selectedKpis.map((kpi) => (
-                <div key={kpi.id} className="rounded-card border border-ink-100 p-4">
-                  <p className="text-xs text-ink-500">{kpi.label}</p>
-                  <p className="text-xl font-semibold text-ink-900 font-mono">
-                    {kpi.kind === "FORMULA"
-                      ? kpi.displayFormat === "CURRENCY"
-                        ? `${kpi.value.toLocaleString("de-DE", { maximumFractionDigits: 2 })} €`
-                        : kpi.displayFormat === "PERCENT"
-                          ? `${Math.round(kpi.value * 100)} %`
-                          : Math.round(kpi.value * 100) / 100
-                      : kpi.aggregation !== "count"
-                        ? `${kpi.value.toLocaleString("de-DE", { maximumFractionDigits: 2 })} €`
-                        : kpi.value}
-                  </p>
-                </div>
-              ))}
+              {selectedKpis.map((kpi) => {
+                const href =
+                  kpi.kind === "FORMULA"
+                    ? `/einblicke#kpi-${kpi.id}`
+                    : entityStatusHref(kpi.entity as EntityKey, kpi.statusValue);
+                return (
+                  <Link
+                    key={kpi.id}
+                    href={href}
+                    className="rounded-card border border-ink-100 p-4 hover:border-brand-500 hover:shadow-card transition-all print:pointer-events-none"
+                  >
+                    <p className="text-xs text-ink-500">{kpi.label}</p>
+                    <p className="text-xl font-semibold text-ink-900 font-mono">
+                      {kpi.kind === "FORMULA"
+                        ? kpi.displayFormat === "CURRENCY"
+                          ? `${kpi.value.toLocaleString("de-DE", { maximumFractionDigits: 2 })} €`
+                          : kpi.displayFormat === "PERCENT"
+                            ? `${Math.round(kpi.value * 100)} %`
+                            : Math.round(kpi.value * 100) / 100
+                        : kpi.aggregation !== "count"
+                          ? `${kpi.value.toLocaleString("de-DE", { maximumFractionDigits: 2 })} €`
+                          : kpi.value}
+                    </p>
+                  </Link>
+                );
+              })}
             </div>
           )}
 

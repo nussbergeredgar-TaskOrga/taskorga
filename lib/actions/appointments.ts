@@ -24,6 +24,7 @@ export async function createAppointment(
     startAt: string;
     endAt: string;
     inquiryId?: string;
+    projectId?: string;
     amount?: string;
     assigneeId?: string;
     recurrence?: { frequency: "WEEKLY" | "BIWEEKLY" | "MONTHLY"; count: number };
@@ -49,6 +50,10 @@ export async function createAppointment(
   if (data.inquiryId) {
     const inquiry = await prisma.inquiry.findFirst({ where: { id: data.inquiryId, companyId: company.id } });
     if (!inquiry) return { error: "Anfrage nicht gefunden." };
+  }
+  if (data.projectId) {
+    const project = await prisma.project.findFirst({ where: { id: data.projectId, companyId: company.id } });
+    if (!project) return { error: "Auftrag nicht gefunden." };
   }
 
   const baseScheduledAt = new Date(data.startAt);
@@ -93,6 +98,7 @@ export async function createAppointment(
         companyId: company.id,
         customerId,
         inquiryId: data.inquiryId || null,
+        projectId: data.projectId || null,
         assigneeId: data.assigneeId || null,
         title: data.title,
         type: data.type,
@@ -129,6 +135,7 @@ export async function createAppointment(
   revalidatePath("/termine");
   revalidatePath("/anfragen");
   if (data.inquiryId) revalidatePath(`/anfragen/${data.inquiryId}`);
+  if (data.projectId) revalidatePath(`/arbeit/${data.projectId}`);
   return { success: true, created, skipped };
 }
 
@@ -140,6 +147,7 @@ export async function updateAppointment(
     type: string;
     startAt: string;
     endAt: string;
+    projectId?: string | null;
     amount?: string;
   }
 ): Promise<{ error?: string; success?: boolean }> {
@@ -166,6 +174,10 @@ export async function updateAppointment(
 
   const customer = await prisma.customer.findFirst({ where: { id: data.customerId, companyId: company.id } });
   if (!customer) return { error: "Kunde nicht gefunden." };
+  if (data.projectId) {
+    const project = await prisma.project.findFirst({ where: { id: data.projectId, companyId: company.id } });
+    if (!project) return { error: "Auftrag nicht gefunden." };
+  }
 
   const scheduledAt = new Date(data.startAt);
   const endAt = new Date(data.endAt);
@@ -195,6 +207,7 @@ export async function updateAppointment(
       type: data.type,
       scheduledAt,
       endAt,
+      projectId: data.projectId === undefined ? undefined : data.projectId || null,
       amount: amountResult.value,
     },
   });
@@ -204,6 +217,8 @@ export async function updateAppointment(
   revalidatePath(`/termine/${appointmentId}`);
   revalidatePath("/heute");
   revalidatePath("/termine");
+  if (existing.projectId && existing.projectId !== data.projectId) revalidatePath(`/arbeit/${existing.projectId}`);
+  if (data.projectId) revalidatePath(`/arbeit/${data.projectId}`);
   return { success: true };
 }
 

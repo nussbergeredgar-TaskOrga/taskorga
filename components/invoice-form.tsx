@@ -35,6 +35,7 @@ export function InvoiceForm({
   customers,
   contacts,
   projects,
+  quotes,
   itemTemplates,
   defaultDiscountType,
   defaultCustomerId,
@@ -43,6 +44,7 @@ export function InvoiceForm({
   customers: { id: string; name: string }[];
   contacts: { id: string; name: string; customerId: string }[];
   projects: { id: string; title: string; number: string; customerId: string }[];
+  quotes: { id: string; title: string; number: string; customerId: string }[];
   itemTemplates: Template[];
   defaultDiscountType: "AMOUNT" | "PERCENT";
   defaultCustomerId?: string;
@@ -108,6 +110,7 @@ export function InvoiceForm({
   const grossAfterDiscount = grossBeforeDiscount * factor;
 
   const relevantProjects = projects.filter((p) => p.customerId === customerId);
+  const relevantQuotes = quotes.filter((q) => q.customerId === customerId);
   const relevantContacts = contacts.filter((c) => c.customerId === customerId);
 
   return (
@@ -169,6 +172,26 @@ export function InvoiceForm({
             {relevantProjects.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.number} — {p.title}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {customerId && relevantQuotes.length > 0 && (
+        <div>
+          <label htmlFor="quoteId" className="block text-sm font-medium text-ink-700 mb-1.5">
+            Mit bestehendem Angebot verknüpfen (optional)
+          </label>
+          <select
+            id="quoteId"
+            name="quoteId"
+            className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface"
+          >
+            <option value="">Kein Bezug</option>
+            {relevantQuotes.map((q) => (
+              <option key={q.id} value={q.id}>
+                {q.number} — {q.title}
               </option>
             ))}
           </select>

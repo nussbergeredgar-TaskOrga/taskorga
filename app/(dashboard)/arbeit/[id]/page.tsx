@@ -28,6 +28,7 @@ export default async function AuftragDetailPage({ params }: { params: { id: stri
         include: { documents: { select: { id: true, fileName: true } } },
       },
       documents: { orderBy: { createdAt: "desc" } },
+      appointments: { orderBy: { scheduledAt: "desc" } },
     },
   });
   if (!project) notFound();
@@ -120,6 +121,29 @@ export default async function AuftragDetailPage({ params }: { params: { id: stri
 
       <div className="rounded-card border border-ink-100 bg-surface p-5 shadow-card">
         <TimeTracking projectId={project.id} entries={project.timeEntries} currentUserId={user.id} />
+      </div>
+
+      <div className="rounded-card border border-ink-100 bg-surface p-5 shadow-card">
+        <h2 className="font-display font-semibold text-ink-900 mb-3">Termine</h2>
+        {project.appointments.length === 0 ? (
+          <p className="text-sm text-ink-500">Noch kein Termin verknüpft.</p>
+        ) : (
+          <ul className="space-y-2">
+            {project.appointments.map((a) => (
+              <li key={a.id}>
+                <Link
+                  href={`/termine/${a.id}`}
+                  className="flex justify-between text-sm rounded-lg bg-ink-50 px-3 py-2 hover:bg-ink-100 transition-colors"
+                >
+                  <span>{a.title}</span>
+                  <span className="font-mono text-ink-500">
+                    {a.scheduledAt?.toLocaleDateString("de-DE") ?? ""}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
 
       <div className="rounded-card border border-ink-100 bg-surface p-5 shadow-card space-y-3">

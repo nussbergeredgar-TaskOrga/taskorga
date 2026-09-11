@@ -15,6 +15,7 @@ export default async function RechnungDetailPage({ params }: { params: { id: str
       customer: true,
       items: { orderBy: { position: "asc" } },
       project: { include: { quote: true } },
+      quote: true,
       comments: { orderBy: { createdAt: "desc" }, include: { user: true } },
       tasks: { orderBy: { createdAt: "desc" } },
     },
@@ -22,6 +23,9 @@ export default async function RechnungDetailPage({ params }: { params: { id: str
   if (!invoice) notFound();
 
   const link = { invoiceId: invoice.id };
+  // Ein Angebot kann direkt (invoice.quote) oder ueber den Auftrag
+  // (invoice.project.quote) verknuepft sein -- direkt hat Vorrang.
+  const linkedQuote = invoice.quote ?? invoice.project?.quote ?? null;
 
   return (
     <div className="space-y-6">
@@ -51,11 +55,11 @@ export default async function RechnungDetailPage({ params }: { params: { id: str
                 </Link>
               </>
             )}
-            {invoice.project?.quote && (
+            {linkedQuote && (
               <>
                 {" · "}
-                <Link href={`/angebote/${invoice.project.quote.id}`} className="hover:underline">
-                  Angebot {invoice.project.quote.number}
+                <Link href={`/angebote/${linkedQuote.id}`} className="hover:underline">
+                  Angebot {linkedQuote.number}
                 </Link>
               </>
             )}
@@ -118,7 +122,7 @@ export default async function RechnungDetailPage({ params }: { params: { id: str
             {invoice.items.length === 0 && (
               <tr>
                 <td colSpan={4} className="px-4 py-6 text-center text-ink-300">
-                  Keine Positionen (Auftrag hatte kein verknüpftes Angebot).
+                  Keine Positionen.
                 </td>
               </tr>
             )}

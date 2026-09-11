@@ -17,6 +17,7 @@ export function pathsFor(link: RecordLink): string[] {
   if (link.projectId) paths.push(`/arbeit/${link.projectId}`);
   if (link.invoiceId) paths.push(`/finanzen/${link.invoiceId}`);
   if (link.appointmentId) paths.push(`/termine/${link.appointmentId}`);
+  if (link.inquiryId) paths.push(`/anfragen/${link.inquiryId}`);
   return paths;
 }
 

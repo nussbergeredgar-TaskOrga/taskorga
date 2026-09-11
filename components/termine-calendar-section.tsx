@@ -53,6 +53,7 @@ export function TermineCalendarSection({
   days,
   customers,
   inquiries,
+  projects,
   appointmentTypes,
   fieldConfig,
   workingHoursByUser,
@@ -63,6 +64,7 @@ export function TermineCalendarSection({
   days: Day[];
   customers: { id: string; name: string }[];
   inquiries: { id: string; title: string; customerId: string }[];
+  projects: { id: string; number: string; title: string; customerId: string }[];
   appointmentTypes: { id: string; label: string }[];
   fieldConfig?: FieldConfigMap;
   workingHoursByUser: Record<string, WorkingHourRow[]>;
@@ -197,6 +199,7 @@ export function TermineCalendarSection({
         <AppointmentQuickForm
           customers={customers}
           inquiries={inquiries}
+          projects={projects}
           appointmentTypes={appointmentTypes}
           fieldConfig={fieldConfig}
           users={users}

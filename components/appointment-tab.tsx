@@ -38,6 +38,7 @@ export function AppointmentTab({
   customerId,
   appointments,
   inquiries,
+  projects,
   appointmentTypes,
   fieldConfig,
   users,
@@ -46,6 +47,7 @@ export function AppointmentTab({
   customerId: string;
   appointments: Appointment[];
   inquiries: { id: string; title: string }[];
+  projects: { id: string; number: string; title: string }[];
   appointmentTypes: { id: string; label: string }[];
   fieldConfig?: FieldConfigMap;
   users: { id: string; name: string }[];
@@ -53,6 +55,7 @@ export function AppointmentTab({
 }) {
   const fc = (key: string) => fieldConfig?.[key] ?? { visible: true, required: false };
   const [assigneeId, setAssigneeId] = useState(currentUserId);
+  const [projectId, setProjectId] = useState("");
   const titleRef = useRef<HTMLInputElement>(null);
   const startDateRef = useRef<HTMLInputElement>(null);
   const startTimeRef = useRef<HTMLInputElement>(null);
@@ -112,6 +115,7 @@ export function AppointmentTab({
         startAt,
         endAt,
         inquiryId: finalInquiryId || undefined,
+        projectId: projectId || undefined,
         amount: amountRef.current?.value,
         assigneeId: assigneeId || undefined,
         recurrence:
@@ -132,6 +136,7 @@ export function AppointmentTab({
       if (newInquiryTitleRef.current) newInquiryTitleRef.current.value = "";
       setInquiryId("");
       setShowNewInquiry(false);
+      setProjectId("");
       setRecurrence("NONE");
       setRecurrenceCount("4");
     });
@@ -200,6 +205,21 @@ export function AppointmentTab({
             </option>
           ))}
         </select>
+
+        {projects.length > 0 && (
+          <select
+            value={projectId}
+            onChange={(e) => setProjectId(e.target.value)}
+            className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface"
+          >
+            <option value="">Kein zugehöriger Auftrag</option>
+            {projects.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.number} — {p.title}
+              </option>
+            ))}
+          </select>
+        )}
 
         <select
           value={assigneeId}

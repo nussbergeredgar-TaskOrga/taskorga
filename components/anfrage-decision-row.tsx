@@ -7,11 +7,13 @@ import { updateInquiryStatus } from "@/lib/actions/inquiries";
 export function AnfrageDecisionRow({
   inquiryId,
   title,
+  customerId,
   customerName,
   amount,
 }: {
   inquiryId: string;
   title: string;
+  customerId: string;
   customerName: string;
   amount?: number | null;
 }) {
@@ -25,13 +27,17 @@ export function AnfrageDecisionRow({
 
   return (
     <div className="flex items-center justify-between gap-3 rounded-lg border-l-4 border-l-success bg-ink-50 px-3 py-2.5">
-      <Link href={`/anfragen/${inquiryId}`} className="text-sm min-w-0 hover:underline">
-        <span className="font-medium text-ink-900">{title}</span>
-        <span className="text-ink-500 ml-2">{customerName}</span>
+      <span className="text-sm min-w-0">
+        <Link href={`/anfragen/${inquiryId}`} className="font-medium text-ink-900 hover:underline">
+          {title}
+        </Link>{" "}
+        <Link href={`/kunden/${customerId}`} className="text-ink-500 hover:underline">
+          {customerName}
+        </Link>
         {amount != null && (
           <span className="text-ink-500 ml-2 font-mono">· {amount.toLocaleString("de-DE")} €</span>
         )}
-      </Link>
+      </span>
       <div className="flex items-center gap-2 shrink-0">
         <button
           disabled={pending}

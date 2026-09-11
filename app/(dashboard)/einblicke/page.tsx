@@ -93,6 +93,7 @@ export default async function EinblickePage() {
   const countByStatus = new Map(inquiryCounts.map((c) => [c.status, c._count]));
   const pipelineData = PIPELINE_ORDER.map((status) => ({
     label: PIPELINE_LABELS[status],
+    status,
     anzahl: countByStatus.get(status as any) ?? 0,
   }));
 

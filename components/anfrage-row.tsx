@@ -9,6 +9,7 @@ export function AnfrageRow({
   inquiryId,
   stepId,
   title,
+  customerId,
   customerName,
   amount,
   note,
@@ -16,6 +17,7 @@ export function AnfrageRow({
   inquiryId: string;
   stepId: string | null;
   title: string;
+  customerId: string;
   customerName: string;
   amount?: number | null;
   note?: string | null;
@@ -30,13 +32,17 @@ export function AnfrageRow({
 
   return (
     <div className="flex items-center gap-3 rounded-lg border-l-4 border-l-brand-500 bg-ink-50 px-3 py-2.5">
-      <Link href={`/anfragen/${inquiryId}`} className="text-sm min-w-0 hover:underline shrink-0">
-        <span className="font-medium text-ink-900">{title}</span>
-        <span className="text-ink-500 ml-2">{customerName}</span>
+      <span className="text-sm min-w-0 shrink-0">
+        <Link href={`/anfragen/${inquiryId}`} className="font-medium text-ink-900 hover:underline">
+          {title}
+        </Link>{" "}
+        <Link href={`/kunden/${customerId}`} className="text-ink-500 hover:underline">
+          {customerName}
+        </Link>
         {amount != null && (
           <span className="text-ink-500 ml-2 font-mono">· {amount.toLocaleString("de-DE")} €</span>
         )}
-      </Link>
+      </span>
 
       {stepId && (
         <input

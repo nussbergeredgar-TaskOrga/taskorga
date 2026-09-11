@@ -7,6 +7,8 @@ import { InquiryStatusActions } from "@/components/inquiry-status-actions";
 import { InquiryWorkflow } from "@/components/inquiry-workflow";
 import { InquiryAmount } from "@/components/inquiry-amount";
 import { DeleteInquiryButton } from "@/components/delete-inquiry-button";
+import { RecordTasks } from "@/components/record-tasks";
+import { DocumentTab } from "@/components/document-tab";
 
 export default async function AnfrageDetailPage({ params }: { params: { id: string } }) {
   const company = await getCurrentCompany();
@@ -14,7 +16,13 @@ export default async function AnfrageDetailPage({ params }: { params: { id: stri
   const [inquiry, steps] = await Promise.all([
     prisma.inquiry.findFirst({
       where: { id: params.id, companyId: company.id },
-      include: { customer: true, quotes: true, stepEntries: true },
+      include: {
+        customer: true,
+        quotes: true,
+        stepEntries: true,
+        tasks: { orderBy: { createdAt: "desc" } },
+        documents: { orderBy: { createdAt: "desc" } },
+      },
     }),
     prisma.workflowStep.findMany({
       where: { companyId: company.id },
@@ -28,6 +36,7 @@ export default async function AnfrageDetailPage({ params }: { params: { id: stri
     inquiry.stepEntries.filter((e) => e.completedAt).map((e) => e.stepId)
   );
   const allStepsCompleted = steps.length > 0 && steps.every((s) => completedStepIds.has(s.id));
+  const link = { inquiryId: inquiry.id };
 
   return (
     <div className="space-y-6">
@@ -104,6 +113,19 @@ export default async function AnfrageDetailPage({ params }: { params: { id: stri
           </ul>
         </div>
       )}
+
+      <div className="rounded-card border border-ink-100 bg-surface p-6 shadow-card">
+        <h2 className="font-display font-semibold text-ink-900 mb-3">Verknüpfte Aufgaben</h2>
+        <RecordTasks
+          link={link}
+          tasks={inquiry.tasks.map((t) => ({ id: t.id, title: t.title, status: t.status, dueDate: t.dueDate }))}
+        />
+      </div>
+
+      <div className="rounded-card border border-ink-100 bg-surface p-6 shadow-card">
+        <h2 className="font-display font-semibold text-ink-900 mb-3">Dokumente</h2>
+        <DocumentTab link={link} documents={inquiry.documents} />
+      </div>
     </div>
   );
 }

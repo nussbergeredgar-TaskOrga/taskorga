@@ -19,7 +19,7 @@ export default async function AngebotePage({
     prisma.quote.findMany({
       where: { companyId: company.id },
       orderBy: { createdAt: "desc" },
-      include: { customer: { select: { name: true } } },
+      include: { customer: { select: { id: true, name: true } } },
     }),
     getListViewConfig("quote"),
     getFilterState("quote"),
@@ -76,6 +76,7 @@ export default async function AngebotePage({
           quotes={displayedQuotes.map((q) => ({
             id: q.id,
             title: q.title,
+            customerId: q.customer.id,
             customerName: q.customer.name,
             number: q.number,
             status: q.status,

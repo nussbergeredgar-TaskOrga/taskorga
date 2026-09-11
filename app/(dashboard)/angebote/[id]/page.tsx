@@ -16,11 +16,13 @@ export default async function AngebotDetailPage({ params }: { params: { id: stri
       where: { id: params.id, companyId: company.id },
       include: {
         customer: true,
+        inquiry: true,
         items: { orderBy: { position: "asc" } },
         project: true,
         comments: { orderBy: { createdAt: "desc" }, include: { user: true } },
         tasks: { orderBy: { createdAt: "desc" } },
         documents: { orderBy: { createdAt: "desc" } },
+        invoices: { orderBy: { createdAt: "desc" } },
       },
     }),
     prisma.quoteVersion.findMany({
@@ -52,9 +54,20 @@ export default async function AngebotDetailPage({ params }: { params: { id: stri
         <div>
           <h1 className="text-2xl font-semibold text-ink-900 sm:text-3xl">{quote.title}</h1>
           <p className="text-sm text-ink-500 mt-1">
-            {quote.number} · {quote.customer.name} · Erstellt am{" "}
-            {quote.createdAt.toLocaleDateString("de-DE")}
+            {quote.number} ·{" "}
+            <Link href={`/kunden/${quote.customer.id}`} className="text-brand-700 hover:underline">
+              {quote.customer.name}
+            </Link>{" "}
+            · Erstellt am {quote.createdAt.toLocaleDateString("de-DE")}
           </p>
+          {quote.inquiry && (
+            <Link
+              href={`/anfragen/${quote.inquiry.id}`}
+              className="inline-block text-sm text-brand-700 hover:underline mt-1"
+            >
+              → Zugehörige Anfrage ansehen
+            </Link>
+          )}
         </div>
 
         <QuoteActions quoteId={quote.id} status={quote.status} hasCustomerEmail={!!quote.customer.email} />
@@ -116,6 +129,25 @@ export default async function AngebotDetailPage({ params }: { params: { id: stri
         >
           → Zugehörigen Auftrag {quote.project.number} ansehen
         </Link>
+      )}
+
+      {quote.invoices.length > 0 && (
+        <div className="rounded-card border border-ink-100 bg-surface p-6 shadow-card">
+          <h2 className="font-display font-semibold text-ink-900 mb-3">Rechnungen</h2>
+          <ul className="space-y-2">
+            {quote.invoices.map((inv) => (
+              <li key={inv.id}>
+                <Link
+                  href={`/finanzen/${inv.id}`}
+                  className="flex justify-between text-sm rounded-lg bg-ink-50 px-3 py-2 hover:bg-ink-100 transition-colors"
+                >
+                  <span>{inv.number}</span>
+                  <span className="font-mono">{Number(inv.totalGross).toLocaleString("de-DE")} €</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
 
       <div className="rounded-card border border-ink-100 bg-surface p-6 shadow-card">

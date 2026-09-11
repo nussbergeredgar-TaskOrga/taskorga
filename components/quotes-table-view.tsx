@@ -11,6 +11,7 @@ import { statusColor } from "@/lib/utils";
 export type QuoteRow = {
   id: string;
   title: string;
+  customerId: string;
   customerName: string;
   number: string;
   status: string;
@@ -142,7 +143,11 @@ export function QuotesTableView({
                   </td>
                   {visibleColumns.map((col) => (
                     <td key={col.key} className="px-3 py-2 truncate">
-                      {col.key === "customerName" && <span className="text-ink-700">{q.customerName}</span>}
+                      {col.key === "customerName" && (
+                        <Link href={`/kunden/${q.customerId}`} className="text-ink-700 hover:underline">
+                          {q.customerName}
+                        </Link>
+                      )}
                       {col.key === "number" && <span className="font-mono text-ink-500">{q.number}</span>}
                       {col.key === "status" && <span className="text-ink-500">{QUOTE_STATUS_LABELS[q.status] ?? q.status}</span>}
                       {col.key === "totalGross" && (

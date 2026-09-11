@@ -12,9 +12,12 @@ type AppointmentTypeItem = { id: string; label: string };
 
 const DEFAULT_FIELD_STATE = { visible: true, required: false };
 
+type ProjectItem = { id: string; number: string; title: string; customerId: string };
+
 export function AppointmentQuickForm({
   customers,
   inquiries,
+  projects,
   appointmentTypes,
   fieldConfig,
   users,
@@ -25,6 +28,7 @@ export function AppointmentQuickForm({
 }: {
   customers: { id: string; name: string }[];
   inquiries: Inquiry[];
+  projects: ProjectItem[];
   appointmentTypes: AppointmentTypeItem[];
   fieldConfig?: FieldConfigMap;
   users: { id: string; name: string }[];
@@ -44,6 +48,7 @@ export function AppointmentQuickForm({
   const [customerId, setCustomerId] = useState("");
   const [inquiryMode, setInquiryMode] = useState<"none" | "existing" | "new">("none");
   const [inquiryId, setInquiryId] = useState("");
+  const [projectId, setProjectId] = useState("");
   const [assigneeId, setAssigneeId] = useState(currentUserId);
   const titleRef = useRef<HTMLInputElement>(null);
   const startDateRef = useRef<HTMLInputElement>(null);
@@ -59,6 +64,7 @@ export function AppointmentQuickForm({
   const [pending, startTransition] = useTransition();
 
   const relevantInquiries = inquiries.filter((i) => i.customerId === customerId);
+  const relevantProjects = projects.filter((p) => p.customerId === customerId);
 
   useEffect(() => {
     if (open && defaultDate) {
@@ -71,6 +77,7 @@ export function AppointmentQuickForm({
     setCustomerId("");
     setInquiryId("");
     setInquiryMode("none");
+    setProjectId("");
     setAssigneeId(currentUserId);
     setRecurrence("NONE");
     setRecurrenceCount("4");
@@ -136,6 +143,7 @@ export function AppointmentQuickForm({
         startAt,
         endAt,
         inquiryId: finalInquiryId || undefined,
+        projectId: projectId || undefined,
         amount: amountRef.current?.value,
         assigneeId: assigneeId || undefined,
         recurrence:
@@ -186,9 +194,28 @@ export function AppointmentQuickForm({
               setCustomerId(id);
               setInquiryId("");
               setInquiryMode("none");
+              setProjectId("");
             }}
           />
         </div>
+
+        {customerId && relevantProjects.length > 0 && (
+          <div>
+            <label className="block text-xs text-ink-500 mb-1">Zugehöriger Auftrag</label>
+            <select
+              value={projectId}
+              onChange={(e) => setProjectId(e.target.value)}
+              className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface"
+            >
+              <option value="">Kein zugehöriger Auftrag</option>
+              {relevantProjects.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.number} — {p.title}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
         {customerId && (
           <div>

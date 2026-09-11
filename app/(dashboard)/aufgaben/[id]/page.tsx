@@ -56,15 +56,26 @@ export default async function AufgabeDetailPage({ params }: { params: { id: stri
 
       <div>
         <h1 className="text-2xl font-semibold text-ink-900">{task.title}</h1>
-        {linkType && linkId && (
-          <Link
-            href={LINK_ROUTES[linkType](linkId)}
-            className="inline-flex items-center gap-1.5 text-sm text-brand-700 hover:underline mt-1"
-          >
-            <ExternalLink size={14} />
-            {LINK_LABELS[linkType]}
-          </Link>
-        )}
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1">
+          {task.customerId && (
+            <Link
+              href={`/kunden/${task.customerId}`}
+              className="inline-flex items-center gap-1.5 text-sm text-brand-700 hover:underline"
+            >
+              <ExternalLink size={14} />
+              Zum Kunden
+            </Link>
+          )}
+          {linkType && linkId && (
+            <Link
+              href={LINK_ROUTES[linkType](linkId)}
+              className="inline-flex items-center gap-1.5 text-sm text-brand-700 hover:underline"
+            >
+              <ExternalLink size={14} />
+              {LINK_LABELS[linkType]}
+            </Link>
+          )}
+        </div>
       </div>
 
       <div className="rounded-card border border-ink-100 bg-surface p-6 shadow-card max-w-xl">

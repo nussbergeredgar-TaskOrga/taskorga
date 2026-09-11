@@ -205,6 +205,7 @@ export default async function AnfragenPage({
                             inquiryId={inquiry.id}
                             stepId={step.id}
                             title={inquiry.title}
+                            customerId={inquiry.customer.id}
                             customerName={inquiry.customer.name}
                             amount={inquiry.amount != null ? Number(inquiry.amount) : null}
                             note={inquiry.stepEntries.find((e) => e.stepId === step.id)?.note}
@@ -237,6 +238,7 @@ export default async function AnfragenPage({
                         key={inquiry.id}
                         inquiryId={inquiry.id}
                         title={inquiry.title}
+                        customerId={inquiry.customer.id}
                         customerName={inquiry.customer.name}
                         amount={inquiry.amount != null ? Number(inquiry.amount) : null}
                       />

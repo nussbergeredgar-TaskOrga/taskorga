@@ -37,15 +37,18 @@ export default async function VerlorenPage() {
       ) : (
         <div className="space-y-2">
           {inquiries.map((inquiry) => (
-            <Link
+            <div
               key={inquiry.id}
-              href={`/anfragen/${inquiry.id}`}
               className="flex items-center justify-between rounded-lg border-l-4 border-l-danger bg-surface p-4 shadow-card hover:shadow-cardHover transition-shadow"
             >
               <div>
-                <p className="font-medium text-ink-900">{inquiry.title}</p>
+                <Link href={`/anfragen/${inquiry.id}`} className="font-medium text-ink-900 hover:underline">
+                  {inquiry.title}
+                </Link>
                 <p className="text-sm text-ink-500">
-                  {inquiry.customer.name}
+                  <Link href={`/kunden/${inquiry.customer.id}`} className="hover:underline">
+                    {inquiry.customer.name}
+                  </Link>
                   {inquiry.lostReason && ` · ${inquiry.lostReason}`}
                 </p>
               </div>
@@ -54,7 +57,7 @@ export default async function VerlorenPage() {
                   {Number(inquiry.amount).toLocaleString("de-DE")} €
                 </span>
               )}
-            </Link>
+            </div>
           ))}
         </div>
       )}

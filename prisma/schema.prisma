@@ -567,6 +567,8 @@ model Appointment {
   customer   Customer? @relation(fields: [customerId], references: [id])
   inquiryId  String?
   inquiry    Inquiry?  @relation(fields: [inquiryId], references: [id])
+  projectId  String?
+  project    Project?  @relation(fields: [projectId], references: [id])
   assigneeId String?
   assignee   User?     @relation("AppointmentAssignee", fields: [assigneeId], references: [id])
 
@@ -630,6 +632,7 @@ model Quote {
   items      QuoteItem[]
   versions   QuoteVersion[]
   project    Project?
+  invoices   Invoice[]
   documents  Document[]
   tasks      Task[]
   activities Activity[]
@@ -691,6 +694,7 @@ model Project {
   activities   Activity[]
   comments     Comment[]
   timeEntries  TimeEntry[]
+  appointments Appointment[]
 
   @@unique([companyId, number])
   @@index([companyId, status])
@@ -715,6 +719,8 @@ model Invoice {
   customer   Customer @relation(fields: [customerId], references: [id])
   projectId  String?
   project    Project? @relation(fields: [projectId], references: [id])
+  quoteId    String?
+  quote      Quote?   @relation(fields: [quoteId], references: [id])
   contactId  String?
   contact    Contact? @relation(fields: [contactId], references: [id])
   createdByUserId String?

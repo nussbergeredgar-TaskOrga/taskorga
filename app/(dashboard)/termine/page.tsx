@@ -46,7 +46,7 @@ export default async function TerminePage({
   const gridEnd = endOfWeek(monthEnd, { weekStartsOn: 1 });
   const days = eachDayOfInterval({ start: gridStart, end: gridEnd });
 
-  const [appointments, allAppointments, customers, openInquiries, appointmentTypes, appointmentFieldConfig, companyUsers, allUsersWorkingHours, allAbsences, savedListConfig, filterState] = await Promise.all([
+  const [appointments, allAppointments, customers, openInquiries, projects, appointmentTypes, appointmentFieldConfig, companyUsers, allUsersWorkingHours, allAbsences, savedListConfig, filterState] = await Promise.all([
     prisma.appointment.findMany({
       where: {
         companyId: company.id,
@@ -68,6 +68,11 @@ export default async function TerminePage({
     prisma.inquiry.findMany({
       where: { companyId: company.id, status: { notIn: ["WON", "LOST"] } },
       select: { id: true, title: true, customerId: true },
+    }),
+    prisma.project.findMany({
+      where: { companyId: company.id },
+      select: { id: true, number: true, title: true, customerId: true },
+      orderBy: { number: "asc" },
     }),
     getAppointmentTypes(),
     getFieldConfig("appointment"),
@@ -188,6 +193,7 @@ export default async function TerminePage({
           days={calendarDays}
           customers={customers}
           inquiries={openInquiries}
+          projects={projects}
           appointmentTypes={appointmentTypes.map((t) => ({ id: t.id, label: t.label }))}
           fieldConfig={appointmentFieldConfig}
           workingHoursByUser={Object.fromEntries(
