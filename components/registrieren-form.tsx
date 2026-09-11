@@ -103,34 +103,10 @@ export function RegistrierenForm({
             <p className="text-xs text-ink-300 mt-1">Mindestens 8 Zeichen.</p>
           </div>
 
-          <div>
-            <label className="flex items-start gap-2 text-xs text-ink-500">
-              <input
-                type="checkbox"
-                name="agbAccepted"
-                required
-                className="mt-0.5 rounded border-ink-200 text-brand-600 focus:ring-brand-500"
-              />
-              <span>
-                Ich akzeptiere die{" "}
-                <Link href="/agb" target="_blank" className="text-brand-700 hover:underline">
-                  AGB
-                </Link>
-                , den{" "}
-                <Link href="/avv" target="_blank" className="text-brand-700 hover:underline">
-                  Auftragsverarbeitungsvertrag
-                </Link>{" "}
-                und die{" "}
-                <Link href="/datenschutz" target="_blank" className="text-brand-700 hover:underline">
-                  Datenschutzerklärung
-                </Link>
-                .
-              </span>
-            </label>
-            {state.errors?.agbAccepted && (
-              <p className="text-xs text-danger mt-1">{state.errors.agbAccepted[0]}</p>
-            )}
-          </div>
+          <p className="text-xs text-ink-500">
+            Nach der Registrierung bestätigst du direkt im ersten Schritt AGB, AVV und
+            Datenschutzerklärung.
+          </p>
 
           {state.message && <p className="text-sm text-danger">{state.message}</p>}
 

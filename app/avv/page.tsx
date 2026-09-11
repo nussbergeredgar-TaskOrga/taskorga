@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { PrintButton } from "@/components/print-button";
 
 export const metadata: Metadata = {
   title: "AVV – TaskOrga",
@@ -22,6 +23,9 @@ export default function AvvPage() {
       <p className="mt-2 text-sm text-ink-500">
         gemäß Art. 28 DSGVO · Stand: 11. September 2026
       </p>
+      <div className="mt-4">
+        <PrintButton />
+      </div>
 
       <div className="mt-8 space-y-6 text-sm leading-relaxed text-ink-700">
         <section>

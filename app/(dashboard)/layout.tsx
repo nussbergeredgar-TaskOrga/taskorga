@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { NavSidebar } from "@/components/nav-sidebar";
 import { TopBar } from "@/components/top-bar";
 import { MobileNav } from "@/components/mobile-nav";
@@ -28,6 +29,12 @@ export default async function DashboardLayout({
     getCurrentCompany(),
     getAnnouncementsForBell(),
   ]);
+
+  // Muss vor jedem Dashboard-Zugriff erfuellt sein -- ausserhalb dieser Gruppe,
+  // damit keine Redirect-Schleife entsteht (wie beim Abrechnungs-Gate).
+  if (!user.agbAcceptedAt || !user.avvAcceptedAt || !user.datenschutzAcceptedAt) {
+    redirect("/dokumente-bestaetigen");
+  }
 
   const allowedIds = new Set(
     NAV_CATALOG.filter(

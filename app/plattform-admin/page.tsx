@@ -329,6 +329,25 @@ function PersonRow({ secret, person }: { secret: string; person: CompanyOverview
           </button>
         </div>
       </div>
+      <div className="flex items-center gap-3 mt-1 text-ink-300">
+        {(
+          [
+            ["AGB", person.agbAcceptedAt],
+            ["AVV", person.avvAcceptedAt],
+            ["Datenschutz", person.datenschutzAcceptedAt],
+          ] as const
+        ).map(([label, acceptedAt]) => (
+          <span key={label} className="flex items-center gap-1">
+            {acceptedAt ? (
+              <CheckCircle2 size={12} className="text-success" />
+            ) : (
+              <span className="h-3 w-3 rounded-full border border-ink-200" />
+            )}
+            {label}
+            {acceptedAt && ` (${acceptedAt.toLocaleDateString("de-DE")})`}
+          </span>
+        ))}
+      </div>
       {resetting && (
         <div className="flex items-center gap-2 mt-1.5">
           <PasswordInput

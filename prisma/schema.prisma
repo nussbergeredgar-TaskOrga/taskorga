@@ -318,10 +318,16 @@ model User {
   // ist dem Admin schon bekannt), ebenso bereits bestehende Nutzer (siehe Migration).
   emailVerifiedAt DateTime?
 
-  // Wann der registrierende Nutzer AGB, AVV und Datenschutzerklaerung bei der
-  // Registrierung akzeptiert hat (siehe lib/actions/signup.ts) -- Nachweis des
-  // Vertragsschlusses, nicht nur eine clientseitige Checkbox ohne Beleg.
-  agbAcceptedAt DateTime?
+  // Nacheinander bestaetigt (nicht als Sammel-Checkbox), siehe
+  // app/dokumente-bestaetigen/page.tsx -- jedes Feld ist der Zeitstempel der
+  // jeweils EIGENEN Bestaetigung dieses Nutzers ("gilt als Unterschrift"),
+  // sichtbar fuer den Nutzer selbst (Einstellungen) und fuer den Plattform-
+  // Betreiber (Plattform-Admin -> Firmen). Bestandsnutzer wurden per Migration
+  // rueckwirkend auf ihr createdAt/altes agbAcceptedAt gesetzt, damit dieses
+  // neue Gate niemanden aus einem bereits laufenden Konto aussperrt.
+  agbAcceptedAt         DateTime?
+  avvAcceptedAt         DateTime?
+  datenschutzAcceptedAt DateTime?
 
   // Pflicht-Einfuehrungstour (siehe lib/onboarding-steps.ts, lib/actions/onboarding.ts).
   // Laeuft fuer jeden neuen Nutzer beim ersten Login, in zwei Varianten je nach

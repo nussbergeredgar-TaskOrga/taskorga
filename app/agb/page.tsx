@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { PrintButton } from "@/components/print-button";
 
 export const metadata: Metadata = {
   title: "AGB – TaskOrga",
@@ -16,6 +17,9 @@ export default function AgbPage() {
         Allgemeine Geschäftsbedingungen (AGB)
       </h1>
       <p className="mt-2 text-sm text-ink-500">Stand: 11. September 2026</p>
+      <div className="mt-4">
+        <PrintButton />
+      </div>
 
       <div className="mt-8 space-y-6 text-sm leading-relaxed text-ink-700">
         <section>

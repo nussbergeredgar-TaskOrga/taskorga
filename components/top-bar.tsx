@@ -115,28 +115,23 @@ export function TopBar({
   }, []);
 
   return (
-    <header className="h-16 shrink-0 border-b border-ink-100 bg-surface grid grid-cols-[1fr_auto_1fr] items-center gap-4 px-4 md:px-6">
-      {/* Linke Spalte bewusst leer -- gleich breit wie die rechte, damit die
-          mittlere Spalte (Suche) tatsaechlich mittig sitzt statt nur "linksbuendig
-          mit Rest rechts". */}
-      <div />
-
-      <div className="flex items-center gap-3 justify-self-center w-full max-w-xl">
+    <header className="h-16 shrink-0 border-b border-ink-100 bg-surface flex items-center justify-between gap-4 px-4 md:px-6">
+      <div className="flex items-center gap-3 flex-1 min-w-0 max-w-2xl">
         <form onSubmit={handleSearch} className="flex-1">
           <div className="relative">
             <button
               type="submit"
               aria-label="Suchen"
-              className="absolute left-2.5 top-1/2 -translate-y-1/2 p-1 rounded text-ink-300 hover:text-brand-600 transition-colors"
+              className="absolute left-3 top-1/2 -translate-y-1/2 p-1 rounded text-ink-300 hover:text-brand-600 transition-colors"
             >
-              <Search size={16} />
+              <Search size={18} />
             </button>
             <input
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Suchen … z. B. „Müller Wallbox Februar“"
-              className="w-full rounded-lg border border-ink-100 bg-ink-50 py-2 pl-9 pr-3 text-sm placeholder:text-ink-300 focus:bg-surface focus:border-brand-500 outline-none transition-colors"
+              className="w-full rounded-lg border border-ink-100 bg-ink-50 py-2.5 pl-10 pr-3 text-sm placeholder:text-ink-300 focus:bg-surface focus:border-brand-500 outline-none transition-colors"
             />
           </div>
         </form>
@@ -172,7 +167,7 @@ export function TopBar({
         </div>
       </div>
 
-      <div className="flex items-center gap-2 justify-self-end">
+      <div className="flex items-center gap-2 shrink-0">
       <div ref={bellRef} className="relative">
         <button
           onClick={toggleBell}

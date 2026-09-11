@@ -64,6 +64,9 @@ export type CompanyPerson = {
   name: string;
   email: string;
   lastLoginAt: Date | null;
+  agbAcceptedAt: Date | null;
+  avvAcceptedAt: Date | null;
+  datenschutzAcceptedAt: Date | null;
 };
 
 export type CompanyOverview = {
@@ -87,7 +90,15 @@ export async function listCompaniesOverview(secret: string): Promise<CompanyOver
       include: {
         _count: { select: { users: true } },
         users: {
-          select: { id: true, name: true, email: true, lastLoginAt: true },
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            lastLoginAt: true,
+            agbAcceptedAt: true,
+            avvAcceptedAt: true,
+            datenschutzAcceptedAt: true,
+          },
           orderBy: { name: "asc" },
         },
       },

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { PrintButton } from "@/components/print-button";
 
 export const metadata: Metadata = {
   title: "Datenschutzerklärung – TaskOrga",
@@ -14,6 +15,9 @@ export default function DatenschutzPage() {
     <div className="mx-auto max-w-2xl px-4 py-16 sm:px-6">
       <h1 className="font-display text-3xl font-semibold text-ink-900">Datenschutzerklärung</h1>
       <p className="mt-2 text-sm text-ink-500">Stand: 11. September 2026</p>
+      <div className="mt-4">
+        <PrintButton />
+      </div>
 
       <div className="mt-8 space-y-6 text-sm leading-relaxed text-ink-700">
         <section>

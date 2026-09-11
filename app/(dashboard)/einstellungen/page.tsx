@@ -76,20 +76,44 @@ export default async function MeinKontoPage() {
         <NavConfigManager initialConfig={navConfig ?? DEFAULT_NAV} />
       </SettingsSection>
 
-      <SettingsSection title="Rechtliches" description="Impressum, Vertragsbedingungen und Datenschutz.">
-        <div className="flex flex-col gap-2 text-sm">
-          <Link href="/impressum" target="_blank" className="text-brand-700 hover:underline">
+      <SettingsSection
+        title="Rechtliches"
+        description="Impressum, Vertragsbedingungen und Datenschutz -- zum Ansehen und Herunterladen (Drucken/Als PDF speichern auf der jeweiligen Seite)."
+      >
+        <div className="space-y-2.5 text-sm">
+          <Link href="/impressum" target="_blank" className="block text-brand-700 hover:underline">
             Impressum
           </Link>
-          <Link href="/agb" target="_blank" className="text-brand-700 hover:underline">
-            Allgemeine Geschäftsbedingungen (AGB)
-          </Link>
-          <Link href="/avv" target="_blank" className="text-brand-700 hover:underline">
-            Auftragsverarbeitungsvertrag (AVV)
-          </Link>
-          <Link href="/datenschutz" target="_blank" className="text-brand-700 hover:underline">
-            Datenschutzerklärung
-          </Link>
+          <div>
+            <Link href="/agb" target="_blank" className="text-brand-700 hover:underline">
+              Allgemeine Geschäftsbedingungen (AGB)
+            </Link>
+            {user.agbAcceptedAt && (
+              <p className="text-xs text-ink-300">
+                Bestätigt am {user.agbAcceptedAt.toLocaleDateString("de-DE")}
+              </p>
+            )}
+          </div>
+          <div>
+            <Link href="/avv" target="_blank" className="text-brand-700 hover:underline">
+              Auftragsverarbeitungsvertrag (AVV)
+            </Link>
+            {user.avvAcceptedAt && (
+              <p className="text-xs text-ink-300">
+                Bestätigt am {user.avvAcceptedAt.toLocaleDateString("de-DE")}
+              </p>
+            )}
+          </div>
+          <div>
+            <Link href="/datenschutz" target="_blank" className="text-brand-700 hover:underline">
+              Datenschutzerklärung
+            </Link>
+            {user.datenschutzAcceptedAt && (
+              <p className="text-xs text-ink-300">
+                Bestätigt am {user.datenschutzAcceptedAt.toLocaleDateString("de-DE")}
+              </p>
+            )}
+          </div>
         </div>
       </SettingsSection>
     </div>
