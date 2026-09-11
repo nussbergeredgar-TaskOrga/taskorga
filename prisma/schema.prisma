@@ -77,6 +77,15 @@ model Company {
   stripeSubscriptionItemId String?
   subscriptionStatus       SubscriptionStatus @default(TRIALING)
   trialEndsAt              DateTime?
+  // Wann das Abo tatsaechlich beendet wurde (Stripe "customer.subscription.deleted"),
+  // nicht der Zeitpunkt der Kuendigungserklaerung -- Grundlage fuer die
+  // AGB-Frist von 30 Tagen bis zur automatischen Loeschung (siehe
+  // app/api/cron/daily/route.ts). Wird bei Reaktivierung wieder auf null gesetzt.
+  canceledAt                DateTime?
+  // Verhindert Mehrfachversand der "Konto wird in 30 Tagen geloescht"-Warnmail
+  // bei Stripe-Webhook-Retries -- gleiches Idempotenz-Muster wie
+  // Task.escalationLevelSent/updateRequestedAt.
+  deletionWarningEmailSentAt DateTime?
   // Nur gesetzt, wenn die Firma ueber eine E-Mail-Einladung mit begrenzter
   // Platzanzahl entstanden ist (siehe EmailInvite unten) -- null bedeutet
   // unbegrenzt (regulaere Selbstregistrierung, Kosten regeln sich ueber die

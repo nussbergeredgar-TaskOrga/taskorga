@@ -14,11 +14,13 @@ export default function ImpressumPage() {
       <div className="mt-8 space-y-6 text-sm leading-relaxed text-ink-700">
         <section>
           <p>
-            Edgar Nussberger
+            TaskOrga
             <br />
-            In der Mudersbach 6
+            Inhaber: Edgar Nussberger
             <br />
-            55469 Mutterschied
+            Am Kirchberger Weg 28
+            <br />
+            55471 Külz
             <br />
             Deutschland
           </p>
@@ -27,6 +29,8 @@ export default function ImpressumPage() {
         <section>
           <h2 className="font-display font-semibold text-ink-900">Kontakt</h2>
           <p className="mt-1">
+            Telefon: +49 1556 5939173
+            <br />
             E-Mail:{" "}
             <a href="mailto:info@taskorga.de" className="text-brand-700 hover:underline">
               info@taskorga.de
@@ -44,16 +48,7 @@ export default function ImpressumPage() {
         <section>
           <h2 className="font-display font-semibold text-ink-900">Streitschlichtung</h2>
           <p className="mt-1">
-            Die Europäische Kommission stellt eine Plattform zur Online-Streitbeilegung (OS) bereit:{" "}
-            <a
-              href="https://ec.europa.eu/consumers/odr/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-brand-700 hover:underline"
-            >
-              ec.europa.eu/consumers/odr
-            </a>
-            . Wir sind nicht bereit oder verpflichtet, an Streitbeilegungsverfahren vor einer
+            Wir sind nicht bereit oder verpflichtet, an Streitbeilegungsverfahren vor einer
             Verbraucherschlichtungsstelle teilzunehmen.
           </p>
         </section>

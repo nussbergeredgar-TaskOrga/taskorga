@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
-import { startOfDay, endOfDay } from "date-fns";
+import { startOfDay, endOfDay, subDays } from "date-fns";
 import { prisma } from "@/lib/prisma";
-import { sendTaskOverdueEmail } from "@/lib/email";
+import { sendTaskOverdueEmail, sendAccountDeletedEmail } from "@/lib/email";
 import { sendPushToUser } from "@/lib/push";
+import { deleteCompanyData } from "@/lib/company-deletion";
 
 // Von Vercel Cron einmal taeglich aufgerufen (vercel.json), kein eingeloggter
 // Nutzer -- Absicherung wie bei app/api/webhooks/stripe/route.ts, nur per
@@ -10,10 +11,11 @@ import { sendPushToUser } from "@/lib/push";
 // "Authorization: Bearer <CRON_SECRET>" mit (Vercels eigener, dokumentierter
 // Mechanismus fuer Cron-Routen).
 //
-// Zwei voneinander unabhaengige taegliche Aufgaben in einer Route, weil
+// Drei voneinander unabhaengige taegliche Aufgaben in einer Route, weil
 // Vercels Hobby-Plan nur einen Cron-Zeitplan erlaubt (siehe Kontext der
-// zugehoerigen Planungsrunde) -- Aufgaben-Eskalation und Termin-
-// Zusammenfassung teilen sich deshalb denselben taeglichen Lauf.
+// zugehoerigen Planungsrunde) -- Aufgaben-Eskalation, Termin-Zusammenfassung
+// und die automatische Loeschung gekuendigter Konten teilen sich deshalb
+// denselben taeglichen Lauf.
 export async function GET(request: Request) {
   const expected = process.env.CRON_SECRET;
   const authHeader = request.headers.get("authorization");
@@ -21,12 +23,13 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Nicht autorisiert." }, { status: 401 });
   }
 
-  const [taskEscalations, dailyAppointments] = await Promise.all([
+  const [taskEscalations, dailyAppointments, canceledCompanyDeletions] = await Promise.all([
     runTaskEscalations(),
     runDailyAppointments(),
+    runCanceledCompanyDeletions(),
   ]);
 
-  return NextResponse.json({ taskEscalations, dailyAppointments });
+  return NextResponse.json({ taskEscalations, dailyAppointments, canceledCompanyDeletions });
 }
 
 // -----------------------------------------------------------------------
@@ -165,4 +168,53 @@ async function runDailyAppointments() {
   }
 
   return { processed: users.length, sent };
+}
+
+// -----------------------------------------------------------------------
+// Automatische Loeschung gekuendigter Konten -- AGB Ziffer 7: Daten bleiben
+// nach Vertragsende mindestens 30 Tage zum Export verfuegbar, danach darf
+// geloescht werden. canceledAt wird beim Stripe-Webhook
+// "customer.subscription.deleted" gesetzt (app/api/webhooks/stripe/route.ts).
+// billingExempt/isPlatformOwner sind bewusst doppelt abgesichert (auch wenn
+// solche Firmen ueblicherweise ohnehin kein canceledAt bekommen), da dies ein
+// unwiderruflicher, destruktiver Vorgang ist.
+// -----------------------------------------------------------------------
+async function runCanceledCompanyDeletions() {
+  const cutoff = subDays(new Date(), 30);
+
+  const companies = await prisma.company.findMany({
+    where: {
+      subscriptionStatus: "CANCELED",
+      canceledAt: { lte: cutoff },
+      billingExempt: false,
+      isPlatformOwner: false,
+    },
+    select: { id: true, name: true, email: true },
+  });
+
+  let deleted = 0;
+  for (const company of companies) {
+    try {
+      const admins = await prisma.user.findMany({
+        where: { companyId: company.id, role: { name: "Admin" } },
+        select: { email: true },
+      });
+      const recipients = admins.length > 0 ? admins.map((a) => a.email) : company.email ? [company.email] : [];
+
+      await deleteCompanyData(company.id);
+      deleted++;
+
+      for (const to of recipients) {
+        try {
+          await sendAccountDeletedEmail({ to, companyName: company.name });
+        } catch (err) {
+          console.error(`Loesch-Bestaetigung fuer Firma ${company.id} fehlgeschlagen:`, err);
+        }
+      }
+    } catch (err) {
+      console.error(`Automatische Loeschung fuer Firma ${company.id} fehlgeschlagen:`, err);
+    }
+  }
+
+  return { processed: companies.length, deleted };
 }

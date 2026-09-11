@@ -248,6 +248,77 @@ export async function sendTaskOverdueEmail({
   });
 }
 
+// Nach Kuendigung/Ablauf eines Abos (Stripe "customer.subscription.deleted"),
+// siehe app/api/webhooks/stripe/route.ts -- informiert alle Admins der Firma
+// ueber die 30-Tage-Frist bis zur automatischen Loeschung (AGB Ziffer 7).
+export async function sendAccountDeletionWarningEmail({
+  to,
+  recipientName,
+  companyName,
+}: {
+  to: string;
+  recipientName?: string | null;
+  companyName: string;
+}) {
+  if (!resend) {
+    throw new Error("E-Mail-Versand ist nicht eingerichtet (RESEND_API_KEY).");
+  }
+
+  const settings = await getSystemEmailSettings();
+  const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
+
+  await resend.emails.send({
+    from: process.env.EMAIL_FROM || "TaskOrga <onboarding@resend.dev>",
+    to,
+    subject: `Dein Abo für „${companyName}" wurde beendet`,
+    html: renderSystemEmail({
+      branding: settings,
+      greetingName: recipientName ?? undefined,
+      bodyHtml: `
+        <p style="margin:0 0 14px;">
+          Das Abonnement für „${companyName}" wurde beendet. Deine Daten bleiben noch
+          <strong>30 Tage</strong> gespeichert und exportierbar — danach werden sie
+          unwiderruflich gelöscht.
+        </p>
+        <p style="margin:0 0 14px;">
+          Möchtest du weiter TaskOrga nutzen, kannst du das Abo jederzeit über die
+          Zahlungsverwaltung reaktivieren. Möchtest du stattdessen deine Daten sichern,
+          findest du den Export unter Einstellungen → Firma.
+        </p>
+        <p style="margin:0 0 14px;">
+          <a href="${baseUrl}/einstellungen/firma" style="color:#2F5FFF;">${baseUrl}/einstellungen/firma</a>
+        </p>
+      `,
+    }),
+  });
+}
+
+// Nach tatsaechlich vollzogener automatischer Loeschung, siehe
+// app/api/cron/daily/route.ts -- letzte Bestaetigung, da danach keine Firmen-
+// oder Nutzerdaten mehr existieren, an die sich sonst erinnert werden koennte.
+export async function sendAccountDeletedEmail({ to, companyName }: { to: string; companyName: string }) {
+  if (!resend) {
+    throw new Error("E-Mail-Versand ist nicht eingerichtet (RESEND_API_KEY).");
+  }
+
+  const settings = await getSystemEmailSettings();
+
+  await resend.emails.send({
+    from: process.env.EMAIL_FROM || "TaskOrga <onboarding@resend.dev>",
+    to,
+    subject: `Konto „${companyName}" wurde gelöscht`,
+    html: renderSystemEmail({
+      branding: settings,
+      bodyHtml: `
+        <p style="margin:0 0 14px;">
+          Wie 30 Tage zuvor angekündigt, wurden das Konto „${companyName}" und alle darin
+          gespeicherten Daten jetzt unwiderruflich gelöscht.
+        </p>
+      `,
+    }),
+  });
+}
+
 export async function sendPaymentReminderEmail({
   to,
   greeting,

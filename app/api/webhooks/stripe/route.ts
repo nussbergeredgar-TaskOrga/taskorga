@@ -3,6 +3,7 @@ import type Stripe from "stripe";
 import { stripe } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
 import { mapStripeStatus } from "@/lib/subscription-pricing";
+import { sendAccountDeletionWarningEmail } from "@/lib/email";
 
 // Erste Route im Projekt, die den rohen Anfrage-Body braucht: Stripes
 // Signaturpruefung (stripe.webhooks.constructEvent) berechnet die Signatur
@@ -36,21 +37,58 @@ export async function POST(request: Request) {
   switch (event.type) {
     case "customer.subscription.updated": {
       const subscription = event.data.object as Stripe.Subscription;
+      const newStatus = mapStripeStatus(subscription.status);
       await prisma.company.updateMany({
         where: { stripeSubscriptionId: subscription.id },
         data: {
-          subscriptionStatus: mapStripeStatus(subscription.status),
+          subscriptionStatus: newStatus,
           trialEndsAt: subscription.trial_end ? new Date(subscription.trial_end * 1000) : null,
+          // Reaktivierung (z.B. erneutes Abo nach vorheriger Kuendigung) setzt
+          // die 30-Tage-Loeschfrist zurueck -- siehe app/api/cron/daily/route.ts.
+          ...(newStatus !== "CANCELED" ? { canceledAt: null, deletionWarningEmailSentAt: null } : {}),
         },
       });
       break;
     }
     case "customer.subscription.deleted": {
       const subscription = event.data.object as Stripe.Subscription;
-      await prisma.company.updateMany({
+      const companies = await prisma.company.findMany({
         where: { stripeSubscriptionId: subscription.id },
-        data: { subscriptionStatus: "CANCELED" },
+        select: { id: true, name: true, email: true, canceledAt: true, deletionWarningEmailSentAt: true },
       });
+
+      for (const company of companies) {
+        // canceledAt nur beim ersten Mal setzen (Basis der 30-Tage-Frist,
+        // siehe app/api/cron/daily/route.ts) -- eine Stripe-Webhook-
+        // Zustellwiederholung desselben Events darf die Frist nicht verlaengern.
+        await prisma.company.update({
+          where: { id: company.id },
+          data: { subscriptionStatus: "CANCELED", canceledAt: company.canceledAt ?? new Date() },
+        });
+
+        if (company.deletionWarningEmailSentAt) continue;
+
+        // Best-Effort-Warnmail an alle Admins -- ein Fehler hier darf die
+        // Webhook-Verarbeitung nicht scheitern lassen (Stripe wuerde sonst den
+        // Event unnoetig wiederholen).
+        try {
+          const admins = await prisma.user.findMany({
+            where: { companyId: company.id, role: { name: "Admin" } },
+            select: { email: true, name: true },
+          });
+          const recipients = admins.length > 0 ? admins : company.email ? [{ email: company.email, name: null }] : [];
+          for (const recipient of recipients) {
+            await sendAccountDeletionWarningEmail({
+              to: recipient.email,
+              recipientName: recipient.name,
+              companyName: company.name,
+            });
+          }
+          await prisma.company.update({ where: { id: company.id }, data: { deletionWarningEmailSentAt: new Date() } });
+        } catch (err) {
+          console.error(`Loesch-Warnmail fuer Firma ${company.id} fehlgeschlagen:`, err);
+        }
+      }
       break;
     }
     case "invoice.payment_failed": {
