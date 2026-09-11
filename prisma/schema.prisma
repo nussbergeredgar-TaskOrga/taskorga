@@ -214,8 +214,8 @@ model SystemEmailSettings {
   signatureName     String  @default("Edgar Nussberger")
   signatureRole     String  @default("Gründer")
   signatureOrgName  String  @default("TaskOrga")
-  signatureAddress1 String? @default("In der Mudersbach 6")
-  signatureAddress2 String? @default("55469 Mutterschied")
+  signatureAddress1 String? @default("Am Kirchberger Weg 28")
+  signatureAddress2 String? @default("55471 Külz")
   headerSlogan      String  @default("Weniger Büro. Mehr Business.")
 
   resetSubject String @default("Passwort zurücksetzen – TaskOrga")
