@@ -123,8 +123,14 @@ export async function createInvoiceFromProject(
     });
   }
 
-  if (allItems.length > 0 && items.length === 0 && timeEntries.length === 0) {
-    return { error: "Bitte mindestens eine Position auswählen." };
+  // War vorher nur "allItems.length > 0 && ..." -- ein Auftrag OHNE Angebot
+  // (allItems leer) und ohne ausgewaehlte Zeiterfassung rutschte damit durch
+  // und erzeugte eine 0-Euro-Rechnung mit null Positionen, die sich hinterher
+  // nicht mehr befuellen laesst (kein "Position hinzufuegen" auf der
+  // Rechnungs-Detailseite). Jetzt unabhaengig davon, ob ueberhaupt ein
+  // Angebot existiert.
+  if (items.length === 0 && timeEntries.length === 0) {
+    return { error: "Bitte mindestens eine Position oder Zeiterfassung auswählen." };
   }
 
   const discountValue = project.quote?.discountValue ?? null;

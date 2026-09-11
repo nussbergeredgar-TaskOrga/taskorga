@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Link from "next/link";
 import { updateProjectStatus, createInvoiceFromProject, cancelProject } from "@/lib/actions/projects";
 import type { ProjectStatus } from "@prisma/client";
 
@@ -21,6 +22,7 @@ type UnbilledTimeEntry = {
 
 export function ProjectActions({
   projectId,
+  customerId,
   status,
   cancelReason,
   existingInvoiceCount,
@@ -29,6 +31,7 @@ export function ProjectActions({
   unbilledTimeEntries,
 }: {
   projectId: string;
+  customerId: string;
   status: ProjectStatus;
   cancelReason?: string | null;
   existingInvoiceCount: number;
@@ -39,6 +42,7 @@ export function ProjectActions({
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState("");
   const [invoicePanelOpen, setInvoicePanelOpen] = useState(false);
+  const [showNothingToInvoice, setShowNothingToInvoice] = useState(false);
   const [selectedItems, setSelectedItems] = useState<Set<number>>(new Set(quoteItems.map((i) => i.position)));
   const [selectedTime, setSelectedTime] = useState<Set<string>>(new Set());
 
@@ -87,19 +91,16 @@ export function ProjectActions({
 
   function openInvoicePanel() {
     if (!hasSelectableContent) {
-      // Nichts auszuwählen -- direkt anlegen.
-      if (
-        existingInvoiceCount > 0 &&
-        !confirm(
-          `Für diesen Auftrag ${existingInvoiceCount === 1 ? "existiert bereits eine Rechnung" : `existieren bereits ${existingInvoiceCount} Rechnungen`}. Trotzdem eine weitere erstellen?`
-        )
-      ) {
-        return;
-      }
-      createInvoice();
+      // Weder Angebotspositionen noch erfasste Arbeitszeit vorhanden -- eine
+      // Rechnung liesse sich hier nur leer (0 Positionen) anlegen und danach
+      // nicht mehr befuellen. Stattdessen auf die manuelle Rechnungserstellung
+      // verweisen statt kommentarlos eine leere Rechnung zu erzeugen.
+      setError("");
+      setShowNothingToInvoice(true);
       return;
     }
     setError("");
+    setShowNothingToInvoice(false);
     setInvoicePanelOpen(true);
   }
 
@@ -149,6 +150,29 @@ export function ProjectActions({
         </button>
       </div>
       {error && <p className="text-xs text-danger mt-1">{error}</p>}
+
+      {showNothingToInvoice && (
+        <div className="mt-3 rounded-lg border border-ink-100 bg-surface p-4 space-y-2 max-w-md text-sm">
+          <p className="text-ink-700">
+            Dieser Auftrag hat weder ein verknüpftes Angebot noch erfasste Arbeitszeit — es gibt
+            nichts, das sich automatisch übernehmen ließe.
+          </p>
+          <div className="flex items-center gap-3">
+            <Link
+              href={`/finanzen/neu?customerId=${customerId}`}
+              className="text-brand-700 hover:underline font-medium"
+            >
+              Rechnung manuell erstellen →
+            </Link>
+            <button
+              onClick={() => setShowNothingToInvoice(false)}
+              className="text-ink-500 hover:underline"
+            >
+              Abbrechen
+            </button>
+          </div>
+        </div>
+      )}
 
       {invoicePanelOpen && (
         <div className="mt-3 rounded-lg border border-ink-100 bg-surface p-4 space-y-3 max-w-md">

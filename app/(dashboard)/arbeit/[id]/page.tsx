@@ -69,6 +69,7 @@ export default async function AuftragDetailPage({ params }: { params: { id: stri
         </div>
         <ProjectActions
           projectId={project.id}
+          customerId={project.customer.id}
           status={project.status}
           cancelReason={project.cancelReason}
           existingInvoiceCount={project.invoices.length}

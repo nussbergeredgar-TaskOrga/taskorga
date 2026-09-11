@@ -6,6 +6,7 @@ import { signIn } from "next-auth/react";
 import { Ban, CheckCircle2, ChevronDown, Gift, LifeBuoy, Mail, Megaphone, Trash2 } from "lucide-react";
 import {
   verifyPlatformSecret,
+  platformAdminLogout,
   listInviteCodes,
   createInviteCode,
   deleteInviteCode,
@@ -77,13 +78,11 @@ function EmailInviteStatus(invite: EmailInviteOverview): { label: string; classN
 }
 
 function InvitesTab({
-  secret,
   codes,
   refreshCodes,
   emailInvites,
   refreshEmailInvites,
 }: {
-  secret: string;
   codes: Code[];
   refreshCodes: () => void;
   emailInvites: EmailInviteOverview[];
@@ -102,7 +101,7 @@ function InvitesTab({
 
   function addCode() {
     startTransition(async () => {
-      await createInviteCode(secret, { note, maxUses: Number(maxUses) || 1 });
+      await createInviteCode({ note, maxUses: Number(maxUses) || 1 });
       setNote("");
       setMaxUses("1");
       refreshCodes();
@@ -111,7 +110,7 @@ function InvitesTab({
 
   function removeCode(id: string) {
     startTransition(async () => {
-      await deleteInviteCode(secret, id);
+      await deleteInviteCode(id);
       refreshCodes();
     });
   }
@@ -119,7 +118,7 @@ function InvitesTab({
   function sendEmailInvite() {
     setEmailError("");
     startEmailTransition(async () => {
-      const result = await createEmailInvite(secret, inviteEmail, trialDays, Number(maxUsers) || 1, inviteName);
+      const result = await createEmailInvite(inviteEmail, trialDays, Number(maxUsers) || 1, inviteName);
       if (result?.error) {
         setEmailError(result.error);
         return;
@@ -133,7 +132,7 @@ function InvitesTab({
 
   function removeEmailInvite(id: string) {
     startEmailTransition(async () => {
-      await deleteEmailInvite(secret, id);
+      await deleteEmailInvite(id);
       refreshEmailInvites();
     });
   }
@@ -286,7 +285,7 @@ function InvitesTab({
   );
 }
 
-function PersonRow({ secret, person }: { secret: string; person: CompanyOverview["users"][number] }) {
+function PersonRow({ person }: { person: CompanyOverview["users"][number] }) {
   const [pending, startTransition] = useTransition();
   const [resetting, setResetting] = useState(false);
   const [newPassword, setNewPassword] = useState("");
@@ -296,7 +295,7 @@ function PersonRow({ secret, person }: { secret: string; person: CompanyOverview
   function submit() {
     setError("");
     startTransition(async () => {
-      const result = await resetUserPasswordForAdmin(secret, person.id, newPassword);
+      const result = await resetUserPasswordForAdmin(person.id, newPassword);
       if (result?.error) {
         setError(result.error);
         return;
@@ -376,11 +375,9 @@ function PersonRow({ secret, person }: { secret: string; person: CompanyOverview
 }
 
 function CompanyRow({
-  secret,
   company,
   refresh,
 }: {
-  secret: string;
   company: CompanyOverview;
   refresh: () => void;
 }) {
@@ -393,9 +390,9 @@ function CompanyRow({
   function toggleSuspend() {
     startTransition(async () => {
       if (company.suspendedAt) {
-        await unsuspendCompany(secret, company.id);
+        await unsuspendCompany(company.id);
       } else {
-        await suspendCompany(secret, company.id);
+        await suspendCompany(company.id);
       }
       refresh();
     });
@@ -403,7 +400,7 @@ function CompanyRow({
 
   function toggleFreeAccess() {
     startTransition(async () => {
-      await toggleBillingExempt(secret, company.id, !company.billingExempt);
+      await toggleBillingExempt(company.id, !company.billingExempt);
       refresh();
     });
   }
@@ -413,7 +410,7 @@ function CompanyRow({
     if (!confirm(`Wirklich ALLE Daten von „${company.name}“ unwiderruflich löschen?`)) return;
     setError("");
     startTransition(async () => {
-      const result = await deleteCompanyForAdmin(secret, company.id, confirmName);
+      const result = await deleteCompanyForAdmin(company.id, confirmName);
       if (result?.error) {
         setError(result.error);
         return;
@@ -489,7 +486,7 @@ function CompanyRow({
           ) : (
             <div className="space-y-1.5">
               {company.users.map((u) => (
-                <PersonRow key={u.id} secret={secret} person={u} />
+                <PersonRow key={u.id} person={u} />
               ))}
             </div>
           )}
@@ -524,12 +521,10 @@ function CompanyRow({
 }
 
 function CompaniesTab({
-  secret,
   companies,
   stats,
   refresh,
 }: {
-  secret: string;
   companies: CompanyOverview[];
   stats: PlatformStats | null;
   refresh: () => void;
@@ -562,7 +557,7 @@ function CompaniesTab({
 
       <div className="space-y-2">
         {companies.map((c) => (
-          <CompanyRow key={c.id} secret={secret} company={c} refresh={refresh} />
+          <CompanyRow key={c.id} company={c} refresh={refresh} />
         ))}
         {companies.length === 0 && <p className="text-sm text-ink-500">Noch keine Firmen registriert.</p>}
       </div>
@@ -657,15 +652,15 @@ function EmailSectionEditor({
   );
 }
 
-function EmailTemplatesTab({ secret }: { secret: string }) {
+function EmailTemplatesTab() {
   const [pending, startTransition] = useTransition();
   const [form, setForm] = useState<EmailSettingsForm | null>(null);
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
-    getSystemEmailSettingsForAdmin(secret).then((s) => setForm(settingsToForm(s)));
-  }, [secret]);
+    getSystemEmailSettingsForAdmin().then((s) => setForm(settingsToForm(s)));
+  }, []);
 
   function set<K extends keyof EmailSettingsForm>(key: K, value: EmailSettingsForm[K]) {
     setForm((f) => (f ? { ...f, [key]: value } : f));
@@ -676,7 +671,7 @@ function EmailTemplatesTab({ secret }: { secret: string }) {
     if (!form) return;
     setError("");
     startTransition(async () => {
-      const result = await updateSystemEmailSettings(secret, form);
+      const result = await updateSystemEmailSettings(form);
       if (result?.error) {
         setError(result.error);
         return;
@@ -845,11 +840,9 @@ function SupportAccessTab() {
 }
 
 function AnnouncementsTab({
-  secret,
   announcements,
   refresh,
 }: {
-  secret: string;
   announcements: Announcement[];
   refresh: () => void;
 }) {
@@ -862,7 +855,7 @@ function AnnouncementsTab({
 
   function publish() {
     startTransition(async () => {
-      await createAnnouncement(secret, { type, teaser, title, body, version });
+      await createAnnouncement({ type, teaser, title, body, version });
       setTeaser("");
       setTitle("");
       setBody("");
@@ -873,7 +866,7 @@ function AnnouncementsTab({
 
   function remove(id: string) {
     startTransition(async () => {
-      await deleteAnnouncement(secret, id);
+      await deleteAnnouncement(id);
       refresh();
     });
   }
@@ -973,7 +966,11 @@ function AnnouncementsTab({
 }
 
 export default function PlattformAdminPage() {
-  const [secret, setSecret] = useState("");
+  // Nur fuer das Login-Formular selbst -- das Master-Passwort wird nach
+  // erfolgreicher Pruefung nirgends mehr gehalten oder erneut verschickt,
+  // stattdessen setzt verifyPlatformSecret() serverseitig ein httpOnly-
+  // Sitzungs-Cookie (siehe lib/actions/platform-admin.ts).
+  const [passwordInput, setPasswordInput] = useState("");
   const [unlocked, setUnlocked] = useState(false);
   const [tab, setTab] = useState<Tab>("codes");
   const [codes, setCodes] = useState<Code[]>([]);
@@ -985,11 +982,12 @@ export default function PlattformAdminPage() {
 
   async function unlock() {
     setError("");
-    const result = await verifyPlatformSecret(secret);
+    const result = await verifyPlatformSecret(passwordInput);
     if (!result.ok) {
       setError(result.error || "Falsches Master-Passwort.");
       return;
     }
+    setPasswordInput("");
     setUnlocked(true);
     refreshCodes();
     refreshEmailInvites();
@@ -997,9 +995,14 @@ export default function PlattformAdminPage() {
     refreshAnnouncements();
   }
 
+  function logout() {
+    setUnlocked(false);
+    platformAdminLogout();
+  }
+
   async function refreshAnnouncements() {
     try {
-      setAnnouncements(await listAnnouncements(secret));
+      setAnnouncements(await listAnnouncements());
     } catch (err) {
       handleSessionError(err);
     }
@@ -1007,7 +1010,7 @@ export default function PlattformAdminPage() {
 
   async function refreshCodes() {
     try {
-      setCodes(await listInviteCodes(secret));
+      setCodes(await listInviteCodes());
     } catch (err) {
       handleSessionError(err);
     }
@@ -1015,7 +1018,7 @@ export default function PlattformAdminPage() {
 
   async function refreshEmailInvites() {
     try {
-      setEmailInvites(await listEmailInvites(secret));
+      setEmailInvites(await listEmailInvites());
     } catch (err) {
       handleSessionError(err);
     }
@@ -1023,7 +1026,7 @@ export default function PlattformAdminPage() {
 
   async function refreshCompanies() {
     try {
-      const [list, platformStats] = await Promise.all([listCompaniesOverview(secret), getPlatformStats(secret)]);
+      const [list, platformStats] = await Promise.all([listCompaniesOverview(), getPlatformStats()]);
       setCompanies(list);
       setStats(platformStats);
     } catch (err) {
@@ -1042,8 +1045,8 @@ export default function PlattformAdminPage() {
         <div className="w-full max-w-sm bg-surface rounded-card border border-ink-100 shadow-card p-6 space-y-4">
           <h1 className="font-display font-semibold text-xl text-ink-900">Plattform-Verwaltung</h1>
           <PasswordInput
-            value={secret}
-            onChange={(e) => setSecret(e.target.value)}
+            value={passwordInput}
+            onChange={(e) => setPasswordInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && unlock()}
             placeholder="Master-Passwort"
             className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500"
@@ -1063,31 +1066,35 @@ export default function PlattformAdminPage() {
   return (
     <div className="min-h-screen bg-ink-50 px-4 py-10">
       <div className="max-w-2xl mx-auto space-y-6">
-        <div className="flex items-center gap-1 bg-surface rounded-lg border border-ink-100 p-1 w-fit">
-          {(
-            [
-              ["codes", "Einladungen"],
-              ["firmen", "Firmen"],
-              ["mails", "E-Mail-Vorlagen"],
-              ["support", "Support-Zugriff"],
-              ["ankuendigungen", "Ankündigungen"],
-            ] as [Tab, string][]
-          ).map(([id, label]) => (
-            <button
-              key={id}
-              onClick={() => setTab(id)}
-              className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-                tab === id ? "bg-brand-500 text-white" : "text-ink-700 hover:bg-ink-50"
-              }`}
-            >
-              {label}
-            </button>
-          ))}
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-1 bg-surface rounded-lg border border-ink-100 p-1 w-fit">
+            {(
+              [
+                ["codes", "Einladungen"],
+                ["firmen", "Firmen"],
+                ["mails", "E-Mail-Vorlagen"],
+                ["support", "Support-Zugriff"],
+                ["ankuendigungen", "Ankündigungen"],
+              ] as [Tab, string][]
+            ).map(([id, label]) => (
+              <button
+                key={id}
+                onClick={() => setTab(id)}
+                className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                  tab === id ? "bg-brand-500 text-white" : "text-ink-700 hover:bg-ink-50"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <button onClick={logout} className="text-sm text-ink-500 hover:text-danger transition-colors shrink-0">
+            Abmelden
+          </button>
         </div>
 
         {tab === "codes" && (
           <InvitesTab
-            secret={secret}
             codes={codes}
             refreshCodes={refreshCodes}
             emailInvites={emailInvites}
@@ -1095,12 +1102,12 @@ export default function PlattformAdminPage() {
           />
         )}
         {tab === "firmen" && (
-          <CompaniesTab secret={secret} companies={companies} stats={stats} refresh={refreshCompanies} />
+          <CompaniesTab companies={companies} stats={stats} refresh={refreshCompanies} />
         )}
-        {tab === "mails" && <EmailTemplatesTab secret={secret} />}
+        {tab === "mails" && <EmailTemplatesTab />}
         {tab === "support" && <SupportAccessTab />}
         {tab === "ankuendigungen" && (
-          <AnnouncementsTab secret={secret} announcements={announcements} refresh={refreshAnnouncements} />
+          <AnnouncementsTab announcements={announcements} refresh={refreshAnnouncements} />
         )}
       </div>
     </div>

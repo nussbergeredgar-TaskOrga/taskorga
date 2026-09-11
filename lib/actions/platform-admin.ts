@@ -2,6 +2,7 @@
 
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
+import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { assertNotLocked, recordFailedAttempt } from "@/lib/platform-lockout";
@@ -13,6 +14,21 @@ import type { Prisma, SystemEmailSettings } from "@prisma/client";
 
 const EMAIL_INVITE_LINK_TTL_MS = 14 * 24 * 60 * 60 * 1000;
 
+// Session statt Klartext-Master-Passwort bei jedem Request: Nach einmaliger
+// Pruefung des Passworts (verifyPlatformSecret) wird ein httpOnly-Cookie
+// gesetzt, dessen Wert = Ablaufzeitpunkt + HMAC(Ablaufzeitpunkt) mit dem
+// Master-Passwort als Schluessel -- faelschungssicher, ohne eine eigene
+// Sessions-Tabelle zu brauchen (das Master-Passwort selbst verlaesst dafuer
+// nach dem Login nie wieder den Server). 12h Gueltigkeit.
+const SESSION_COOKIE = "platform_admin_session";
+const SESSION_TTL_MS = 12 * 60 * 60 * 1000;
+
+function signSessionToken(expiresAt: number): string {
+  const secret = process.env.PLATFORM_ADMIN_SECRET;
+  if (!secret) throw new Error("PLATFORM_ADMIN_SECRET ist nicht konfiguriert.");
+  return crypto.createHmac("sha256", secret).update(String(expiresAt)).digest("hex");
+}
+
 async function checkSecret(secret: string) {
   await assertNotLocked();
   const expected = process.env.PLATFORM_ADMIN_SECRET;
@@ -22,25 +38,45 @@ async function checkSecret(secret: string) {
   }
 }
 
+// Wirft, wenn keine gueltige Sitzung vorliegt -- ersetzt die bisherigen
+// checkSecret(secret)-Aufrufe in allen anderen Funktionen dieser Datei.
+async function requireSession() {
+  const raw = cookies().get(SESSION_COOKIE)?.value;
+  const [expiresAtRaw, token] = raw?.split(".") ?? [];
+  const expiresAt = Number(expiresAtRaw);
+  if (!raw || !expiresAt || !token || Date.now() > expiresAt || token !== signSessionToken(expiresAt)) {
+    throw new Error("Sitzung abgelaufen oder ungültig. Bitte erneut anmelden.");
+  }
+}
+
 export async function verifyPlatformSecret(secret: string): Promise<{ ok: boolean; error?: string }> {
   try {
     await checkSecret(secret);
+    const expiresAt = Date.now() + SESSION_TTL_MS;
+    cookies().set(SESSION_COOKIE, `${expiresAt}.${signSessionToken(expiresAt)}`, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      path: "/",
+      maxAge: SESSION_TTL_MS / 1000,
+    });
     return { ok: true };
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : "Fehler." };
   }
 }
 
-export async function listInviteCodes(secret: string) {
-  await checkSecret(secret);
+export async function platformAdminLogout() {
+  cookies().delete(SESSION_COOKIE);
+}
+
+export async function listInviteCodes() {
+  await requireSession();
   return prisma.inviteCode.findMany({ orderBy: { createdAt: "desc" } });
 }
 
-export async function createInviteCode(
-  secret: string,
-  data: { note?: string; maxUses: number }
-) {
-  await checkSecret(secret);
+export async function createInviteCode(data: { note?: string; maxUses: number }) {
+  await requireSession();
   // 8 statt vorher 4 Bytes (64 statt 32 Bit Entropie) -- ein 4-Byte-Code war
   // mit genug Versuchen theoretisch erratbar, gerade weil Einladungscodes ein
   // ganzes neues, von allen anderen Firmen isoliertes Firmenkonto freischalten.
@@ -54,8 +90,8 @@ export async function createInviteCode(
   });
 }
 
-export async function deleteInviteCode(secret: string, id: string) {
-  await checkSecret(secret);
+export async function deleteInviteCode(id: string) {
+  await requireSession();
   await prisma.inviteCode.delete({ where: { id } });
 }
 
@@ -82,8 +118,8 @@ export type CompanyOverview = {
   users: CompanyPerson[];
 };
 
-export async function listCompaniesOverview(secret: string): Promise<CompanyOverview[]> {
-  await checkSecret(secret);
+export async function listCompaniesOverview(): Promise<CompanyOverview[]> {
+  await requireSession();
 
   const [companies, lastActivity] = await Promise.all([
     prisma.company.findMany({
@@ -134,19 +170,18 @@ export type EmailInviteOverview = {
   createdAt: Date;
 };
 
-export async function listEmailInvites(secret: string): Promise<EmailInviteOverview[]> {
-  await checkSecret(secret);
+export async function listEmailInvites(): Promise<EmailInviteOverview[]> {
+  await requireSession();
   return prisma.emailInvite.findMany({ orderBy: { createdAt: "desc" } });
 }
 
 export async function createEmailInvite(
-  secret: string,
   email: string,
   trialDays: number,
   maxUsers: number,
   name?: string
 ): Promise<{ error?: string }> {
-  await checkSecret(secret);
+  await requireSession();
 
   const cleanEmail = email.trim().toLowerCase();
   if (!cleanEmail || !cleanEmail.includes("@")) {
@@ -180,8 +215,8 @@ export async function createEmailInvite(
   return {};
 }
 
-export async function deleteEmailInvite(secret: string, id: string) {
-  await checkSecret(secret);
+export async function deleteEmailInvite(id: string) {
+  await requireSession();
   await prisma.emailInvite.delete({ where: { id } });
 }
 
@@ -195,8 +230,8 @@ function monthLabel(date: Date) {
   return date.toLocaleDateString("de-DE", { month: "short", year: "2-digit" });
 }
 
-export async function getPlatformStats(secret: string): Promise<PlatformStats> {
-  await checkSecret(secret);
+export async function getPlatformStats(): Promise<PlatformStats> {
+  await requireSession();
 
   const monthRanges: { label: string; gte: Date; lte: Date }[] = [];
   for (let i = 5; i >= 0; i--) {
@@ -224,27 +259,26 @@ export async function getPlatformStats(secret: string): Promise<PlatformStats> {
   };
 }
 
-export async function suspendCompany(secret: string, companyId: string) {
-  await checkSecret(secret);
+export async function suspendCompany(companyId: string) {
+  await requireSession();
   await prisma.company.update({ where: { id: companyId }, data: { suspendedAt: new Date() } });
 }
 
-export async function unsuspendCompany(secret: string, companyId: string) {
-  await checkSecret(secret);
+export async function unsuspendCompany(companyId: string) {
+  await requireSession();
   await prisma.company.update({ where: { id: companyId }, data: { suspendedAt: null } });
 }
 
-export async function toggleBillingExempt(secret: string, companyId: string, exempt: boolean) {
-  await checkSecret(secret);
+export async function toggleBillingExempt(companyId: string, exempt: boolean) {
+  await requireSession();
   await prisma.company.update({ where: { id: companyId }, data: { billingExempt: exempt } });
 }
 
 export async function deleteCompanyForAdmin(
-  secret: string,
   companyId: string,
   confirmName: string
 ): Promise<{ error?: string; success?: boolean }> {
-  await checkSecret(secret);
+  await requireSession();
 
   const company = await prisma.company.findUnique({ where: { id: companyId } });
   if (!company) return { error: "Firma nicht gefunden." };
@@ -266,11 +300,10 @@ export async function deleteCompanyForAdmin(
 // fuer den bestehenden, firmen-initiierten Weg). Setzt zugleich fehlgeschlagene
 // Login-Versuche/Sperre zurueck, damit ein gesperrtes Konto danach sofort nutzbar ist.
 export async function resetUserPasswordForAdmin(
-  secret: string,
   userId: string,
   newPassword: string
 ): Promise<{ error?: string; success?: boolean }> {
-  await checkSecret(secret);
+  await requireSession();
 
   if (newPassword.length < 8) {
     return { error: "Passwort muss mindestens 8 Zeichen haben." };
@@ -309,16 +342,15 @@ const EMAIL_SETTINGS_TEXT_FIELDS = [
 
 type EmailSettingsTextField = (typeof EMAIL_SETTINGS_TEXT_FIELDS)[number];
 
-export async function getSystemEmailSettingsForAdmin(secret: string): Promise<SystemEmailSettings> {
-  await checkSecret(secret);
+export async function getSystemEmailSettingsForAdmin(): Promise<SystemEmailSettings> {
+  await requireSession();
   return getSystemEmailSettings();
 }
 
 export async function updateSystemEmailSettings(
-  secret: string,
   data: Partial<Record<EmailSettingsTextField, string | null>>
 ): Promise<{ error?: string; success?: boolean }> {
-  await checkSecret(secret);
+  await requireSession();
 
   const requiredFields: EmailSettingsTextField[] = [
     "signatureName",
@@ -361,18 +393,21 @@ export async function updateSystemEmailSettings(
 
 // Ankuendigungs-Glocke im App-Header (components/top-bar.tsx): plattformweite
 // Mitteilungen an alle Kundenfirmen (neue Funktionen, neue Versionen), nur
-// hier ueber das Master-Passwort verwaltbar. Anzeige/Lesen laeuft separat
-// ueber lib/actions/announcements.ts (normale Session, kein Secret).
-export async function listAnnouncements(secret: string) {
-  await checkSecret(secret);
+// hier ueber die Plattform-Admin-Sitzung verwaltbar. Anzeige/Lesen laeuft
+// separat ueber lib/actions/announcements.ts (normale Nutzer-Session).
+export async function listAnnouncements() {
+  await requireSession();
   return prisma.announcement.findMany({ orderBy: { publishedAt: "desc" } });
 }
 
-export async function createAnnouncement(
-  secret: string,
-  data: { type: "FEATURE" | "VERSION"; teaser: string; title: string; body: string; version?: string }
-) {
-  await checkSecret(secret);
+export async function createAnnouncement(data: {
+  type: "FEATURE" | "VERSION";
+  teaser: string;
+  title: string;
+  body: string;
+  version?: string;
+}) {
+  await requireSession();
   if (!data.teaser.trim() || !data.title.trim() || !data.body.trim()) return;
   const announcement = await prisma.announcement.create({
     data: {
@@ -401,8 +436,8 @@ export async function createAnnouncement(
   }
 }
 
-export async function deleteAnnouncement(secret: string, id: string) {
-  await checkSecret(secret);
+export async function deleteAnnouncement(id: string) {
+  await requireSession();
   await prisma.announcement.delete({ where: { id } });
   revalidatePath("/", "layout");
 }
