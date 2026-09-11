@@ -11,11 +11,11 @@ import { deleteCompanyData } from "@/lib/company-deletion";
 // "Authorization: Bearer <CRON_SECRET>" mit (Vercels eigener, dokumentierter
 // Mechanismus fuer Cron-Routen).
 //
-// Drei voneinander unabhaengige taegliche Aufgaben in einer Route, weil
+// Vier voneinander unabhaengige taegliche Aufgaben in einer Route, weil
 // Vercels Hobby-Plan nur einen Cron-Zeitplan erlaubt (siehe Kontext der
-// zugehoerigen Planungsrunde) -- Aufgaben-Eskalation, Termin-Zusammenfassung
-// und die automatische Loeschung gekuendigter Konten teilen sich deshalb
-// denselben taeglichen Lauf.
+// zugehoerigen Planungsrunde) -- Aufgaben-Eskalation, Termin-Zusammenfassung,
+// die automatische Loeschung gekuendigter Konten und das Aufraeumen alter
+// Registrierungs-Versuche teilen sich deshalb denselben taeglichen Lauf.
 export async function GET(request: Request) {
   const expected = process.env.CRON_SECRET;
   const authHeader = request.headers.get("authorization");
@@ -23,13 +23,14 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Nicht autorisiert." }, { status: 401 });
   }
 
-  const [taskEscalations, dailyAppointments, canceledCompanyDeletions] = await Promise.all([
+  const [taskEscalations, dailyAppointments, canceledCompanyDeletions, signupAttemptCleanup] = await Promise.all([
     runTaskEscalations(),
     runDailyAppointments(),
     runCanceledCompanyDeletions(),
+    runSignupAttemptCleanup(),
   ]);
 
-  return NextResponse.json({ taskEscalations, dailyAppointments, canceledCompanyDeletions });
+  return NextResponse.json({ taskEscalations, dailyAppointments, canceledCompanyDeletions, signupAttemptCleanup });
 }
 
 // -----------------------------------------------------------------------
@@ -217,4 +218,20 @@ async function runCanceledCompanyDeletions() {
   }
 
   return { processed: companies.length, deleted };
+}
+
+// -----------------------------------------------------------------------
+// Aufraeumen alter Registrierungs-Versuche -- SignupAttempt speichert die
+// IP-Adresse jedes fehlgeschlagenen Registrierungsversuchs zur
+// Missbrauchserkennung (lib/actions/signup.ts, MAX_SIGNUP_ATTEMPTS_PER_HOUR).
+// Gebraucht wird davon nur ein rollierendes 1-Stunden-Fenster -- alles
+// aeltere als 24h (grosszuegige Sicherheitsmarge) ist fuer den eigentlichen
+// Zweck wertlos und wird aus Datensparsamkeit (Art. 5 Abs. 1 lit. e DSGVO)
+// geloescht, siehe Datenschutzerklaerung.
+// -----------------------------------------------------------------------
+async function runSignupAttemptCleanup() {
+  const { count } = await prisma.signupAttempt.deleteMany({
+    where: { createdAt: { lt: subDays(new Date(), 1) } },
+  });
+  return { deleted: count };
 }
