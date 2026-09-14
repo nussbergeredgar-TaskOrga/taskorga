@@ -52,7 +52,7 @@ export default async function DashboardLayout({
     >
       <div className="flex h-screen w-full overflow-hidden">
         <BrandColorStyle color={company.appAccentColor} />
-        <NavSidebar config={config} labels={labels} />
+        <NavSidebar config={config} labels={labels} showPlatformAdmin={company.isPlatformOwner} />
         <div className="flex flex-1 flex-col min-w-0">
           <TopBar
             announcements={announcements.items}
@@ -64,7 +64,7 @@ export default async function DashboardLayout({
           {!user.emailVerifiedAt && <EmailVerificationBanner email={user.email} />}
           <main className="flex-1 overflow-y-auto p-4 md:p-6 pb-20 md:pb-6">{children}</main>
         </div>
-        <MobileNav config={config} labels={labels} />
+        <MobileNav config={config} labels={labels} showPlatformAdmin={company.isPlatformOwner} />
         <HelpBook />
       </div>
     </TourProvider>

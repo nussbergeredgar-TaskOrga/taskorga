@@ -3,12 +3,20 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { MoreHorizontal, X } from "lucide-react";
+import { MoreHorizontal, ShieldCheck, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { NAV_CATALOG, type NavItemConfig } from "@/lib/nav-items";
 import { ICON_MAP } from "@/lib/nav-icons";
 
-export function MobileNav({ config, labels }: { config: NavItemConfig[]; labels?: Record<string, string> }) {
+export function MobileNav({
+  config,
+  labels,
+  showPlatformAdmin,
+}: {
+  config: NavItemConfig[];
+  labels?: Record<string, string>;
+  showPlatformAdmin?: boolean;
+}) {
   const pathname = usePathname();
   const [moreOpen, setMoreOpen] = useState(false);
   const byId = new Map(NAV_CATALOG.map((c) => [c.id, c]));
@@ -16,10 +24,12 @@ export function MobileNav({ config, labels }: { config: NavItemConfig[]; labels?
   // Erste 5 sichtbare Punkte direkt im unteren Menü, Rest unter "Mehr"
   const primary = visible.slice(0, 5);
   const overflow = visible.slice(5);
-  const overflowActive = overflow.some((c) => {
-    const item = byId.get(c.id);
-    return item && pathname?.startsWith(item.href);
-  });
+  const overflowActive =
+    overflow.some((c) => {
+      const item = byId.get(c.id);
+      return item && pathname?.startsWith(item.href);
+    }) || (showPlatformAdmin && pathname?.startsWith("/plattform-admin"));
+  const showMore = overflow.length > 0 || showPlatformAdmin;
 
   // "Mehr"-Menü automatisch schließen, sobald sich die Seite ändert
   useEffect(() => {
@@ -67,6 +77,20 @@ export function MobileNav({ config, labels }: { config: NavItemConfig[]; labels?
                   </Link>
                 );
               })}
+              {showPlatformAdmin && (
+                <Link
+                  href="/plattform-admin"
+                  className={cn(
+                    "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                    pathname?.startsWith("/plattform-admin")
+                      ? "bg-brand-50 text-brand-700"
+                      : "text-ink-700 hover:bg-ink-50"
+                  )}
+                >
+                  <ShieldCheck size={18} />
+                  Plattform-Verwaltung
+                </Link>
+              )}
             </div>
           </div>
         </div>
@@ -97,7 +121,7 @@ export function MobileNav({ config, labels }: { config: NavItemConfig[]; labels?
               </Link>
             );
           })}
-          {overflow.length > 0 && (
+          {showMore && (
             <button
               onClick={() => setMoreOpen((o) => !o)}
               className={cn(

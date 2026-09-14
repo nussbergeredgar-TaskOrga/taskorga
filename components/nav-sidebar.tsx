@@ -2,12 +2,21 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { NAV_CATALOG, type NavItemConfig } from "@/lib/nav-items";
 import { ICON_MAP } from "@/lib/nav-icons";
 import { APP_VERSION } from "@/lib/app-version";
 
-export function NavSidebar({ config, labels }: { config: NavItemConfig[]; labels?: Record<string, string> }) {
+export function NavSidebar({
+  config,
+  labels,
+  showPlatformAdmin,
+}: {
+  config: NavItemConfig[];
+  labels?: Record<string, string>;
+  showPlatformAdmin?: boolean;
+}) {
   const pathname = usePathname();
   const byId = new Map(NAV_CATALOG.map((c) => [c.id, c]));
   const visible = [...config].filter((c) => c.visible).sort((a, b) => a.order - b.order);
@@ -43,6 +52,22 @@ export function NavSidebar({ config, labels }: { config: NavItemConfig[]; labels
           );
         })}
       </nav>
+      {showPlatformAdmin && (
+        <div className="px-3 pb-2">
+          <Link
+            href="/plattform-admin"
+            className={cn(
+              "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+              pathname?.startsWith("/plattform-admin")
+                ? "bg-brand-50 text-brand-700"
+                : "text-ink-500 hover:bg-ink-50 hover:text-ink-900"
+            )}
+          >
+            <ShieldCheck size={18} strokeWidth={2} />
+            Plattform-Verwaltung
+          </Link>
+        </div>
+      )}
       <div className="px-6 py-3 text-xs text-ink-300 space-y-1">
         <div>Version {APP_VERSION}</div>
         <div className="space-x-1.5">
