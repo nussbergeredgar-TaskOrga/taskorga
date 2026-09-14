@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   GripVertical,
   X,
@@ -20,6 +21,7 @@ import {
   XCircle,
   CalendarClock,
   CalendarCheck,
+  RefreshCw,
 } from "lucide-react";
 import { saveDashboardLayout } from "@/lib/actions/dashboard";
 import { KpiCard } from "@/components/kpi-card";
@@ -148,6 +150,8 @@ export function DashboardGrid({
   dashboardId?: string | null;
 }) {
   const tour = useTour();
+  const router = useRouter();
+  const [refreshing, startRefreshTransition] = useTransition();
   const [layout, setLayout] = useState(initialLayout);
   const [editing, setEditing] = useState(false);
   const [editingLabelId, setEditingLabelId] = useState<string | null>(null);
@@ -275,9 +279,24 @@ export function DashboardGrid({
     setEditingLabelId(null);
   }
 
+  // Holt alle Kennzahlen/Kacheln serverseitig neu, ohne die Seite komplett
+  // neu zu laden (kein Verlust von Scroll-Position/Bearbeitungsstatus) --
+  // router.refresh() fuehrt die Server Components der aktuellen Route erneut aus.
+  function refresh() {
+    startRefreshTransition(() => router.refresh());
+  }
+
   return (
     <div className="space-y-4">
-      <div className="flex justify-end">
+      <div className="flex justify-end gap-2">
+        <button
+          onClick={refresh}
+          disabled={refreshing}
+          className="flex items-center gap-1.5 rounded-lg border border-ink-100 px-3 py-1.5 text-xs font-medium text-ink-700 hover:bg-ink-50 transition-colors disabled:opacity-60"
+        >
+          <RefreshCw size={14} className={refreshing ? "animate-spin" : undefined} />
+          Aktualisieren
+        </button>
         <button
           data-tour="dashboard-edit-toggle"
           onClick={() => {
