@@ -3,7 +3,7 @@ import type Stripe from "stripe";
 import { stripe } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
 import { mapStripeStatus } from "@/lib/subscription-pricing";
-import { sendAccountDeletionWarningEmail } from "@/lib/email";
+import { sendAccountDeletionWarningEmail, sendTrialEndingSoonEmail } from "@/lib/email";
 
 // Erste Route im Projekt, die den rohen Anfrage-Body braucht: Stripes
 // Signaturpruefung (stripe.webhooks.constructEvent) berechnet die Signatur
@@ -87,6 +87,39 @@ export async function POST(request: Request) {
           await prisma.company.update({ where: { id: company.id }, data: { deletionWarningEmailSentAt: new Date() } });
         } catch (err) {
           console.error(`Loesch-Warnmail fuer Firma ${company.id} fehlgeschlagen:`, err);
+        }
+      }
+      break;
+    }
+    case "customer.subscription.trial_will_end": {
+      const subscription = event.data.object as Stripe.Subscription;
+      const companies = await prisma.company.findMany({
+        where: { stripeSubscriptionId: subscription.id },
+        select: { id: true, name: true, email: true, trialEndingWarningEmailSentAt: true },
+      });
+
+      for (const company of companies) {
+        // Nur einmal pro Testphase verschicken -- Stripe kann Webhook-Zustellungen
+        // wiederholen, und dieses Ereignis feuert ohnehin nur einmal je Abo.
+        if (company.trialEndingWarningEmailSentAt || !subscription.trial_end) continue;
+
+        try {
+          const admins = await prisma.user.findMany({
+            where: { companyId: company.id, role: { name: "Admin" } },
+            select: { email: true, name: true },
+          });
+          const recipients = admins.length > 0 ? admins : company.email ? [{ email: company.email, name: null }] : [];
+          for (const recipient of recipients) {
+            await sendTrialEndingSoonEmail({
+              to: recipient.email,
+              recipientName: recipient.name,
+              companyName: company.name,
+              trialEndsAt: new Date(subscription.trial_end * 1000),
+            });
+          }
+          await prisma.company.update({ where: { id: company.id }, data: { trialEndingWarningEmailSentAt: new Date() } });
+        } catch (err) {
+          console.error(`Trial-Ende-Erinnerung fuer Firma ${company.id} fehlgeschlagen:`, err);
         }
       }
       break;

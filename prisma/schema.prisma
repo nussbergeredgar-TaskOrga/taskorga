@@ -86,6 +86,10 @@ model Company {
   // bei Stripe-Webhook-Retries -- gleiches Idempotenz-Muster wie
   // Task.escalationLevelSent/updateRequestedAt.
   deletionWarningEmailSentAt DateTime?
+  // Verhindert Mehrfachversand der "Testphase endet bald"-Erinnerungsmail bei
+  // Stripe-Webhook-Retries fuer dasselbe "customer.subscription.trial_will_end"-
+  // Ereignis -- gleiches Idempotenz-Muster wie deletionWarningEmailSentAt.
+  trialEndingWarningEmailSentAt DateTime?
   // Nur gesetzt, wenn die Firma ueber eine E-Mail-Einladung mit begrenzter
   // Platzanzahl entstanden ist (siehe EmailInvite unten) -- null bedeutet
   // unbegrenzt (regulaere Selbstregistrierung, Kosten regeln sich ueber die

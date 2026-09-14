@@ -293,6 +293,53 @@ export async function sendAccountDeletionWarningEmail({
   });
 }
 
+// Kurz vor Ablauf der Testphase (Stripe "customer.subscription.trial_will_end",
+// feuert standardmaessig ~3 Tage vorher), siehe app/api/webhooks/stripe/route.ts --
+// informiert alle Admins, damit eine fehlende Zahlungsmethode nicht erst durch die
+// Sperrung nach "invoice.payment_failed" auffaellt.
+export async function sendTrialEndingSoonEmail({
+  to,
+  recipientName,
+  companyName,
+  trialEndsAt,
+}: {
+  to: string;
+  recipientName?: string | null;
+  companyName: string;
+  trialEndsAt: Date;
+}) {
+  if (!resend) {
+    throw new Error("E-Mail-Versand ist nicht eingerichtet (RESEND_API_KEY).");
+  }
+
+  const settings = await getSystemEmailSettings();
+  const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
+  const formattedDate = trialEndsAt.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
+
+  await resend.emails.send({
+    from: process.env.EMAIL_FROM || "TaskOrga <onboarding@resend.dev>",
+    to,
+    subject: `Testphase für „${companyName}" endet am ${formattedDate}`,
+    html: renderSystemEmail({
+      branding: settings,
+      greetingName: recipientName ?? undefined,
+      bodyHtml: `
+        <p style="margin:0 0 14px;">
+          Die kostenlose Testphase für „${companyName}" endet am <strong>${formattedDate}</strong>.
+          Ist bis dahin keine Zahlungsmethode hinterlegt, kann die erste Abbuchung fehlschlagen und
+          der Zugriff wird vorübergehend gesperrt.
+        </p>
+        <p style="margin:0 0 14px;">
+          Hinterlege jetzt eine Zahlungsmethode, damit es nahtlos weitergeht:
+        </p>
+        <p style="margin:0 0 14px;">
+          <a href="${baseUrl}/einstellungen/firma" style="color:#2F5FFF;">${baseUrl}/einstellungen/firma</a>
+        </p>
+      `,
+    }),
+  });
+}
+
 // Nach tatsaechlich vollzogener automatischer Loeschung, siehe
 // app/api/cron/daily/route.ts -- letzte Bestaetigung, da danach keine Firmen-
 // oder Nutzerdaten mehr existieren, an die sich sonst erinnert werden koennte.
