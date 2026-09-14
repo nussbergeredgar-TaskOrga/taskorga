@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { sendTaskOverdueEmail, sendAccountDeletedEmail } from "@/lib/email";
 import { sendPushToUser } from "@/lib/push";
 import { deleteCompanyData } from "@/lib/company-deletion";
+import { createDailyBackupBranch } from "@/lib/neon-backup";
 
 // Von Vercel Cron einmal taeglich aufgerufen (vercel.json), kein eingeloggter
 // Nutzer -- Absicherung wie bei app/api/webhooks/stripe/route.ts, nur per
@@ -11,11 +12,12 @@ import { deleteCompanyData } from "@/lib/company-deletion";
 // "Authorization: Bearer <CRON_SECRET>" mit (Vercels eigener, dokumentierter
 // Mechanismus fuer Cron-Routen).
 //
-// Vier voneinander unabhaengige taegliche Aufgaben in einer Route, weil
+// Fuenf voneinander unabhaengige taegliche Aufgaben in einer Route, weil
 // Vercels Hobby-Plan nur einen Cron-Zeitplan erlaubt (siehe Kontext der
 // zugehoerigen Planungsrunde) -- Aufgaben-Eskalation, Termin-Zusammenfassung,
-// die automatische Loeschung gekuendigter Konten und das Aufraeumen alter
-// Registrierungs-Versuche teilen sich deshalb denselben taeglichen Lauf.
+// die automatische Loeschung gekuendigter Konten, das Aufraeumen alter
+// Registrierungs-Versuche und die Neon-Backup-Branch teilen sich deshalb
+// denselben taeglichen Lauf.
 export async function GET(request: Request) {
   const expected = process.env.CRON_SECRET;
   const authHeader = request.headers.get("authorization");
@@ -23,14 +25,22 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Nicht autorisiert." }, { status: 401 });
   }
 
-  const [taskEscalations, dailyAppointments, canceledCompanyDeletions, signupAttemptCleanup] = await Promise.all([
-    runTaskEscalations(),
-    runDailyAppointments(),
-    runCanceledCompanyDeletions(),
-    runSignupAttemptCleanup(),
-  ]);
+  const [taskEscalations, dailyAppointments, canceledCompanyDeletions, signupAttemptCleanup, backupBranch] =
+    await Promise.all([
+      runTaskEscalations(),
+      runDailyAppointments(),
+      runCanceledCompanyDeletions(),
+      runSignupAttemptCleanup(),
+      createDailyBackupBranch(),
+    ]);
 
-  return NextResponse.json({ taskEscalations, dailyAppointments, canceledCompanyDeletions, signupAttemptCleanup });
+  return NextResponse.json({
+    taskEscalations,
+    dailyAppointments,
+    canceledCompanyDeletions,
+    signupAttemptCleanup,
+    backupBranch,
+  });
 }
 
 // -----------------------------------------------------------------------
