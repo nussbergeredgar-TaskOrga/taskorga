@@ -32,7 +32,12 @@ type View = "list" | "chapter" | "support";
 
 export function HelpBook() {
   const pathname = usePathname();
-  const [open, setOpen] = useState(false);
+  // Antippen des Icons zeigt zuerst ein kleines Auswahlmenü ("Support
+  // kontaktieren" / "Hilfe") statt direkt in die Hilfe-Uebersicht zu
+  // springen -- so bleibt es EIN Icon (spart Platz, v.a. auf dem Handy),
+  // aber der Nutzer entscheidet explizit, wo er hin moechte.
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [panelOpen, setPanelOpen] = useState(false);
   const [view, setView] = useState<View>("list");
   const [query, setQuery] = useState("");
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -64,13 +69,26 @@ export function HelpBook() {
 
   const activeChapter = HELP_CHAPTERS.find((c) => c.id === activeId);
 
-  function openPanel() {
+  function toggleMenu() {
     setArea(getCurrentNavAreaId(pathname));
-    setOpen(true);
+    setMenuOpen((o) => !o);
+  }
+
+  function chooseHelp() {
+    setMenuOpen(false);
+    setView("list");
+    setPanelOpen(true);
+  }
+
+  function chooseSupport() {
+    setMenuOpen(false);
+    setView("support");
+    setPanelOpen(true);
   }
 
   function close() {
-    setOpen(false);
+    setPanelOpen(false);
+    setMenuOpen(false);
     setQuery("");
     setActiveId(null);
     setView("list");
@@ -84,9 +102,15 @@ export function HelpBook() {
     setSubmitted(false);
   }
 
-  function backToList() {
-    setActiveId(null);
-    setView("list");
+  // Aus einem Kapitel zurueck zur Hilfe-Uebersicht; von der Hilfe-Uebersicht
+  // bzw. dem Support-Formular selbst zurueck zum kleinen Auswahlmenue.
+  function goBack() {
+    if (activeChapter) {
+      setActiveId(null);
+      return;
+    }
+    setPanelOpen(false);
+    setMenuOpen(true);
   }
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -132,14 +156,38 @@ export function HelpBook() {
   return (
     <>
       <button
-        onClick={openPanel}
+        onClick={toggleMenu}
         className="fixed bottom-20 right-4 md:bottom-5 md:right-5 z-40 flex items-center justify-center h-12 w-12 rounded-full bg-brand-500 text-white shadow-cardHover hover:bg-brand-600 transition-colors"
         aria-label="Hilfe & Support öffnen"
       >
         <BookOpenText size={20} />
       </button>
 
-      {open && (
+      {menuOpen && (
+        <div className="fixed inset-0 z-50" onClick={() => setMenuOpen(false)}>
+          <div
+            className="absolute bottom-36 right-4 md:bottom-20 md:right-5 w-56 rounded-lg border border-ink-100 bg-surface shadow-cardHover p-1.5"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={chooseSupport}
+              className="flex w-full items-center gap-2.5 rounded-md px-3 py-2.5 text-left hover:bg-ink-50 transition-colors"
+            >
+              <LifeBuoy size={17} className="text-brand-700 shrink-0" />
+              <span className="text-sm font-medium text-ink-900">Support kontaktieren</span>
+            </button>
+            <button
+              onClick={chooseHelp}
+              className="flex w-full items-center gap-2.5 rounded-md px-3 py-2.5 text-left hover:bg-ink-50 transition-colors"
+            >
+              <BookOpenText size={17} className="text-brand-500 shrink-0" />
+              <span className="text-sm font-medium text-ink-900">Hilfe</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {panelOpen && (
         <div
           className="fixed inset-0 z-50 flex items-end justify-end p-4 pb-20 md:pb-6 sm:p-6"
           onClick={close}
@@ -150,13 +198,9 @@ export function HelpBook() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center gap-2 p-4 border-b border-ink-100 shrink-0">
-              {activeChapter || view === "support" ? (
-                <button onClick={backToList} className="text-ink-500 hover:text-ink-900 transition-colors" aria-label="Zurück zur Übersicht">
-                  <ArrowLeft size={18} />
-                </button>
-              ) : (
-                <BookOpenText size={18} className="text-brand-500" />
-              )}
+              <button onClick={goBack} className="text-ink-500 hover:text-ink-900 transition-colors" aria-label="Zurück">
+                <ArrowLeft size={18} />
+              </button>
               <h2 className="font-display font-semibold text-ink-900 flex-1 truncate">
                 {view === "support" ? "Support kontaktieren" : activeChapter ? activeChapter.title : "Hilfe"}
               </h2>
@@ -166,14 +210,7 @@ export function HelpBook() {
             </div>
 
             {view === "list" && !activeChapter && (
-              <div className="p-3 border-b border-ink-100 shrink-0 space-y-2">
-                <button
-                  onClick={() => setView("support")}
-                  className="flex w-full items-center gap-2.5 rounded-lg bg-brand-50 px-3 py-2.5 text-left hover:bg-brand-100 transition-colors"
-                >
-                  <LifeBuoy size={17} className="text-brand-700 shrink-0" />
-                  <span className="text-sm font-medium text-brand-700">Support kontaktieren</span>
-                </button>
+              <div className="p-3 border-b border-ink-100 shrink-0">
                 <div className="relative">
                   <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-300" />
                   <input
@@ -194,7 +231,7 @@ export function HelpBook() {
                     <p className="text-sm font-medium text-ink-900">Danke, dein Ticket ist angekommen.</p>
                     <p className="text-xs text-ink-500">Wir melden uns so schnell wie möglich.</p>
                     <button
-                      onClick={backToList}
+                      onClick={close}
                       className="rounded-lg bg-brand-500 text-white text-sm font-medium px-4 py-2 hover:bg-brand-600 transition-colors"
                     >
                       Fertig
