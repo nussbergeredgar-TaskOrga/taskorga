@@ -7,6 +7,7 @@ export type RecordLink = {
   invoiceId?: string;
   appointmentId?: string;
   inquiryId?: string;
+  taskId?: string;
 };
 
 // Pfade, die nach einer Änderung am jeweiligen Datensatz neu geladen werden müssen
@@ -18,6 +19,7 @@ export function pathsFor(link: RecordLink): string[] {
   if (link.invoiceId) paths.push(`/finanzen/${link.invoiceId}`);
   if (link.appointmentId) paths.push(`/termine/${link.appointmentId}`);
   if (link.inquiryId) paths.push(`/anfragen/${link.inquiryId}`);
+  if (link.taskId) paths.push(`/aufgaben/${link.taskId}`);
   return paths;
 }
 
@@ -31,6 +33,7 @@ export async function verifyLinkOwnership(companyId: string, link: RecordLink): 
   if (link.invoiceId) checks.push(prisma.invoice.findFirst({ where: { id: link.invoiceId, companyId } }));
   if (link.appointmentId) checks.push(prisma.appointment.findFirst({ where: { id: link.appointmentId, companyId } }));
   if (link.inquiryId) checks.push(prisma.inquiry.findFirst({ where: { id: link.inquiryId, companyId } }));
+  if (link.taskId) checks.push(prisma.task.findFirst({ where: { id: link.taskId, companyId } }));
   if (checks.length === 0) return true;
   const results = await Promise.all(checks);
   return results.every(Boolean);

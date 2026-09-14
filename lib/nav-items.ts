@@ -35,3 +35,14 @@ export const DEFAULT_NAV: NavItemConfig[] = DEFAULT_ORDER.map((id, i) => ({
   visible: true,
   order: i,
 }));
+
+// Fuer die Bereichs-Vorauswahl im Support-Formular (components/help-book.tsx) --
+// laengster passender href zuerst, damit z.B. "/kunden-radar" nicht
+// faelschlich auf "kunden" (href "/kunden") matcht.
+export function getCurrentNavAreaId(pathname: string | null): string {
+  if (!pathname) return "sonstiges";
+  const match = [...NAV_CATALOG]
+    .sort((a, b) => b.href.length - a.href.length)
+    .find((item) => pathname.startsWith(item.href));
+  return match?.id ?? "sonstiges";
+}

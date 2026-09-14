@@ -8,6 +8,7 @@ import { getCompanyUsers } from "@/lib/actions/free-tasks";
 import { getFieldConfig } from "@/lib/actions/field-config";
 import { TaskForm } from "@/components/task-form";
 import { TaskDeleteButton } from "@/components/task-delete-button";
+import { DocumentTab } from "@/components/document-tab";
 
 const LINK_ROUTES: Record<string, (id: string) => string> = {
   inquiryId: (id) => `/anfragen/${id}`,
@@ -28,7 +29,10 @@ const LINK_LABELS: Record<string, string> = {
 export default async function AufgabeDetailPage({ params }: { params: { id: string } }) {
   const company = await getCurrentCompany();
   const [task, users, customers, linkables, fieldConfig] = await Promise.all([
-    prisma.task.findFirst({ where: { id: params.id, companyId: company.id } }),
+    prisma.task.findFirst({
+      where: { id: params.id, companyId: company.id },
+      include: { documents: { orderBy: { createdAt: "desc" } } },
+    }),
     getCompanyUsers(),
     prisma.customer.findMany({
       where: { companyId: company.id },
@@ -96,6 +100,11 @@ export default async function AufgabeDetailPage({ params }: { params: { id: stri
           linkables={linkables}
           fieldConfig={fieldConfig}
         />
+      </div>
+
+      <div className="rounded-card border border-ink-100 bg-surface p-6 shadow-card max-w-xl">
+        <h2 className="font-display font-semibold text-ink-900 mb-3">Dokumente</h2>
+        <DocumentTab link={{ taskId: task.id }} documents={task.documents} />
       </div>
     </div>
   );

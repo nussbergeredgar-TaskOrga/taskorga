@@ -20,6 +20,7 @@ export async function addDocument(
       quoteId: link.quoteId,
       projectId: link.projectId,
       invoiceId: link.invoiceId,
+      taskId: link.taskId,
       fileName: data.fileName,
       fileUrl: data.fileUrl,
       mimeType: data.mimeType,
@@ -27,18 +28,22 @@ export async function addDocument(
     },
   });
 
-  await prisma.activity.create({
-    data: {
-      companyId: company.id,
-      customerId: link.customerId,
-      quoteId: link.quoteId,
-      projectId: link.projectId,
-      invoiceId: link.invoiceId,
-      inquiryId: link.inquiryId,
-      type: "document.added",
-      message: `Dokument „${data.fileName}“ wurde hochgeladen.`,
-    },
-  });
+  // Activity kennt (noch) keinen taskId -- ein rein an eine Aufgabe gehaengtes
+  // Dokument bekaeme sonst einen Activity-Eintrag ohne jede Verknuepfung.
+  if (link.customerId || link.quoteId || link.projectId || link.invoiceId || link.inquiryId) {
+    await prisma.activity.create({
+      data: {
+        companyId: company.id,
+        customerId: link.customerId,
+        quoteId: link.quoteId,
+        projectId: link.projectId,
+        invoiceId: link.invoiceId,
+        inquiryId: link.inquiryId,
+        type: "document.added",
+        message: `Dokument „${data.fileName}“ wurde hochgeladen.`,
+      },
+    });
+  }
 
   for (const path of pathsFor(link)) revalidatePath(path);
 }
