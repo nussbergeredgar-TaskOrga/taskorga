@@ -104,7 +104,7 @@ export function DocumentAcceptanceFlow({
             onChange={(e) => setConfirmed(e.target.checked)}
             className="mt-0.5 rounded border-ink-200 text-brand-600 focus:ring-brand-500"
           />
-          <span>Ich habe „{currentStep!.label}" gelesen und akzeptiere es.</span>
+          <span>Ich habe „{currentStep!.label}" gelesen und stimme zu.</span>
         </label>
 
         <button
