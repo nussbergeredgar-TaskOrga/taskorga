@@ -3,7 +3,7 @@
 import { useMemo, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { upload } from "@vercel/blob/client";
-import { BookOpenText, X, ArrowLeft, Search, LifeBuoy, Upload, Camera, Trash2, ImageIcon } from "lucide-react";
+import { BookOpenText, Headset, X, ArrowLeft, Search, LifeBuoy, Upload, Camera, Trash2, ImageIcon } from "lucide-react";
 import { HELP_CHAPTERS, type HelpChapter } from "@/lib/help-content";
 import { NAV_CATALOG, getCurrentNavAreaId } from "@/lib/nav-items";
 import { submitSupportTicket, type SupportAttachment } from "@/lib/actions/support";
@@ -161,6 +161,12 @@ export function HelpBook() {
         aria-label="Hilfe & Support öffnen"
       >
         <BookOpenText size={20} />
+        {/* Kleines Badge signalisiert, dass sich hinter dem Buch-Icon auch der
+            Support verbirgt, statt nur Hilfe-Inhalte -- ohne ein zweites,
+            separates Icon zu brauchen (Platzersparnis, v.a. auf dem Handy). */}
+        <span className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-turquoise-500 text-white ring-2 ring-surface">
+          <Headset size={11} strokeWidth={2.5} />
+        </span>
       </button>
 
       {menuOpen && (
