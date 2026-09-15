@@ -4,7 +4,6 @@ import { TopBar } from "@/components/top-bar";
 import { MobileNav } from "@/components/mobile-nav";
 import { HelpBook } from "@/components/help-book";
 import { BrandColorStyle } from "@/components/brand-color-style";
-import { EmailVerificationBanner } from "@/components/email-verification-banner";
 import { TourProvider } from "@/components/dashboard-tour";
 import { getNavConfig, getNavLabels } from "@/lib/actions/nav";
 import { getAnnouncementsForBell } from "@/lib/actions/announcements";
@@ -30,8 +29,15 @@ export default async function DashboardLayout({
     getAnnouncementsForBell(),
   ]);
 
-  // Muss vor jedem Dashboard-Zugriff erfuellt sein -- ausserhalb dieser Gruppe,
-  // damit keine Redirect-Schleife entsteht (wie beim Abrechnungs-Gate).
+  // Beide Gates ausserhalb dieser Gruppe, damit keine Redirect-Schleife
+  // entsteht (wie beim Abrechnungs-Gate). E-Mail-Verifizierung zuerst -- ohne
+  // bestaetigte Adresse ist noch nicht einmal sicher, dass der Account
+  // wirklich dem angegebenen Inhaber gehoert, bevor er z.B. Rechtsdokumente
+  // "unterschreibt". Frueher gab es hier nur einen Hinweis-Banner, der den
+  // Zugriff trotzdem erlaubte -- jetzt ein harter Riegel.
+  if (!user.emailVerifiedAt) {
+    redirect("/email-verifizieren");
+  }
   if (!user.agbAcceptedAt || !user.avvAcceptedAt || !user.datenschutzAcceptedAt) {
     redirect("/dokumente-bestaetigen");
   }
@@ -61,7 +67,6 @@ export default async function DashboardLayout({
             isAdmin={user.role?.name === "Admin"}
             updateRequestedAt={company.updateRequestedAt}
           />
-          {!user.emailVerifiedAt && <EmailVerificationBanner email={user.email} />}
           <main className="flex-1 overflow-y-auto p-4 md:p-6 pb-20 md:pb-6">{children}</main>
         </div>
         <MobileNav config={config} labels={labels} showPlatformAdmin={company.isPlatformOwner} />
