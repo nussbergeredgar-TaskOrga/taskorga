@@ -3,23 +3,26 @@ import { prisma } from "@/lib/prisma";
 import { WorkflowStepsManager } from "@/components/workflow-steps-manager";
 import { CustomerTabsManager } from "@/components/customer-tabs-manager";
 import { AppointmentTypesManager } from "@/components/appointment-types-manager";
+import { TagsManager } from "@/components/tags-manager";
 import { FieldConfigManager } from "@/components/field-config-manager";
 import { SettingsSection } from "@/components/settings-section";
 import { getCustomerTabsConfig } from "@/lib/actions/customer-tabs";
 import { getAppointmentTypes } from "@/lib/actions/appointment-types";
+import { getTagCatalog } from "@/lib/actions/tags";
 import { getFieldConfig } from "@/lib/actions/field-config";
 import { FIELD_CATALOGS } from "@/lib/field-config-catalog";
 
 export default async function VertriebSettingsPage() {
   const admin = await requireAdmin();
 
-  const [steps, customerTabs, appointmentTypes, customerFieldConfig, inquiryFieldConfig, taskFieldConfig, appointmentFieldConfig, quoteFieldConfig, contactFieldConfig] = await Promise.all([
+  const [steps, customerTabs, appointmentTypes, tagCatalog, customerFieldConfig, inquiryFieldConfig, taskFieldConfig, appointmentFieldConfig, quoteFieldConfig, contactFieldConfig] = await Promise.all([
     prisma.workflowStep.findMany({
       where: { companyId: admin.companyId },
       orderBy: { order: "asc" },
     }),
     getCustomerTabsConfig(),
     getAppointmentTypes(),
+    getTagCatalog(),
     getFieldConfig("customer"),
     getFieldConfig("inquiry"),
     getFieldConfig("task"),
@@ -49,6 +52,13 @@ export default async function VertriebSettingsPage() {
         description="Diese Arten stehen bei der Terminanlage zur Auswahl — gilt firmenweit für alle Nutzer."
       >
         <AppointmentTypesManager types={appointmentTypes} />
+      </SettingsSection>
+
+      <SettingsSection
+        title="Tags"
+        description="Verschlagworte für Kunden, Anfragen, Termine, Angebote, Aufträge, Rechnungen und Aufgaben. Gruppen sind optional und dienen nur der Übersicht — gilt firmenweit für alle Nutzer."
+      >
+        <TagsManager catalog={tagCatalog} />
       </SettingsSection>
 
       <SettingsSection

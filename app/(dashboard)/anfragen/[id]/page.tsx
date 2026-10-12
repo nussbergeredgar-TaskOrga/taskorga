@@ -9,6 +9,7 @@ import { InquiryAmount } from "@/components/inquiry-amount";
 import { DeleteInquiryButton } from "@/components/delete-inquiry-button";
 import { RecordTasks } from "@/components/record-tasks";
 import { DocumentTab } from "@/components/document-tab";
+import { RecordTags } from "@/components/record-tags";
 
 export default async function AnfrageDetailPage({ params }: { params: { id: string } }) {
   const company = await getCurrentCompany();
@@ -53,6 +54,9 @@ export default async function AnfrageDetailPage({ params }: { params: { id: stri
             </Link>
             {inquiry.source && ` · Quelle: ${inquiry.source}`}
           </p>
+          <div className="mt-2">
+            <RecordTags entity="inquiry" recordId={inquiry.id} />
+          </div>
           <div className="mt-2">
             <InquiryAmount inquiryId={inquiry.id} amount={inquiry.amount != null ? Number(inquiry.amount) : null} />
           </div>

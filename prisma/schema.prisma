@@ -138,6 +138,8 @@ model Company {
   fieldConfigs      FieldConfig[]
   absences          Absence[]
   customCharts      CustomChart[]
+  tagGroups TagGroup[]
+  tags      Tag[]
 }
 
 // Admin kann pro Formular (z.B. "customer") einzelne Felder ausblenden oder
@@ -171,6 +173,49 @@ model AppointmentTypeOption {
   createdAt DateTime @default(now())
 
   @@unique([companyId, order])
+}
+
+// Vom Admin frei definierbare Tags (Verschlagwortung) fuer Kunden, Anfragen,
+// Termine, Angebote, Auftraege, Rechnungen und Aufgaben. Optional in Gruppen
+// gegliedert (z.B. Gruppe "Herkunft": Messe, Empfehlung).
+model TagGroup {
+  id        String  @id @default(cuid())
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id])
+
+  name  String
+  order Int
+
+  tags Tag[]
+
+  createdAt DateTime @default(now())
+
+  @@unique([companyId, name])
+  @@index([companyId])
+}
+
+model Tag {
+  id        String  @id @default(cuid())
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id])
+
+  groupId String?
+  group   TagGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
+
+  name String
+
+  customers    Customer[]
+  inquiries    Inquiry[]
+  appointments Appointment[]
+  quotes       Quote[]
+  projects     Project[]
+  invoices     Invoice[]
+  tasks        Task[]
+
+  createdAt DateTime @default(now())
+
+  @@unique([companyId, name])
+  @@index([companyId])
 }
 
 // Einladungscodes für die Registrierung neuer Firmenkonten. Nicht an eine
@@ -455,6 +500,7 @@ model Customer {
 
   @@unique([companyId, number])
   @@index([companyId])
+  tags Tag[]
 }
 
 enum CustomerType {
@@ -521,6 +567,7 @@ model Inquiry {
   stepEntries  InquiryStepEntry[]
 
   @@index([companyId, status])
+  tags Tag[]
 }
 
 // Die Schritte selbst sind pro Firma frei konfigurierbar (Wording,
@@ -600,6 +647,7 @@ model Appointment {
   tasks      Task[]
   activities Activity[]
   comments   Comment[]
+  tags Tag[]
 }
 
 enum AppointmentStatus {
@@ -650,6 +698,7 @@ model Quote {
 
   @@unique([companyId, number])
   @@index([companyId, status])
+  tags Tag[]
 }
 
 enum QuoteStatus {
@@ -708,6 +757,7 @@ model Project {
 
   @@unique([companyId, number])
   @@index([companyId, status])
+  tags Tag[]
 }
 
 enum ProjectStatus {
@@ -761,6 +811,7 @@ model Invoice {
 
   @@unique([companyId, number])
   @@index([companyId, status])
+  tags Tag[]
 }
 
 enum InvoiceStatus {
@@ -863,6 +914,7 @@ model Task {
   updatedAt DateTime @updatedAt
 
   @@index([companyId, status])
+  tags Tag[]
 }
 
 enum TaskStatus {

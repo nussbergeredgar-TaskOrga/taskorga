@@ -24,6 +24,7 @@ type CustomerRow = {
   customerSince: string; // ISO
   projectsCount: number;
   invoicesCount: number;
+  tags: string[];
 };
 
 const TYPE_OPTIONS = [
@@ -55,6 +56,8 @@ function mobileFieldValue(col: ColumnConfig, c: CustomerRow): string {
       return String(c.projectsCount);
     case "invoicesCount":
       return String(c.invoicesCount);
+    case "tags":
+      return c.tags.join(", ");
     default:
       return "";
   }
@@ -185,6 +188,15 @@ export function CustomersTableView({
                       )}
                       {col.key === "projectsCount" && <span className="font-mono text-ink-500">{c.projectsCount}</span>}
                       {col.key === "invoicesCount" && <span className="font-mono text-ink-500">{c.invoicesCount}</span>}
+                      {col.key === "tags" && (
+                        <span className="flex items-center gap-1 overflow-hidden">
+                          {c.tags.map((t) => (
+                            <span key={t} className="shrink-0 rounded-full bg-brand-50 px-2 py-0.5 text-xs font-medium text-brand-700">
+                              {t}
+                            </span>
+                          ))}
+                        </span>
+                      )}
                     </td>
                   ))}
                 </tr>

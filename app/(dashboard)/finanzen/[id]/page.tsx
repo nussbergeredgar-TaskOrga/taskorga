@@ -6,6 +6,7 @@ import { requirePermission } from "@/lib/session";
 import { InvoiceActions } from "@/components/invoice-actions";
 import { RecordNotes } from "@/components/record-notes";
 import { RecordTasks } from "@/components/record-tasks";
+import { RecordTags } from "@/components/record-tags";
 
 export default async function RechnungDetailPage({ params }: { params: { id: string } }) {
   const admin = await requirePermission("finanzen");
@@ -64,6 +65,9 @@ export default async function RechnungDetailPage({ params }: { params: { id: str
               </>
             )}
           </p>
+          <div className="mt-2">
+            <RecordTags entity="invoice" recordId={invoice.id} />
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <Link

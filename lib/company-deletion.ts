@@ -65,6 +65,8 @@ export async function deleteCompanyData(companyId: string): Promise<void> {
     prisma.quote.deleteMany({ where: { companyId } }),
     prisma.inquiry.deleteMany({ where: { companyId } }),
     prisma.customer.deleteMany({ where: { companyId } }),
+    prisma.tag.deleteMany({ where: { companyId } }),
+    prisma.tagGroup.deleteMany({ where: { companyId } }),
     prisma.workflowStep.deleteMany({ where: { companyId } }),
     prisma.customKpi.deleteMany({ where: { companyId } }),
     prisma.customChart.deleteMany({ where: { companyId } }),

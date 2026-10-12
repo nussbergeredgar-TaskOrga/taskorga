@@ -13,6 +13,7 @@ import { CustomerInsightCard } from "@/components/customer-insight-card";
 import { ContactsList } from "@/components/contacts-list";
 import { ArchiveCustomerButton } from "@/components/archive-customer-button";
 import { RecordTasks } from "@/components/record-tasks";
+import { RecordTags } from "@/components/record-tags";
 import { KpiCard } from "@/components/kpi-card";
 import { getCustomerTabsConfig } from "@/lib/actions/customer-tabs";
 import { getCurrentUser, getCurrentCompany } from "@/lib/session";
@@ -315,6 +316,9 @@ export default async function KundeDetailPage({
                   <MapPin size={14} /> {customer.city}
                 </span>
               )}
+            </div>
+            <div className="mt-2">
+              <RecordTags entity="customer" recordId={customer.id} />
             </div>
           </div>
         </div>

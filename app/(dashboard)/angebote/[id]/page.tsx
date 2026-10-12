@@ -8,6 +8,7 @@ import { RecordNotes } from "@/components/record-notes";
 import { RecordTasks } from "@/components/record-tasks";
 import { DocumentTab } from "@/components/document-tab";
 import { getCurrentCompany } from "@/lib/session";
+import { RecordTags } from "@/components/record-tags";
 
 export default async function AngebotDetailPage({ params }: { params: { id: string } }) {
   const company = await getCurrentCompany();
@@ -60,6 +61,9 @@ export default async function AngebotDetailPage({ params }: { params: { id: stri
             </Link>{" "}
             · Erstellt am {quote.createdAt.toLocaleDateString("de-DE")}
           </p>
+          <div className="mt-2">
+            <RecordTags entity="quote" recordId={quote.id} />
+          </div>
           {quote.inquiry && (
             <Link
               href={`/anfragen/${quote.inquiry.id}`}

@@ -20,11 +20,22 @@ export const HELP_CHAPTERS: HelpChapter[] = [
   {
     id: "kunden",
     title: "Kunden",
-    description: "Anlegen, bearbeiten, Ansprechpartner, Tabs anpassen.",
+    description: "Anlegen, bearbeiten, importieren, Ansprechpartner, Tabs anpassen.",
     paragraphs: [
       "Bei **Privatkunden** trägst du Anrede, Vor- und Nachname getrennt ein — der Anzeigename wird automatisch daraus gebildet. Bei **Geschäftskunden** gibst du direkt den Firmennamen ein.",
       "Über den Bearbeiten-Button im Kundenprofil lassen sich alle Stammdaten jederzeit ändern.",
       "Welche Tabs im Kundenprofil angezeigt werden (Übersicht, Timeline, Anfragen, …) und in welcher Reihenfolge, legt ein Admin unter **Einstellungen → Anfragen & Vertrieb → Kundenstamm-Tabs** fest — gilt dann für alle Nutzer der Firma.",
+      "Bestehende Kunden kannst du als **CSV-Import** übernehmen (nur Admin): in der Kundenliste auf **Import** klicken, Datei wählen, Spalten zuordnen und festlegen, was bei allen Datensätzen hinterlegt werden soll — zum Beispiel ein Tag, das Land oder eine Notiz. In der Vorschau siehst du vorab, welche Zeilen neu sind, welche als Duplikat (gleiche E-Mail oder gleicher Name mit PLZ) übersprungen werden und welche Fehler enthalten.",
+    ],
+  },
+  {
+    id: "tags",
+    title: "Tags",
+    description: "Kunden, Anfragen, Termine & Co. verschlagworten.",
+    paragraphs: [
+      "Mit **Tags** kannst du Kunden, Anfragen, Termine, Angebote, Aufträge, Rechnungen und Aufgaben verschlagworten. Im Datensatz klickst du unter dem Titel auf **+ Tag**, tippst einen Begriff in das Suchfeld und wählst den passenden Tag aus.",
+      "Welche Tags es gibt, legt ein Admin unter **Einstellungen → Anfragen & Vertrieb → Tags** fest. Dort lassen sie sich auch in Gruppen ordnen (z. B. „Herkunft“: Messe, Empfehlung). Löschst du einen Tag, wird er überall entfernt, wo er vergeben war.",
+      "In der Kundenliste gibt es eine **Tags-Spalte** und einen Filter nach Tags; der CSV-Export enthält die Tags ebenfalls.",
     ],
   },
   {
@@ -107,7 +118,7 @@ export const HELP_CHAPTERS: HelpChapter[] = [
     paragraphs: [
       "**Mein Konto** — Profil, Passwort, Systemeinstellungen (Farbmodus & Schriftgröße persönlich, App-Akzentfarbe firmenweit für Admins), eigene Navigation (jeder Nutzer für sich).",
       "**Firma** — Firmenprofil, Logo, Benutzerverwaltung, Menü-Wording, E-Mail-Signatur (nur Admin).",
-      "**Anfragen & Vertrieb** — Anfragen-Workflow, Kundenstamm-Tabs, Terminarten (nur Admin).",
+      "**Anfragen & Vertrieb** — Anfragen-Workflow, Kundenstamm-Tabs, Terminarten, Tags (nur Admin).",
       "**Dokumente & Finanzen** — Angebots-/Rechnungsvorlagen, Positions-Bibliothek, Mahnstufen, Grundeinstellungen für Nummernformate und Rabatte (nur Admin).",
     ],
   },

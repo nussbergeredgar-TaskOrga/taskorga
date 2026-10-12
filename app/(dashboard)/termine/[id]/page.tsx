@@ -10,6 +10,7 @@ import { AppointmentAssigneeSelect } from "@/components/appointment-assignee-sel
 import { AppointmentEditForm } from "@/components/appointment-edit-form";
 import { getAppointmentTypes } from "@/lib/actions/appointment-types";
 import { getFieldConfig } from "@/lib/actions/field-config";
+import { RecordTags } from "@/components/record-tags";
 
 export default async function TerminDetailPage({ params }: { params: { id: string } }) {
   const company = await getCurrentCompany();
@@ -84,6 +85,9 @@ export default async function TerminDetailPage({ params }: { params: { id: strin
               </>
             )}
           </p>
+          <div className="mt-2">
+            <RecordTags entity="appointment" recordId={appointment.id} />
+          </div>
           <p className="text-sm text-ink-500 mt-1 font-mono">
             {appointment.scheduledAt?.toLocaleDateString("de-DE")}
             {appointment.scheduledAt && ` · ${appointment.scheduledAt.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })}`}

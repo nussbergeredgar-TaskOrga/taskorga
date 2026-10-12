@@ -24,10 +24,11 @@ export async function GET(request: Request) {
       archivedAt: showArchived ? { not: null } : null,
     },
     orderBy: { createdAt: "desc" },
+    include: { tags: { select: { name: true }, orderBy: { name: "asc" } } },
   });
 
   const rows = [
-    ["Name", "Typ", "E-Mail", "Telefon", "Adresse", "PLZ", "Ort", "Kunde seit"],
+    ["Name", "Typ", "E-Mail", "Telefon", "Adresse", "PLZ", "Ort", "Kunde seit", "Tags"],
     ...customers.map((c) => [
       c.name,
       TYPE_LABELS[c.type] ?? c.type,
@@ -37,6 +38,7 @@ export async function GET(request: Request) {
       c.zip ?? "",
       c.city ?? "",
       c.customerSince.toLocaleDateString("de-DE"),
+      c.tags.map((t) => t.name).join(", "),
     ]),
   ];
 

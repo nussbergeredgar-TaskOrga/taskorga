@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { Plus, Archive, Download } from "lucide-react";
+import { Plus, Archive, Download, Upload } from "lucide-react";
 import { prisma } from "@/lib/prisma";
-import { getCurrentCompany } from "@/lib/session";
+import { getCurrentCompany, getCurrentUserWithRole } from "@/lib/session";
 import { CustomersView } from "@/components/customers-view";
 import { ListHeaderActions } from "@/components/list-header-actions";
 import { getListViewConfig } from "@/lib/actions/list-view";
@@ -14,6 +14,7 @@ export default async function KundenPage({
   searchParams: { archiviert?: string };
 }) {
   const company = await getCurrentCompany();
+  const isAdmin = (await getCurrentUserWithRole()).role?.name === "Admin";
   const showArchived = searchParams.archiviert === "1";
 
   const [customers, contacts, savedListConfig, filterState] = await Promise.all([
@@ -22,6 +23,7 @@ export default async function KundenPage({
       orderBy: { createdAt: "desc" },
       include: {
         _count: { select: { projects: true, invoices: true } },
+        tags: { select: { name: true }, orderBy: { name: "asc" } },
       },
     }),
     // Ansprechpartner haben kein eigenes Archiv -- sie erscheinen nur in der
@@ -56,6 +58,15 @@ export default async function KundenPage({
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {isAdmin && (
+            <Link
+              href="/kunden/import"
+              className="hidden items-center gap-1.5 rounded-lg border border-ink-100 text-ink-700 text-sm font-medium px-3 py-2.5 hover:bg-ink-50 transition-colors sm:flex"
+            >
+              <Upload size={15} />
+              Import
+            </Link>
+          )}
           <a
             href={`/api/kunden/export${showArchived ? "?archiviert=1" : ""}`}
             className="hidden items-center gap-1.5 rounded-lg border border-ink-100 text-ink-700 text-sm font-medium px-3 py-2.5 hover:bg-ink-50 transition-colors sm:flex"
@@ -71,6 +82,14 @@ export default async function KundenPage({
             {showArchived ? "Aktive anzeigen" : "Archivierte anzeigen"}
           </Link>
           <ListHeaderActions>
+            {isAdmin && (
+              <Link
+                href="/kunden/import"
+                className="flex items-center gap-2 px-3 py-1.5 text-sm text-ink-700 hover:bg-ink-50 transition-colors"
+              >
+                <Upload size={14} /> Import
+              </Link>
+            )}
             <a
               href={`/api/kunden/export${showArchived ? "?archiviert=1" : ""}`}
               className="flex items-center gap-2 px-3 py-1.5 text-sm text-ink-700 hover:bg-ink-50 transition-colors"
@@ -115,6 +134,7 @@ export default async function KundenPage({
             customerSince: c.customerSince.toISOString(),
             projectsCount: c._count.projects,
             invoicesCount: c._count.invoices,
+            tags: c.tags.map((t) => t.name),
           }))}
           contacts={visibleContacts.map((c) => ({
             id: c.id,

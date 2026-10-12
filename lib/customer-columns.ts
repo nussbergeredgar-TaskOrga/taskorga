@@ -10,7 +10,8 @@ export type CustomerColumnKey =
   | "city"
   | "customerSince"
   | "projectsCount"
-  | "invoicesCount";
+  | "invoicesCount"
+  | "tags";
 
 export const CUSTOMER_COLUMN_LABELS: Record<CustomerColumnKey, string> = {
   number: "Kundennummer",
@@ -23,6 +24,7 @@ export const CUSTOMER_COLUMN_LABELS: Record<CustomerColumnKey, string> = {
   customerSince: "Kunde seit",
   projectsCount: "Aufträge",
   invoicesCount: "Rechnungen",
+  tags: "Tags",
 };
 
 // Der Name ist immer sichtbar und fixiert (erste Spalte, verlinkt zum
@@ -37,6 +39,7 @@ export const CUSTOMER_COLUMNS_DEFAULT: ColumnConfig[] = [
   { key: "customerSince", visible: true, order: 5, width: 120 },
   { key: "projectsCount", visible: true, order: 6, width: 90 },
   { key: "invoicesCount", visible: true, order: 7, width: 100 },
+  { key: "tags", visible: true, order: 10, width: 180 },
   { key: "address", visible: false, order: 8, width: 180 },
   { key: "zip", visible: false, order: 9, width: 90 },
 ];

@@ -10,6 +10,7 @@ import { ExpenseForm } from "@/components/expense-form";
 import { ExpensesList } from "@/components/expenses-list";
 import { DocumentTab } from "@/components/document-tab";
 import { getFieldConfig } from "@/lib/actions/field-config";
+import { RecordTags } from "@/components/record-tags";
 
 export default async function AuftragDetailPage({ params }: { params: { id: string } }) {
   const user = await getCurrentUser();
@@ -66,6 +67,9 @@ export default async function AuftragDetailPage({ params }: { params: { id: stri
               </>
             )}
           </p>
+          <div className="mt-2">
+            <RecordTags entity="project" recordId={project.id} />
+          </div>
         </div>
         <ProjectActions
           projectId={project.id}

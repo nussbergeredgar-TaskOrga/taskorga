@@ -9,6 +9,7 @@ import { getFieldConfig } from "@/lib/actions/field-config";
 import { TaskForm } from "@/components/task-form";
 import { TaskDeleteButton } from "@/components/task-delete-button";
 import { DocumentTab } from "@/components/document-tab";
+import { RecordTags } from "@/components/record-tags";
 
 const LINK_ROUTES: Record<string, (id: string) => string> = {
   inquiryId: (id) => `/anfragen/${id}`,
@@ -60,6 +61,9 @@ export default async function AufgabeDetailPage({ params }: { params: { id: stri
 
       <div>
         <h1 className="text-2xl font-semibold text-ink-900">{task.title}</h1>
+        <div className="mt-2">
+          <RecordTags entity="task" recordId={task.id} />
+        </div>
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1">
           {task.customerId && (
             <Link

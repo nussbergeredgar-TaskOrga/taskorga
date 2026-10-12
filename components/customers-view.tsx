@@ -42,6 +42,7 @@ function CustomerCard({ customer }: { customer: CustomerRow }) {
     customer.address &&
       { label: "Adresse", value: [customer.address, [customer.zip, customer.city].filter(Boolean).join(" ")].filter(Boolean).join(", ") },
     customer.email && { label: "E-Mail", value: customer.email },
+    customer.tags.length > 0 && { label: "Tags", value: customer.tags.join(", ") },
     { label: "Kunde seit", value: new Date(customer.customerSince).toLocaleDateString("de-DE") },
   ].filter((d): d is { label: string; value: string } => !!d);
 
@@ -129,6 +130,7 @@ type CustomerRow = {
   customerSince: string;
   projectsCount: number;
   invoicesCount: number;
+  tags: string[];
 };
 
 export type ContactRow = {
@@ -197,6 +199,13 @@ export function CustomersView({
       { key: "zip", label: CUSTOMER_COLUMN_LABELS.zip, options: distinctOptions((c) => c.zip) },
       { key: "address", label: CUSTOMER_COLUMN_LABELS.address, options: distinctOptions((c) => c.address) },
       { key: "email", label: CUSTOMER_COLUMN_LABELS.email, options: distinctOptions((c) => c.email) },
+      {
+        key: "tags",
+        label: CUSTOMER_COLUMN_LABELS.tags,
+        options: Array.from(new Set(customers.flatMap((c) => c.tags)))
+          .sort()
+          .map((t) => ({ value: t, label: t })),
+      },
       { key: "phone", label: CUSTOMER_COLUMN_LABELS.phone, options: distinctOptions((c) => c.phone) },
       {
         key: "customerSince",
@@ -228,6 +237,11 @@ export function CustomersView({
       if (activeFilter) {
         for (const cond of activeFilter.conditions) {
           if (cond.values.length === 0) continue;
+          // Tags sind eine Liste: ein Treffer genuegt (ODER-Verknuepfung)
+          if (cond.field === "tags") {
+            if (!c.tags.some((t) => cond.values.includes(t))) return false;
+            continue;
+          }
           const raw = c[cond.field as keyof CustomerRow];
           const value = raw == null ? "" : String(raw);
           if (!cond.values.includes(value)) return false;
