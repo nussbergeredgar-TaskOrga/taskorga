@@ -30,9 +30,10 @@ const stripe = new Stripe(secretKey, { apiVersion: "2026-07-29.dahlia" });
 
 // Muss exakt der Staffel aus lib/subscription-pricing.ts entsprechen.
 const TIERS = [
-  { up_to: 4, unit_amount: 1900 },
-  { up_to: 10, unit_amount: 1400 },
-  { up_to: "inf", unit_amount: 900 },
+  { up_to: 9, unit_amount: 1000 },
+  { up_to: 24, unit_amount: 900 },
+  { up_to: 50, unit_amount: 800 },
+  { up_to: "inf", unit_amount: 700 },
 ];
 
 (async () => {

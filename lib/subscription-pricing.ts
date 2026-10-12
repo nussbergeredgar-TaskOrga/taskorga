@@ -5,9 +5,10 @@
 // ueber Stripe selbst (siehe scripts/setup-stripe-price.js fuer die dort
 // hinterlegte, identische Staffel).
 const TIERS: { upTo: number; unitPrice: number }[] = [
-  { upTo: 4, unitPrice: 19 },
-  { upTo: 10, unitPrice: 14 },
-  { upTo: Infinity, unitPrice: 9 },
+  { upTo: 9, unitPrice: 10 },
+  { upTo: 24, unitPrice: 9 },
+  { upTo: 50, unitPrice: 8 },
+  { upTo: Infinity, unitPrice: 7 },
 ];
 
 export function computeMonthlyPrice(seatCount: number): number {
