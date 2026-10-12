@@ -18,6 +18,7 @@ export type TaskRow = {
   dueDate: string | null;
   assigneeName: string | null;
   customerName: string | null;
+  tags: string[];
 };
 
 const STATUS_OPTIONS = Object.entries(TASK_STATUS_LABELS).map(([value, label]) => ({ value, label }));
@@ -39,6 +40,8 @@ function mobileFieldValue(col: ColumnConfig, t: TaskRow): string {
       return TASK_PRIORITY_LABELS[t.priority] ?? t.priority;
     case "customerName":
       return t.customerName ?? "";
+    case "tags":
+      return t.tags.join(", ");
     default:
       return "";
   }
@@ -158,6 +161,15 @@ export function TasksTableView({
                       {col.key === "assigneeName" && <span className="text-ink-700">{t.assigneeName ?? "—"}</span>}
                       {col.key === "priority" && <span className="text-ink-500">{TASK_PRIORITY_LABELS[t.priority] ?? t.priority}</span>}
                       {col.key === "customerName" && <span className="text-ink-700">{t.customerName ?? "—"}</span>}
+                      {col.key === "tags" && (
+                        <span className="flex items-center gap-1 overflow-hidden">
+                          {t.tags.map((tag) => (
+                            <span key={tag} className="shrink-0 rounded-full bg-brand-50 px-2 py-0.5 text-xs font-medium text-brand-700">
+                              {tag}
+                            </span>
+                          ))}
+                        </span>
+                      )}
                     </td>
                   ))}
                 </tr>

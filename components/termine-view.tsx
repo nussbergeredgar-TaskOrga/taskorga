@@ -9,6 +9,7 @@ import { saveListViewConfig, type ColumnConfig } from "@/lib/actions/list-view";
 import type { FilterEntityState, FilterFieldDef } from "@/lib/actions/filters";
 import { APPOINTMENT_STATUS_LABELS } from "@/lib/appointment-columns";
 import { cn } from "@/lib/utils";
+import { TagChips } from "@/components/tag-chips";
 
 // Filterung passiert hier (nicht in der Tabellen-Ansicht), damit sie fuer
 // Karten- und Listenansicht gleichermassen gilt.
@@ -48,6 +49,13 @@ export function TermineView({
 
     return [
       { key: "customerName", label: "Kunde", options: distinctOptions((a) => a.customerName) },
+      {
+        key: "tags",
+        label: "Tags",
+        options: Array.from(new Set(appointments.flatMap((a) => a.tags)))
+          .sort()
+          .map((t) => ({ value: t, label: t })),
+      },
       { key: "type", label: "Art", options: distinctOptions((a) => a.type) },
       {
         key: "status",
@@ -67,6 +75,11 @@ export function TermineView({
         if (activeFilter) {
           for (const cond of activeFilter.conditions) {
             if (cond.values.length === 0) continue;
+            // Tags sind eine Liste: ein Treffer genuegt (ODER-Verknuepfung)
+            if (cond.field === "tags") {
+              if (!a.tags.some((t) => cond.values.includes(t))) return false;
+              continue;
+            }
             const raw = a[cond.field as keyof AppointmentRow];
             const value = raw == null ? "" : String(raw);
             if (!cond.values.includes(value)) return false;
@@ -144,6 +157,7 @@ export function TermineView({
                   <div className="min-w-0">
                     <span className="font-medium text-ink-900">{a.title}</span>
                     {a.customerName && <span className="text-ink-500 ml-2">{a.customerName}</span>}
+                    <TagChips tags={a.tags} />
                   </div>
                   <div className="flex items-center gap-3 shrink-0 text-xs text-ink-500">
                     <span>{a.type}</span>

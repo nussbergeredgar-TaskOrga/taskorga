@@ -19,7 +19,7 @@ export default async function AngebotePage({
     prisma.quote.findMany({
       where: { companyId: company.id },
       orderBy: { createdAt: "desc" },
-      include: { customer: { select: { id: true, name: true } } },
+      include: { customer: { select: { id: true, name: true } }, tags: { select: { name: true }, orderBy: { name: "asc" } }, },
     }),
     getListViewConfig("quote"),
     getFilterState("quote"),
@@ -83,6 +83,7 @@ export default async function AngebotePage({
             totalGross: Number(q.totalGross),
             validUntil: q.validUntil ? q.validUntil.toISOString() : null,
             createdAt: q.createdAt.toISOString(),
+            tags: q.tags.map((t) => t.name),
           }))}
           initialViewMode={savedListConfig?.viewMode ?? "cards"}
           initialColumns={quoteColumns}

@@ -15,6 +15,7 @@ export type AppointmentRow = {
   scheduledAt: string | null;
   customerName: string | null;
   amount: number | null;
+  tags: string[];
 };
 
 const MIN_WIDTH = 70;
@@ -39,6 +40,8 @@ function mobileFieldValue(col: ColumnConfig, a: AppointmentRow): string {
         : "";
     case "amount":
       return a.amount != null ? `${a.amount.toLocaleString("de-DE")} €` : "";
+    case "tags":
+      return a.tags.join(", ");
     default:
       return "";
   }
@@ -164,6 +167,15 @@ export function TermineTableView({
                       )}
                       {col.key === "amount" && (
                         <span className="font-mono text-ink-500">{a.amount != null ? `${a.amount.toLocaleString("de-DE")} €` : "—"}</span>
+                      )}
+                      {col.key === "tags" && (
+                        <span className="flex items-center gap-1 overflow-hidden">
+                          {a.tags.map((tag) => (
+                            <span key={tag} className="shrink-0 rounded-full bg-brand-50 px-2 py-0.5 text-xs font-medium text-brand-700">
+                              {tag}
+                            </span>
+                          ))}
+                        </span>
                       )}
                     </td>
                   ))}

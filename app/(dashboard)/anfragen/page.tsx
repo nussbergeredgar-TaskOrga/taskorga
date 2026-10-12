@@ -38,6 +38,7 @@ export default async function AnfragenPage({
       include: {
         customer: { select: { id: true, name: true } },
         stepEntries: true,
+        tags: { select: { name: true }, orderBy: { name: "asc" } },
       },
     }),
     prisma.inquiry.aggregate({
@@ -209,6 +210,7 @@ export default async function AnfragenPage({
                             customerName={inquiry.customer.name}
                             amount={inquiry.amount != null ? Number(inquiry.amount) : null}
                             note={inquiry.stepEntries.find((e) => e.stepId === step.id)?.note}
+                            tags={inquiry.tags.map((t) => t.name)}
                           />
                         ))}
                       </div>
@@ -260,6 +262,7 @@ export default async function AnfragenPage({
                 amount: i.amount != null ? Number(i.amount) : null,
                 createdAt: i.createdAt.toISOString(),
                 stepLabel: stepLabelByInquiryId.get(i.id) ?? "—",
+                tags: i.tags.map((t) => t.name),
               }))}
               initialViewMode={savedListConfig?.viewMode ?? "cards"}
               initialColumns={inquiryColumns}

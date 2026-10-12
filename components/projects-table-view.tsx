@@ -16,6 +16,7 @@ export type ProjectRow = {
   tasksCount: number;
   startDate: string | null;
   endDate: string | null;
+  tags: string[];
 };
 
 const MIN_WIDTH = 70;
@@ -130,6 +131,15 @@ export function ProjectsTableView({
                       )}
                       {col.key === "endDate" && (
                         <span className="text-ink-500">{p.endDate ? new Date(p.endDate).toLocaleDateString("de-DE") : "—"}</span>
+                      )}
+                      {col.key === "tags" && (
+                        <span className="flex items-center gap-1 overflow-hidden">
+                          {p.tags.map((tag) => (
+                            <span key={tag} className="shrink-0 rounded-full bg-brand-50 px-2 py-0.5 text-xs font-medium text-brand-700">
+                              {tag}
+                            </span>
+                          ))}
+                        </span>
                       )}
                     </td>
                   ))}

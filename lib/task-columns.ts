@@ -1,6 +1,6 @@
 import type { ColumnConfig } from "@/lib/actions/list-view";
 
-export type TaskColumnKey = "customerName" | "assigneeName" | "priority" | "dueDate" | "status";
+export type TaskColumnKey = "customerName" | "assigneeName" | "priority" | "dueDate" | "status" | "tags";
 
 export const TASK_STATUS_LABELS: Record<string, string> = {
   OPEN: "Offen",
@@ -22,6 +22,7 @@ export const TASK_COLUMN_LABELS: Record<TaskColumnKey, string> = {
   priority: "Priorität",
   dueDate: "Fällig am",
   status: "Status",
+  tags: "Tags",
 };
 
 // "Titel" (Link zur Aufgabe) ist immer sichtbar und fixiert -- alle anderen
@@ -32,4 +33,5 @@ export const TASK_COLUMNS_DEFAULT: ColumnConfig[] = [
   { key: "assigneeName", visible: true, order: 2, width: 140 },
   { key: "priority", visible: true, order: 3, width: 110 },
   { key: "customerName", visible: false, order: 4, width: 160 },
+  { key: "tags", visible: true, order: 10, width: 180 },
 ];

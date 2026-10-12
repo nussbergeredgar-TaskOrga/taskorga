@@ -1,6 +1,6 @@
 import type { ColumnConfig } from "@/lib/actions/list-view";
 
-export type QuoteColumnKey = "customerName" | "number" | "status" | "totalGross" | "validUntil" | "createdAt";
+export type QuoteColumnKey = "customerName" | "number" | "status" | "totalGross" | "validUntil" | "createdAt" | "tags";
 
 export const QUOTE_STATUS_LABELS: Record<string, string> = {
   DRAFT: "Entwurf",
@@ -17,6 +17,7 @@ export const QUOTE_COLUMN_LABELS: Record<QuoteColumnKey, string> = {
   totalGross: "Betrag (brutto)",
   validUntil: "Gültig bis",
   createdAt: "Erstellt am",
+  tags: "Tags",
 };
 
 // "Titel" (Link zum Angebot) ist immer sichtbar und fixiert -- alle anderen
@@ -28,6 +29,7 @@ export const QUOTE_COLUMNS_DEFAULT: ColumnConfig[] = [
   { key: "totalGross", visible: true, order: 3, width: 130 },
   { key: "validUntil", visible: false, order: 4, width: 120 },
   { key: "createdAt", visible: false, order: 5, width: 120 },
+  { key: "tags", visible: true, order: 10, width: 180 },
 ];
 
 export const QUOTE_EDITABLE_FIELDS: QuoteColumnKey[] = [];

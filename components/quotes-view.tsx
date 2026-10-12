@@ -10,6 +10,7 @@ import type { FilterEntityState, FilterFieldDef } from "@/lib/actions/filters";
 import { QUOTE_STATUS_LABELS } from "@/lib/quote-columns";
 import { statusColor } from "@/lib/utils";
 import { cn } from "@/lib/utils";
+import { TagChips } from "@/components/tag-chips";
 
 // Filterung passiert hier (nicht in der Tabellen-Ansicht), damit sie fuer
 // Karten- und Listenansicht gleichermassen gilt.
@@ -50,6 +51,13 @@ export function QuotesView({
     return [
       { key: "customerName", label: "Kunde", options: distinctOptions((q) => q.customerName) },
       {
+        key: "tags",
+        label: "Tags",
+        options: Array.from(new Set(quotes.flatMap((q) => q.tags)))
+          .sort()
+          .map((t) => ({ value: t, label: t })),
+      },
+      {
         key: "status",
         label: "Status",
         options: distinctOptions((q) => q.status, (v) => QUOTE_STATUS_LABELS[v] ?? v),
@@ -83,6 +91,11 @@ export function QuotesView({
       if (activeFilter) {
         for (const cond of activeFilter.conditions) {
           if (cond.values.length === 0) continue;
+          // Tags sind eine Liste: ein Treffer genuegt (ODER-Verknuepfung)
+          if (cond.field === "tags") {
+            if (!quote.tags.some((t) => cond.values.includes(t))) return false;
+            continue;
+          }
           const raw = quote[cond.field as keyof QuoteRow];
           const value = raw == null ? "" : String(raw);
           if (!cond.values.includes(value)) return false;
@@ -151,6 +164,7 @@ export function QuotesView({
                   </Link>{" "}
                   · {q.number}
                 </p>
+                <TagChips tags={q.tags} className="mt-1 block" />
               </div>
               <Link href={`/angebote/${q.id}`} className="text-right">
                 <p className="font-mono text-sm font-medium text-ink-900">{q.totalGross.toLocaleString("de-DE")} €</p>

@@ -20,7 +20,11 @@ export default async function AufgabenPage({
     prisma.task.findMany({
       where: { companyId: company.id },
       orderBy: [{ dueDate: "asc" }, { createdAt: "desc" }],
-      include: { assignee: { select: { name: true } }, customer: { select: { name: true } } },
+      include: {
+        assignee: { select: { name: true } },
+        customer: { select: { name: true } },
+        tags: { select: { name: true }, orderBy: { name: "asc" } },
+      },
     }),
     getCompanyUsers(),
     prisma.customer.findMany({
@@ -70,6 +74,7 @@ export default async function AufgabenPage({
           dueDate: t.dueDate ? t.dueDate.toISOString() : null,
           assigneeName: t.assignee?.name ?? null,
           customerName: t.customer?.name ?? null,
+          tags: t.tags.map((tag) => tag.name),
         }))}
         users={users}
         customers={customers}

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState, useTransition } from "react";
 import { Check } from "lucide-react";
 import { toggleStepEntry, updateStepEntry } from "@/lib/actions/workflow";
+import { TagChips } from "@/components/tag-chips";
 
 export function AnfrageRow({
   inquiryId,
@@ -13,6 +14,7 @@ export function AnfrageRow({
   customerName,
   amount,
   note,
+  tags,
 }: {
   inquiryId: string;
   stepId: string | null;
@@ -21,6 +23,7 @@ export function AnfrageRow({
   customerName: string;
   amount?: number | null;
   note?: string | null;
+  tags?: string[];
 }) {
   const [pending, startTransition] = useTransition();
   const [noteValue, setNoteValue] = useState(note ?? "");
@@ -42,6 +45,7 @@ export function AnfrageRow({
         {amount != null && (
           <span className="text-ink-500 ml-2 font-mono">· {amount.toLocaleString("de-DE")} €</span>
         )}
+        <TagChips tags={tags ?? []} />
       </span>
 
       {stepId && (

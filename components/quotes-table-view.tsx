@@ -18,6 +18,7 @@ export type QuoteRow = {
   totalGross: number;
   validUntil: string | null;
   createdAt: string;
+  tags: string[];
 };
 
 const MIN_WIDTH = 70;
@@ -36,6 +37,8 @@ function mobileFieldValue(col: ColumnConfig, q: QuoteRow): string {
       return q.validUntil ? new Date(q.validUntil).toLocaleDateString("de-DE") : "";
     case "createdAt":
       return new Date(q.createdAt).toLocaleDateString("de-DE");
+    case "tags":
+      return q.tags.join(", ");
     default:
       return "";
   }
@@ -160,6 +163,15 @@ export function QuotesTableView({
                       )}
                       {col.key === "createdAt" && (
                         <span className="text-ink-500">{new Date(q.createdAt).toLocaleDateString("de-DE")}</span>
+                      )}
+                      {col.key === "tags" && (
+                        <span className="flex items-center gap-1 overflow-hidden">
+                          {q.tags.map((tag) => (
+                            <span key={tag} className="shrink-0 rounded-full bg-brand-50 px-2 py-0.5 text-xs font-medium text-brand-700">
+                              {tag}
+                            </span>
+                          ))}
+                        </span>
                       )}
                     </td>
                   ))}

@@ -8,6 +8,7 @@ import { FilterSwitcher } from "@/components/filter-switcher";
 import { saveListViewConfig, type ColumnConfig } from "@/lib/actions/list-view";
 import type { FilterEntityState, FilterFieldDef } from "@/lib/actions/filters";
 import { cn } from "@/lib/utils";
+import { TagChips } from "@/components/tag-chips";
 
 // Filterung passiert hier (nicht in der Tabellen-Ansicht), damit sie fuer
 // Karten- und Listenansicht gleichermassen gilt.
@@ -47,6 +48,13 @@ export function AnfragenView({
 
     return [
       { key: "customerName", label: "Kunde", options: distinctOptions((i) => i.customerName) },
+      {
+        key: "tags",
+        label: "Tags",
+        options: Array.from(new Set(inquiries.flatMap((i) => i.tags)))
+          .sort()
+          .map((t) => ({ value: t, label: t })),
+      },
       { key: "stepLabel", label: "Schritt", options: distinctOptions((i) => i.stepLabel) },
       { key: "source", label: "Quelle", options: distinctOptions((i) => i.source) },
       { key: "amount", label: "Betrag", options: distinctOptions((i) => i.amount) },
@@ -67,6 +75,11 @@ export function AnfragenView({
       if (activeFilter) {
         for (const cond of activeFilter.conditions) {
           if (cond.values.length === 0) continue;
+          // Tags sind eine Liste: ein Treffer genuegt (ODER-Verknuepfung)
+          if (cond.field === "tags") {
+            if (!i.tags.some((t) => cond.values.includes(t))) return false;
+            continue;
+          }
           const raw = i[cond.field as keyof InquiryRow];
           const value = raw == null ? "" : String(raw);
           if (!cond.values.includes(value)) return false;
@@ -133,6 +146,7 @@ export function AnfragenView({
                   <div className="min-w-0">
                     <span className="font-medium text-ink-900">{i.title}</span>
                     <span className="text-ink-500 ml-2">{i.customerName}</span>
+                    <TagChips tags={i.tags} />
                   </div>
                   <div className="flex items-center gap-3 shrink-0 text-xs text-ink-500">
                     <span>{i.stepLabel}</span>

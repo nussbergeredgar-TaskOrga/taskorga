@@ -9,6 +9,7 @@ import { saveListViewConfig, type ColumnConfig } from "@/lib/actions/list-view";
 import type { FilterEntityState, FilterFieldDef } from "@/lib/actions/filters";
 import { PROJECT_STATUS_LABELS } from "@/lib/project-columns";
 import { statusColor, cn } from "@/lib/utils";
+import { TagChips } from "@/components/tag-chips";
 
 // Filterung passiert hier (nicht in der Tabellen-Ansicht), damit sie fuer
 // Karten- und Listenansicht gleichermassen gilt.
@@ -49,6 +50,13 @@ export function ProjectsView({
     return [
       { key: "customerName", label: "Kunde", options: distinctOptions((p) => p.customerName) },
       {
+        key: "tags",
+        label: "Tags",
+        options: Array.from(new Set(projects.flatMap((p) => p.tags)))
+          .sort()
+          .map((t) => ({ value: t, label: t })),
+      },
+      {
         key: "status",
         label: "Status",
         options: distinctOptions((p) => p.status, (v) => PROJECT_STATUS_LABELS[v] ?? v),
@@ -81,6 +89,11 @@ export function ProjectsView({
       if (activeFilter) {
         for (const cond of activeFilter.conditions) {
           if (cond.values.length === 0) continue;
+          // Tags sind eine Liste: ein Treffer genuegt (ODER-Verknuepfung)
+          if (cond.field === "tags") {
+            if (!p.tags.some((t) => cond.values.includes(t))) return false;
+            continue;
+          }
           const raw = p[cond.field as keyof ProjectRow];
           const value = raw == null ? "" : String(raw);
           if (!cond.values.includes(value)) return false;
@@ -144,6 +157,7 @@ export function ProjectsView({
               <p className="text-sm text-ink-500 mt-0.5">
                 {p.customerName} · {p.number}
               </p>
+              <TagChips tags={p.tags} className="mt-2 block" />
               <div className="mt-4 flex items-center justify-between">
                 <span className="text-xs font-mono text-ink-500">{p.tasksCount} Aufgaben</span>
                 <span className="text-xs font-medium text-ink-700">{PROJECT_STATUS_LABELS[p.status] ?? p.status}</span>

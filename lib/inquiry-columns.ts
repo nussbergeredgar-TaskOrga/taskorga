@@ -1,6 +1,6 @@
 import type { ColumnConfig } from "@/lib/actions/list-view";
 
-export type InquiryColumnKey = "customerName" | "stepLabel" | "status" | "source" | "amount" | "createdAt";
+export type InquiryColumnKey = "customerName" | "stepLabel" | "status" | "source" | "amount" | "createdAt" | "tags";
 
 export const INQUIRY_COLUMN_LABELS: Record<InquiryColumnKey, string> = {
   customerName: "Kunde",
@@ -9,6 +9,7 @@ export const INQUIRY_COLUMN_LABELS: Record<InquiryColumnKey, string> = {
   source: "Quelle",
   amount: "Betrag",
   createdAt: "Erstellt am",
+  tags: "Tags",
 };
 
 // "Kunde" (Link zum Kunden) ist immer sichtbar und fixiert (erste Spalte,
@@ -20,6 +21,7 @@ export const INQUIRY_COLUMNS_DEFAULT: ColumnConfig[] = [
   { key: "source", visible: true, order: 2, width: 140 },
   { key: "createdAt", visible: true, order: 3, width: 120 },
   { key: "status", visible: false, order: 4, width: 140 },
+  { key: "tags", visible: true, order: 10, width: 180 },
 ];
 
 export const INQUIRY_EDITABLE_FIELDS: InquiryColumnKey[] = ["source", "amount"];

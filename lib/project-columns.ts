@@ -1,6 +1,6 @@
 import type { ColumnConfig } from "@/lib/actions/list-view";
 
-export type ProjectColumnKey = "customerName" | "number" | "status" | "tasksCount" | "startDate" | "endDate";
+export type ProjectColumnKey = "customerName" | "number" | "status" | "tasksCount" | "startDate" | "endDate" | "tags";
 
 export const PROJECT_STATUS_LABELS: Record<string, string> = {
   PLANNED: "Geplant",
@@ -16,6 +16,7 @@ export const PROJECT_COLUMN_LABELS: Record<ProjectColumnKey, string> = {
   tasksCount: "Aufgaben",
   startDate: "Start",
   endDate: "Ende",
+  tags: "Tags",
 };
 
 // "Titel" (Link zum Auftrag) ist immer sichtbar und fixiert -- alle anderen
@@ -27,4 +28,5 @@ export const PROJECT_COLUMNS_DEFAULT: ColumnConfig[] = [
   { key: "tasksCount", visible: true, order: 3, width: 90 },
   { key: "startDate", visible: false, order: 4, width: 110 },
   { key: "endDate", visible: false, order: 5, width: 110 },
+  { key: "tags", visible: true, order: 10, width: 180 },
 ];

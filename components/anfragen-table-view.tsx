@@ -18,6 +18,7 @@ export type InquiryRow = {
   source: string | null;
   amount: number | null;
   createdAt: string;
+  tags: string[];
 };
 
 const MIN_WIDTH = 70;
@@ -36,6 +37,8 @@ function mobileFieldValue(col: ColumnConfig, i: InquiryRow): string {
       return i.amount != null ? String(i.amount) : "";
     case "createdAt":
       return new Date(i.createdAt).toLocaleDateString("de-DE");
+    case "tags":
+      return i.tags.join(", ");
     default:
       return "";
   }
@@ -159,6 +162,15 @@ export function AnfragenTableView({
                       )}
                       {col.key === "createdAt" && (
                         <span className="text-ink-500">{new Date(i.createdAt).toLocaleDateString("de-DE")}</span>
+                      )}
+                      {col.key === "tags" && (
+                        <span className="flex items-center gap-1 overflow-hidden">
+                          {i.tags.map((tag) => (
+                            <span key={tag} className="shrink-0 rounded-full bg-brand-50 px-2 py-0.5 text-xs font-medium text-brand-700">
+                              {tag}
+                            </span>
+                          ))}
+                        </span>
                       )}
                     </td>
                   ))}

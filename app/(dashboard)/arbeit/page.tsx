@@ -20,6 +20,7 @@ export default async function ArbeitPage({
       include: {
         customer: { select: { name: true } },
         _count: { select: { tasks: true } },
+        tags: { select: { name: true }, orderBy: { name: "asc" } },
       },
     }),
     getListViewConfig("project"),
@@ -108,6 +109,7 @@ export default async function ArbeitPage({
                 tasksCount: p._count.tasks,
                 startDate: p.startDate ? p.startDate.toISOString() : null,
                 endDate: p.endDate ? p.endDate.toISOString() : null,
+                tags: p.tags.map((t) => t.name),
               }))}
               initialViewMode={savedListConfig?.viewMode ?? "cards"}
               initialColumns={projectColumns}

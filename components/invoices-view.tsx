@@ -9,6 +9,7 @@ import { saveListViewConfig, type ColumnConfig } from "@/lib/actions/list-view";
 import type { FilterEntityState, FilterFieldDef } from "@/lib/actions/filters";
 import { INVOICE_STATUS_LABELS } from "@/lib/invoice-columns";
 import { statusColor, cn } from "@/lib/utils";
+import { TagChips } from "@/components/tag-chips";
 
 const OPEN_INVOICE_STATUSES = ["SENT", "OPEN", "PARTIALLY_PAID", "OVERDUE"];
 
@@ -51,6 +52,13 @@ export function InvoicesView({
     return [
       { key: "customerName", label: "Kunde", options: distinctOptions((i) => i.customerName) },
       {
+        key: "tags",
+        label: "Tags",
+        options: Array.from(new Set(invoices.flatMap((i) => i.tags)))
+          .sort()
+          .map((t) => ({ value: t, label: t })),
+      },
+      {
         key: "status",
         label: "Status",
         options: distinctOptions((i) => i.status, (v) => INVOICE_STATUS_LABELS[v] ?? v),
@@ -72,6 +80,11 @@ export function InvoicesView({
       if (activeFilter) {
         for (const cond of activeFilter.conditions) {
           if (cond.values.length === 0) continue;
+          // Tags sind eine Liste: ein Treffer genuegt (ODER-Verknuepfung)
+          if (cond.field === "tags") {
+            if (!inv.tags.some((t) => cond.values.includes(t))) return false;
+            continue;
+          }
           const raw = inv[cond.field as keyof InvoiceRow];
           const value = raw == null ? "" : String(raw);
           if (!cond.values.includes(value)) return false;
@@ -134,6 +147,7 @@ export function InvoicesView({
               <div>
                 <p className="font-medium text-ink-900">{inv.number}</p>
                 <p className="text-sm text-ink-500">{inv.customerName}</p>
+                <TagChips tags={inv.tags} className="mt-1 block" />
               </div>
               <div className="text-right">
                 <p className="font-mono text-sm font-medium text-ink-900">

@@ -1,6 +1,6 @@
 import type { ColumnConfig } from "@/lib/actions/list-view";
 
-export type AppointmentColumnKey = "customerName" | "type" | "status" | "scheduledAt" | "amount";
+export type AppointmentColumnKey = "customerName" | "type" | "status" | "scheduledAt" | "amount" | "tags";
 
 export const APPOINTMENT_STATUS_LABELS: Record<string, string> = {
   REQUESTED: "Angefragt",
@@ -15,6 +15,7 @@ export const APPOINTMENT_COLUMN_LABELS: Record<AppointmentColumnKey, string> = {
   status: "Status",
   scheduledAt: "Termin",
   amount: "Betrag",
+  tags: "Tags",
 };
 
 // "Titel" (Link zum Termin) ist immer sichtbar und fixiert -- alle anderen
@@ -25,4 +26,5 @@ export const APPOINTMENT_COLUMNS_DEFAULT: ColumnConfig[] = [
   { key: "type", visible: true, order: 2, width: 130 },
   { key: "status", visible: true, order: 3, width: 120 },
   { key: "amount", visible: false, order: 4, width: 110 },
+  { key: "tags", visible: true, order: 10, width: 180 },
 ];

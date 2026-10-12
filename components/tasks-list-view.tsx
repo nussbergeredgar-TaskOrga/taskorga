@@ -13,6 +13,7 @@ import { TaskForm, type LinkableRecord } from "@/components/task-form";
 import type { FieldConfigMap } from "@/lib/actions/field-config";
 import { TASK_PRIORITY_LABELS, TASK_STATUS_LABELS } from "@/lib/task-columns";
 import { cn } from "@/lib/utils";
+import { TagChips } from "@/components/tag-chips";
 
 type LinkType = "inquiryId" | "quoteId" | "projectId" | "invoiceId" | "appointmentId";
 
@@ -82,6 +83,13 @@ export function TasksListView({
       },
       { key: "assigneeName", label: "Zuständig", options: distinctOptions((t) => t.assigneeName) },
       { key: "customerName", label: "Kunde", options: distinctOptions((t) => t.customerName) },
+      {
+        key: "tags",
+        label: "Tags",
+        options: Array.from(new Set(tasks.flatMap((t) => t.tags)))
+          .sort()
+          .map((t) => ({ value: t, label: t })),
+      },
     ];
   }, [tasks]);
 
@@ -94,6 +102,11 @@ export function TasksListView({
       if (activeFilter) {
         for (const cond of activeFilter.conditions) {
           if (cond.values.length === 0) continue;
+          // Tags sind eine Liste: ein Treffer genuegt (ODER-Verknuepfung)
+          if (cond.field === "tags") {
+            if (!t.tags.some((t) => cond.values.includes(t))) return false;
+            continue;
+          }
           const raw = t[cond.field as keyof TaskRow];
           const value = raw == null ? "" : String(raw);
           if (!cond.values.includes(value)) return false;
@@ -194,6 +207,7 @@ export function TasksListView({
                     {t.title}
                   </span>
                   {t.customerName && <span className="text-ink-500 ml-2">{t.customerName}</span>}
+                  <TagChips tags={t.tags} />
                 </Link>
                 <span className="font-mono text-xs text-ink-500 shrink-0">
                   {t.assigneeName && `${t.assigneeName} · `}

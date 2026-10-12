@@ -31,7 +31,7 @@ export default async function FinanzenPage({
     prisma.invoice.findMany({
       where: { companyId: company.id },
       orderBy: { createdAt: "desc" },
-      include: { customer: { select: { name: true } } },
+      include: { customer: { select: { name: true } }, tags: { select: { name: true }, orderBy: { name: "asc" } }, },
     }),
     prisma.expense.findMany({
       where: { companyId: company.id },
@@ -196,6 +196,7 @@ export default async function FinanzenPage({
             status: inv.status,
             dueDate: inv.dueDate ? inv.dueDate.toISOString() : null,
             createdAt: inv.createdAt.toISOString(),
+            tags: inv.tags.map((t) => t.name),
           }))}
           initialViewMode={savedListConfig?.viewMode ?? "cards"}
           initialColumns={invoiceColumns}

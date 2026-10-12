@@ -15,6 +15,7 @@ export type InvoiceRow = {
   status: string;
   dueDate: string | null;
   createdAt: string;
+  tags: string[];
 };
 
 const MIN_WIDTH = 70;
@@ -130,6 +131,15 @@ export function InvoicesTableView({
                       )}
                       {col.key === "createdAt" && (
                         <span className="text-ink-500">{new Date(inv.createdAt).toLocaleDateString("de-DE")}</span>
+                      )}
+                      {col.key === "tags" && (
+                        <span className="flex items-center gap-1 overflow-hidden">
+                          {inv.tags.map((tag) => (
+                            <span key={tag} className="shrink-0 rounded-full bg-brand-50 px-2 py-0.5 text-xs font-medium text-brand-700">
+                              {tag}
+                            </span>
+                          ))}
+                        </span>
                       )}
                     </td>
                   ))}

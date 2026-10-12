@@ -1,6 +1,6 @@
 import type { ColumnConfig } from "@/lib/actions/list-view";
 
-export type InvoiceColumnKey = "customerName" | "status" | "totalGross" | "dueDate" | "createdAt";
+export type InvoiceColumnKey = "customerName" | "status" | "totalGross" | "dueDate" | "createdAt" | "tags";
 
 export const INVOICE_STATUS_LABELS: Record<string, string> = {
   DRAFT: "Entwurf",
@@ -18,6 +18,7 @@ export const INVOICE_COLUMN_LABELS: Record<InvoiceColumnKey, string> = {
   totalGross: "Betrag (brutto)",
   dueDate: "Fällig am",
   createdAt: "Erstellt am",
+  tags: "Tags",
 };
 
 // "Nummer" (Link zur Rechnung) ist immer sichtbar und fixiert -- alle
@@ -29,4 +30,5 @@ export const INVOICE_COLUMNS_DEFAULT: ColumnConfig[] = [
   { key: "totalGross", visible: true, order: 2, width: 130 },
   { key: "dueDate", visible: true, order: 3, width: 120 },
   { key: "createdAt", visible: false, order: 4, width: 120 },
+  { key: "tags", visible: true, order: 10, width: 180 },
 ];

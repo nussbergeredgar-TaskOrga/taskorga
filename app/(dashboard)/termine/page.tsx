@@ -53,12 +53,19 @@ export default async function TerminePage({
         scheduledAt: { gte: gridStart, lte: gridEnd },
       },
       orderBy: { scheduledAt: "asc" },
-      include: { customer: { select: { id: true, name: true } }, assignee: { select: { name: true } } },
+      include: {
+        customer: { select: { id: true, name: true } },
+        assignee: { select: { name: true } },
+        tags: { select: { name: true }, orderBy: { name: "asc" } },
+      },
     }),
     prisma.appointment.findMany({
       where: { companyId: company.id },
       orderBy: { scheduledAt: "asc" },
-      include: { customer: { select: { name: true } } },
+      include: {
+        customer: { select: { name: true } },
+        tags: { select: { name: true }, orderBy: { name: "asc" } },
+      },
     }),
     prisma.customer.findMany({
       where: { companyId: company.id },
@@ -236,6 +243,7 @@ export default async function TerminePage({
             scheduledAt: a.scheduledAt ? a.scheduledAt.toISOString() : null,
             customerName: a.customer?.name ?? null,
             amount: a.amount != null ? Number(a.amount) : null,
+            tags: a.tags.map((t) => t.name),
           }))}
           initialViewMode={savedListConfig?.viewMode ?? "cards"}
           initialColumns={appointmentColumns}

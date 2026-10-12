@@ -23,11 +23,11 @@ export async function GET(request: Request) {
       ...(isMonthFilter ? { createdAt: { gte: startOfMonth } } : {}),
     },
     orderBy: { createdAt: "desc" },
-    include: { customer: { select: { name: true } } },
+    include: { customer: { select: { name: true } }, tags: { select: { name: true }, orderBy: { name: "asc" } }, },
   });
 
   const rows = [
-    ["Titel", "Kunde", "Status", "Betrag", "Quelle", "Erstellt am"],
+    ["Titel", "Kunde", "Status", "Betrag", "Quelle", "Erstellt am", "Tags"],
     ...inquiries.map((i) => [
       i.title,
       i.customer.name,
@@ -35,6 +35,7 @@ export async function GET(request: Request) {
       i.amount != null ? csvNum(Number(i.amount)) : "",
       i.source ?? "",
       i.createdAt.toLocaleDateString("de-DE"),
+      i.tags.map((t) => t.name).join(", "),
     ]),
   ];
 
