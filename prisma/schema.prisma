@@ -23,6 +23,7 @@ model Company {
   zip         String?
   city        String?
   country     String?
+  phone       String? // Rufnummer der Firma (bei der Registrierung erfasst, Rueckfragen/Support)
   taxNumber   String? // Steuernummer
   vatId       String? // USt-IdNr.
   bankName    String?

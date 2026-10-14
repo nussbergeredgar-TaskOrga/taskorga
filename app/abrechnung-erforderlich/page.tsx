@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { isBillingBlocked, DELETION_GRACE_DAYS } from "@/lib/billing-lock";
 import { applyCheckoutSession } from "@/lib/billing-checkout";
 import { BillingLockPanel } from "@/components/billing-lock-panel";
+import { missingBillingProfile } from "@/lib/billing-profile";
 import { BillingRequiredSignOutButton } from "@/components/billing-required-signout-button";
 
 const STATUS_TEXT: Record<string, string> = {
@@ -77,6 +78,13 @@ export default async function AbrechnungErforderlichPage({
             <BillingLockPanel
               companyName={company.name}
               canResubscribe={company.subscriptionStatus === "CANCELED"}
+              missingFields={missingBillingProfile(company)}
+              profile={{
+                address: company.address ?? "",
+                zip: company.zip ?? "",
+                city: company.city ?? "",
+                phone: company.phone ?? "",
+              }}
               deadlineLabel={
                 deadline ? deadline.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" }) : null
               }

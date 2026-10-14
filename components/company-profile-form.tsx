@@ -9,6 +9,7 @@ type Company = {
   id: string;
   name: string;
   email: string | null;
+  phone: string | null;
   address: string | null;
   zip: string | null;
   city: string | null;
@@ -134,6 +135,8 @@ export function CompanyProfileForm({ company }: { company: Company }) {
           Antworten von Kunden auf Angebots-/Rechnungsmails landen hier, statt bei TaskOrga.
         </p>
       </div>
+
+      <Field label="Telefonnummer" name="phone" defaultValue={company.phone} />
 
       <div>
         <p className="text-xs font-medium text-ink-700 mb-2">Adresse</p>

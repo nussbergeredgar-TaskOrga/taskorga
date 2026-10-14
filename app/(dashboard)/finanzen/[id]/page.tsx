@@ -7,6 +7,7 @@ import { InvoiceActions } from "@/components/invoice-actions";
 import { RecordNotes } from "@/components/record-notes";
 import { RecordTasks } from "@/components/record-tasks";
 import { RecordTags } from "@/components/record-tags";
+import { missingInvoiceDetails } from "@/lib/invoice-compliance";
 
 export default async function RechnungDetailPage({ params }: { params: { id: string } }) {
   const admin = await requirePermission("finanzen");
@@ -22,6 +23,16 @@ export default async function RechnungDetailPage({ params }: { params: { id: str
     },
   });
   if (!invoice) notFound();
+
+  // Hinweis auf fehlende Pflichtangaben, solange die Rechnung noch ein Entwurf ist
+  const issuer =
+    invoice.status === "DRAFT"
+      ? await prisma.company.findUnique({
+          where: { id: admin.companyId },
+          select: { name: true, address: true, zip: true, city: true, taxNumber: true, vatId: true },
+        })
+      : null;
+  const invoiceGaps = issuer ? missingInvoiceDetails(issuer, invoice.customer, Number(invoice.totalGross)) : [];
 
   const link = { invoiceId: invoice.id };
   // Ein Angebot kann direkt (invoice.quote) oder ueber den Auftrag
@@ -97,6 +108,22 @@ export default async function RechnungDetailPage({ params }: { params: { id: str
           />
         </div>
       </div>
+
+      {invoiceGaps.length > 0 && (
+        <div className="rounded-lg border border-warning/30 bg-warning/5 px-4 py-3 text-sm">
+          <p className="font-medium text-warning">Vor dem Versand fehlen noch Pflichtangaben:</p>
+          <ul className="mt-1 list-disc space-y-0.5 pl-5 text-ink-700">
+            {invoiceGaps.map((g) => (
+              <li key={g.label}>
+                {g.label} —{" "}
+                <Link href={g.href} className="text-brand-700 hover:underline">
+                  ergänzen
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <div className="rounded-card border border-ink-100 bg-surface overflow-hidden shadow-card">
         <table className="w-full text-sm">

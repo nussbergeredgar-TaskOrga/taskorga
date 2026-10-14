@@ -8,6 +8,7 @@ import {
   openPaymentPortal,
   startSubscriptionCheckout,
 } from "@/lib/actions/billing-lock";
+import { BILLING_PROFILE_LABELS, type BillingProfileFields } from "@/lib/billing-profile";
 import { EXPORT_DATASETS, EXPORT_DATASET_KEYS, type ExportDatasetKey } from "@/lib/export-datasets";
 
 type View = "main" | "subscribe" | "export" | "delete-confirm" | "delete-password";
@@ -46,12 +47,19 @@ function PasswordField({
   );
 }
 
+type ProfileKey = keyof BillingProfileFields;
+
 export function BillingLockPanel({
   companyName,
   canResubscribe,
   deadlineLabel,
+  missingFields,
+  profile: initialProfile,
 }: {
   companyName: string;
+  // Angaben, die vor dem Abo noch nachgetragen werden muessen
+  missingFields: ProfileKey[];
+  profile: Record<ProfileKey, string>;
   // true: Abo wurde beendet -> neues Abo ueber Checkout; false: Abo besteht noch,
   // aber die Zahlung ist fehlgeschlagen -> Zahlungsmethode aktualisieren
   canResubscribe: boolean;
@@ -59,6 +67,7 @@ export function BillingLockPanel({
 }) {
   const [view, setView] = useState<View>("main");
   const [password, setPassword] = useState("");
+  const [profile, setProfile] = useState<Record<ProfileKey, string>>(initialProfile);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -76,7 +85,9 @@ export function BillingLockPanel({
   function subscribe() {
     setError(null);
     startTransition(async () => {
-      const res = canResubscribe ? await startSubscriptionCheckout(password) : await openPaymentPortal(password);
+      const res = canResubscribe
+        ? await startSubscriptionCheckout(password, profile)
+        : await openPaymentPortal(password, profile);
       if (res.error) setError(res.error);
       else if (res.url) window.location.href = res.url;
     });
@@ -152,13 +163,36 @@ export function BillingLockPanel({
             ? `Nach der Bestätigung wirst du zur sicheren Zahlungsseite weitergeleitet. Nach erfolgreicher Zahlung ist „${companyName}“ sofort wieder freigeschaltet.`
             : "Nach der Bestätigung wirst du zum Zahlungsportal weitergeleitet, um deine Zahlungsmethode zu aktualisieren."}
         </p>
+        {missingFields.length > 0 && (
+          <div className="space-y-3 rounded-lg border border-ink-100 p-3">
+            <p className="text-sm text-ink-700">
+              Für die Rechnungsstellung brauchen wir noch folgende Angaben zu „{companyName}“:
+            </p>
+            {missingFields.map((key) => (
+              <div key={key}>
+                <label className="mb-1 block text-xs font-medium text-ink-500">{BILLING_PROFILE_LABELS[key]}</label>
+                <input
+                  value={profile[key]}
+                  type={key === "phone" ? "tel" : "text"}
+                  onChange={(e) => setProfile((p) => ({ ...p, [key]: e.target.value }))}
+                  className={INPUT_CLASS}
+                />
+              </div>
+            ))}
+          </div>
+        )}
         <PasswordField value={password} onChange={setPassword} onSubmit={subscribe} />
         {errorBox}
         <div className="flex gap-2">
           <button type="button" onClick={() => go("main")} className={SECONDARY} disabled={pending}>
             Zurück
           </button>
-          <button type="button" onClick={subscribe} className={PRIMARY} disabled={pending || !password}>
+          <button
+            type="button"
+            onClick={subscribe}
+            className={PRIMARY}
+            disabled={pending || !password || missingFields.some((k) => !profile[k].trim())}
+          >
             {pending ? "Wird geöffnet …" : "Weiter zur Zahlung"}
           </button>
         </div>

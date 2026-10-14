@@ -91,6 +91,22 @@ export function RegistrierenForm({
           </div>
 
           <div>
+            <label className="block text-sm font-medium text-ink-700 mb-1.5">Telefonnummer</label>
+            <input
+              name="phone"
+              type="tel"
+              required
+              autoComplete="tel"
+              className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500"
+            />
+            {state.errors?.phone && <p className="text-xs text-danger mt-1">{state.errors.phone[0]}</p>}
+            <p className="text-xs text-ink-300 mt-1">
+              Für Rückfragen und Unterstützung bei der Einrichtung — wir melden uns nur im Zusammenhang
+              mit deinem Konto.
+            </p>
+          </div>
+
+          <div>
             <label className="block text-sm font-medium text-ink-700 mb-1.5">Passwort</label>
             <PasswordInput
               name="password"
@@ -119,7 +135,7 @@ export function RegistrierenForm({
 
         <p className="text-center text-xs text-ink-300 mt-4">
           Dein Firmenkonto ist komplett von allen anderen Firmen getrennt. {trialDays} Tage kostenlos
-          testen, danach jederzeit kündbar.
+          testen. Danach ist ein kostenpflichtiges Abo nötig — es wird nichts automatisch abgebucht.
         </p>
 
         <p className="text-center text-xs text-ink-300 mt-3 space-x-2">

@@ -108,6 +108,7 @@ export type CompanyPerson = {
 export type CompanyOverview = {
   id: string;
   name: string;
+  phone: string | null;
   userCount: number;
   createdAt: Date;
   lastActivityAt: Date | null;
@@ -148,6 +149,7 @@ export async function listCompaniesOverview(): Promise<CompanyOverview[]> {
   return companies.map((c) => ({
     id: c.id,
     name: c.name,
+    phone: c.phone,
     userCount: c._count.users,
     createdAt: c.createdAt,
     lastActivityAt: lastActivityByCompany.get(c.id) ?? null,

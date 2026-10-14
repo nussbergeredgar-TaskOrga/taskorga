@@ -14,6 +14,7 @@ import { resolvePlaceholders } from "@/lib/document-placeholders";
 import { createWithUniqueNumber } from "@/lib/numbering";
 import { resolveCompanyLogoUrl } from "@/lib/blob-signed-url";
 import { addDays } from "@/lib/date-utils";
+import { missingInvoiceDetails, describeInvoiceGaps } from "@/lib/invoice-compliance";
 
 const invoiceSchema = z.object({
   customerId: z.string().min(1, "Bitte einen Kunden auswählen"),
@@ -156,10 +157,17 @@ export async function createInvoice(
   redirect(`/finanzen/${invoice.id}`);
 }
 
-export async function markInvoiceSent(invoiceId: string) {
+export async function markInvoiceSent(invoiceId: string): Promise<{ error?: string }> {
   const company = await getCurrentCompany();
-  const existing = await prisma.invoice.findFirst({ where: { id: invoiceId, companyId: company.id } });
-  if (!existing) return;
+  const existing = await prisma.invoice.findFirst({
+    where: { id: invoiceId, companyId: company.id },
+    include: { customer: true },
+  });
+  if (!existing) return {};
+
+  // Pflichtangaben nach § 14 UStG: ohne sie darf die Rechnung nicht raus
+  const gaps = missingInvoiceDetails(company, existing.customer, Number(existing.totalGross));
+  if (gaps.length > 0) return { error: describeInvoiceGaps(gaps) };
 
   const invoice = await prisma.invoice.update({
     where: { id: invoiceId },
@@ -182,6 +190,7 @@ export async function markInvoiceSent(invoiceId: string) {
 
   revalidatePath(`/finanzen/${invoiceId}`);
   revalidatePath("/finanzen");
+  return {};
 }
 
 export async function recordInvoicePayment(
@@ -452,6 +461,12 @@ export async function sendInvoiceEmail(
   if (!invoice) return { error: "Rechnung nicht gefunden." };
   if (!invoice.customer.email) {
     return { error: "Für diesen Kunden ist keine E-Mail-Adresse hinterlegt." };
+  }
+
+  // Pflichtangaben nach § 14 UStG pruefen, bevor ein Entwurf versendet wird
+  if (invoice.status === "DRAFT") {
+    const gaps = missingInvoiceDetails(invoice.company, invoice.customer, Number(invoice.totalGross));
+    if (gaps.length > 0) return { error: describeInvoiceGaps(gaps) };
   }
 
   const template = await prisma.documentTemplate.findFirst({

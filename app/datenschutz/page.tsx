@@ -57,8 +57,10 @@ export default function DatenschutzPage() {
         <section>
           <H2>Konto- und Registrierungsdaten</H2>
           <p className="mt-1">
-            Bei der Registrierung verarbeiten wir Name, E-Mail-Adresse, Firmenname und ein
-            (gehashtes) Passwort, um dein Konto anzulegen und dir Zugang zur Software zu geben.
+            Bei der Registrierung verarbeiten wir Name, E-Mail-Adresse, Telefonnummer, Firmenname
+            und ein (gehashtes) Passwort, um dein Konto anzulegen und dir Zugang zur Software zu
+            geben. Die Telefonnummer nutzen wir für Rückfragen zu deinem Konto und für
+            Unterstützung bei der Einrichtung.
             Rechtsgrundlage ist die Erfüllung des Nutzungsvertrags (Art. 6 Abs. 1 lit. b DSGVO).
             Passwörter werden ausschließlich als Hash gespeichert, niemals im Klartext. Optional
             kannst du eine Zwei-Faktor-Authentifizierung aktivieren; dabei speichern wir ein

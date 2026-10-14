@@ -437,6 +437,7 @@ function CompanyRow({
               {company.userCount} Nutzer · angemeldet seit {company.createdAt.toLocaleDateString("de-DE")} · letzte
               Aktivität{" "}
               {company.lastActivityAt ? company.lastActivityAt.toLocaleDateString("de-DE") : "—"}
+              {company.phone ? ` · Tel. ${company.phone}` : ""}
             </p>
           </span>
         </button>

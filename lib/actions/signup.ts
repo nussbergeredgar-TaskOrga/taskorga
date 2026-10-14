@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { sendInitialVerificationEmail } from "@/lib/actions/email-verification";
+import { isPlausiblePhone } from "@/lib/billing-profile";
 import { createSubscriptionForCompany } from "@/lib/actions/subscription";
 
 const MAX_SIGNUP_ATTEMPTS_PER_HOUR = 10;
@@ -24,6 +25,10 @@ const signupSchema = z.object({
   companyName: z.string().min(2, "Bitte einen Firmennamen eingeben"),
   name: z.string().min(2, "Bitte deinen Namen eingeben"),
   email: z.string().email("Ungültige E-Mail-Adresse"),
+  phone: z
+    .string()
+    .trim()
+    .refine(isPlausiblePhone, "Bitte eine gültige Telefonnummer eingeben"),
   password: z.string().min(8, "Passwort muss mindestens 8 Zeichen haben"),
   // Optional: Registrierung ist inzwischen fuer alle offen (siehe
   // taskorga-website), ein Einladungscode wird nur noch geprueft/verbraucht,
@@ -58,6 +63,7 @@ export async function signUp(_prevState: SignupState, formData: FormData): Promi
     companyName: formData.get("companyName"),
     name: formData.get("name"),
     email: formData.get("email"),
+    phone: formData.get("phone"),
     password: formData.get("password"),
     inviteCode: formData.get("inviteCode"),
     invite: formData.get("invite"),
@@ -127,7 +133,7 @@ export async function signUp(_prevState: SignupState, formData: FormData): Promi
   // Neue, komplett von allen anderen Firmen getrennte Firma anlegen. maxUsers
   // bleibt ohne Einladung leer (unbegrenzt, siehe Company.maxUsers).
   const company = await prisma.company.create({
-    data: { name: parsed.data.companyName, maxUsers: maxUsersFromInvite },
+    data: { name: parsed.data.companyName, phone: parsed.data.phone, maxUsers: maxUsersFromInvite },
   });
 
   await createSubscriptionForCompany(company.id, parsed.data.companyName, parsed.data.email, trialDays);

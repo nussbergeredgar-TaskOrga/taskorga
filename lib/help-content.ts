@@ -90,6 +90,7 @@ export const HELP_CHAPTERS: HelpChapter[] = [
       "Ist unter **Einstellungen → Dokumente & Finanzen** ein Stundensatz hinterlegt, kannst du beim Erstellen zusätzlich noch nicht abgerechnete Zeiterfassungseinträge des Auftrags mit auf die Rechnung nehmen.",
       "Auf der Rechnungs-Detailseite kannst du die Rechnung per E-Mail versenden (inkl. Vorschau/Bestätigung wie bei Angeboten), **Teilzahlungen erfassen** (z. B. bei Anzahlungen), komplett als bezahlt markieren oder eine Zahlungserinnerung/Mahnung anstoßen. Von dort aus gelangst du auch direkt zum zugehörigen Auftrag und zum ursprünglichen Angebot. Eine noch nicht bezahlte Rechnung kannst du außerdem **stornieren**.",
       "Wie viele Tage nach Rechnungsstellung eine Zahlung fällig ist (Zahlungsziel), legst du unter **Einstellungen → Dokumente & Finanzen** fest.",
+      "**Pflichtangaben:** Eine Rechnung kann erst versendet werden, wenn deine Firmenanschrift, deine Steuernummer oder USt-IdNr. und (bei Rechnungen über 250 €) die Anschrift des Kunden hinterlegt sind. Fehlt etwas, zeigt die Rechnung einen Hinweis mit Link zum Ergänzen — deine Daten pflegst du unter **Einstellungen → Firma → Firmenprofil**.",
       "Überfällige Rechnungen werden automatisch markiert und erscheinen im roten „Mahnwesen\"-Bereich auf der Finanzen-Seite, inklusive Datum der zuletzt versendeten Mahnstufe. Welche Mahnstufen es gibt, ab wann sie sinnvoll sind und welcher Text verschickt wird, legst du unter **Einstellungen → Dokumente & Finanzen → Mahnwesen** fest.",
     ],
   },

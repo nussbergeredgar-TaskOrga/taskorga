@@ -16,6 +16,7 @@ export async function updateCompanyProfile(formData: FormData) {
     data: {
       name: get("name") || undefined, // Name darf nicht leer werden
       email: get("email"),
+      phone: get("phone"),
       address: get("address"),
       zip: get("zip"),
       city: get("city"),

@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { stripe } from "@/lib/stripe";
 import { requireAdmin } from "@/lib/session";
 import { mapStripeStatus } from "@/lib/subscription-pricing";
+import { BILLING_PROFILE_LABELS, missingBillingProfile } from "@/lib/billing-profile";
 
 const TRIAL_DAYS = 14;
 
@@ -88,6 +89,16 @@ export async function createBillingPortalSession(returnUrl: string): Promise<{ u
   const company = await prisma.company.findUnique({ where: { id: admin.companyId } });
   if (!company?.stripeCustomerId) {
     return { error: "Für diese Firma ist kein Stripe-Konto hinterlegt." };
+  }
+
+  // Ohne Anschrift und Rufnummer kann kein Abo laufen -- vorher im Firmenprofil ergaenzen
+  const missing = missingBillingProfile(company);
+  if (missing.length > 0) {
+    return {
+      error: `Bitte ergänze zuerst im Firmenprofil (Einstellungen → Firma): ${missing
+        .map((k) => BILLING_PROFILE_LABELS[k])
+        .join(", ")}.`,
+    };
   }
 
   const session = await stripe.billingPortal.sessions.create({
