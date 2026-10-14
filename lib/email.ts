@@ -163,6 +163,50 @@ export async function sendUpdateRequestEmail({
   });
 }
 
+function escapeHtml(value: string): string {
+  return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+// Betreiber-Info ueber Aktivitaet auf der Plattform (neue Firma, neuer Nutzer).
+// Geht an PLATFORM_OPERATOR_EMAIL; Aufrufer fangen Fehler ab, damit eine
+// Benachrichtigung nie die eigentliche Aktion (Registrierung, Nutzer anlegen)
+// scheitern laesst.
+export async function sendOperatorEventEmail({
+  subject,
+  headline,
+  facts,
+}: {
+  subject: string;
+  headline: string;
+  facts: [string, string][];
+}) {
+  const to = process.env.PLATFORM_OPERATOR_EMAIL;
+  if (!resend || !to) {
+    throw new Error("Betreiber-Benachrichtigung nicht eingerichtet (RESEND_API_KEY/PLATFORM_OPERATOR_EMAIL).");
+  }
+
+  const settings = await getSystemEmailSettings();
+  const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
+  const rows = facts
+    .filter(([, value]) => value)
+    .map(([label, value]) => `<strong>${escapeHtml(label)}:</strong> ${escapeHtml(value)}`)
+    .join("<br/>");
+
+  await resend.emails.send({
+    from: process.env.EMAIL_FROM || "TaskOrga <onboarding@resend.dev>",
+    to,
+    subject,
+    html: renderSystemEmail({
+      branding: settings,
+      bodyHtml: `
+        <p style="margin:0 0 14px;">${escapeHtml(headline)}</p>
+        <p style="margin:0 0 14px;">${rows}</p>
+        <p style="margin:0 0 14px;"><a href="${baseUrl}/plattform-admin" style="color:#2F5FFF;">Plattform-Verwaltung öffnen</a></p>
+      `,
+    }),
+  });
+}
+
 // Wenn eine andere Person eine Aufgabe fuer jemanden anlegt (nicht bei
 // Selbstzuweisung, siehe lib/actions/free-tasks.ts). Fester Text wie bei den
 // uebrigen internen Benachrichtigungen hier, nicht ueber getSystemEmailSettings()

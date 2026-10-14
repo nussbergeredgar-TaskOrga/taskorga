@@ -5,7 +5,7 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/session";
-import { sendTeamInviteEmail } from "@/lib/email";
+import { sendTeamInviteEmail, sendOperatorEventEmail } from "@/lib/email";
 import { syncSeatCount } from "@/lib/actions/subscription";
 import type { Permissions } from "@/lib/permissions";
 
@@ -94,6 +94,25 @@ export async function createUser(
   }
 
   await syncSeatCount(admin.companyId);
+
+  // Betreiber ueber den neuen Nutzer informieren -- Fehler bleiben folgenlos.
+  try {
+    const userCount = await prisma.user.count({ where: { companyId: admin.companyId } });
+    await sendOperatorEventEmail({
+      subject: `Neuer Nutzer bei ${company.name}`,
+      headline: `Bei „${company.name}“ wurde ein weiterer Nutzer angelegt.`,
+      facts: [
+        ["Firma", company.name],
+        ["Neuer Nutzer", newUser.name],
+        ["E-Mail", newUser.email],
+        ["Rolle", parsed.data.roleName],
+        ["Angelegt von", admin.name],
+        ["Nutzer in der Firma jetzt", String(userCount)],
+      ],
+    });
+  } catch (err) {
+    console.error("Betreiber-Benachrichtigung (neuer Nutzer) fehlgeschlagen:", err);
+  }
 
   revalidatePath("/einstellungen");
   return { success: true };

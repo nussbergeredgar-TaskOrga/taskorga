@@ -7,6 +7,7 @@ import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { sendInitialVerificationEmail } from "@/lib/actions/email-verification";
 import { isPlausiblePhone } from "@/lib/billing-profile";
+import { sendOperatorEventEmail } from "@/lib/email";
 import { createSubscriptionForCompany } from "@/lib/actions/subscription";
 
 const MAX_SIGNUP_ATTEMPTS_PER_HOUR = 10;
@@ -160,6 +161,25 @@ export async function signUp(_prevState: SignupState, formData: FormData): Promi
   });
 
   await sendInitialVerificationEmail(user.id, user.email);
+
+  // Betreiber ueber die neue Firma informieren (Lead) -- Fehler bleiben ohne
+  // Folgen fuer die Registrierung.
+  try {
+    await sendOperatorEventEmail({
+      subject: `Neue Registrierung: ${parsed.data.companyName}`,
+      headline: "Ein neues Unternehmen hat sich bei TaskOrga registriert.",
+      facts: [
+        ["Firma", parsed.data.companyName],
+        ["Name", parsed.data.name],
+        ["E-Mail", parsed.data.email],
+        ["Telefon", parsed.data.phone],
+        ["Testphase", `${trialDays ?? 14} Tage`],
+        ["Registriert am", new Date().toLocaleString("de-DE")],
+      ],
+    });
+  } catch (err) {
+    console.error("Betreiber-Benachrichtigung (Registrierung) fehlgeschlagen:", err);
+  }
 
   // Sinnvolle Standard-Workflow-Schritte und Mahnstufen vorbelegen, wie bei der Demo-Firma
   await prisma.workflowStep.createMany({
