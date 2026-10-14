@@ -154,6 +154,17 @@ function toDateInputValue(d?: Date | null) {
   return new Date(d).toISOString().slice(0, 10);
 }
 
+// Beschriftung mit kurzer Erklaerung -- die Felder des Kennzahl-Formulars sind
+// sonst fuer Erstnutzer nicht selbsterklaerend.
+function FieldLabel({ title, hint }: { title: string; hint?: string }) {
+  return (
+    <div className="mb-1">
+      <label className="block text-xs font-medium text-ink-700">{title}</label>
+      {hint && <p className="text-xs text-ink-300">{hint}</p>}
+    </div>
+  );
+}
+
 // Gemeinsames Formular für Neu anlegen UND Bearbeiten -- sowohl fuer direkte
 // Auswertungen (BASIC) als auch Formel-Kennzahlen (FORMULA, siehe Umschalter
 // oben im Formular).
@@ -209,6 +220,23 @@ function KpiForm({
   const statusOptions = statusOptionsFor(entity);
   const numberFields = numberFieldsFor(entity);
   const dateFields = dateFieldsFor(entity);
+
+  const previewRange = DATE_RANGE_OPTIONS.find((r) => r.value === dateRangeType)?.label ?? "";
+  const previewSumField = numberFields.find((f) => f.key === sumField)?.label ?? "Betrag";
+  const previewStatus = statusOptions.find((o) => o.value === statusValue)?.label;
+  const previewText =
+    kind === "FORMULA"
+      ? `Das Ergebnis der ausgewählten Kennzahlen (von oben nach unten verrechnet) · ${previewRange}`
+      : [
+          meta.label,
+          aggregation !== "count" && numberFields.length > 0
+            ? `${AGGREGATION_LABELS[aggregation]} von „${previewSumField}“`
+            : "Anzahl der Einträge",
+          previewStatus ? `nur Status „${previewStatus}“` : "alle Status",
+          previewRange,
+        ]
+          .filter(Boolean)
+          .join(" · ");
 
   function addFormulaTerm() {
     if (!availableBasicKpis[0]) return;
@@ -282,7 +310,30 @@ function KpiForm({
 
   return (
     <div className="rounded-lg border border-dashed border-ink-100 p-4 space-y-3 bg-ink-50">
-      <div className="flex rounded-lg border border-ink-100 bg-surface p-0.5 text-sm">
+      {!initial && (
+        <div className="space-y-1.5 rounded-lg bg-brand-50 px-3 py-2.5 text-xs text-ink-700">
+          <p className="font-medium text-brand-700">So legst du eine Kennzahl an</p>
+          <p>
+            Eine Kennzahl zählt oder summiert deine Daten und zeigt das Ergebnis als Kachel — zum Beispiel,
+            wie viele Angebote noch offen sind oder wie viel Umsatz du diesen Monat gemacht hast.
+          </p>
+          <ol className="list-decimal space-y-0.5 pl-4">
+            <li>Gib der Kennzahl einen Namen.</li>
+            <li>
+              Wähle, <strong>was</strong> ausgewertet wird (z. B. Angebote) und <strong>wie</strong> (Anzahl oder
+              Summe).
+            </li>
+            <li>Lege den Zeitraum fest und klicke auf „Kennzahl erstellen“.</li>
+          </ol>
+          <p className="text-ink-500">
+            Beispiel: Name „Offene Angebote“ · Bereich „Angebote“ · Anzahl · Status „Versendet“ · Gesamter Zeitraum.
+          </p>
+        </div>
+      )}
+
+      <div>
+        <FieldLabel title="Art der Kennzahl" />
+        <div className="flex rounded-lg border border-ink-100 bg-surface p-0.5 text-sm">
         <button
           type="button"
           onClick={() => setKind("BASIC")}
@@ -303,95 +354,126 @@ function KpiForm({
         >
           Formel aus Kennzahlen
         </button>
+        </div>
+        <p className="mt-1 text-xs text-ink-300">
+          {kind === "FORMULA"
+            ? "Verrechnet bereits angelegte Kennzahlen, z. B. Umsatz minus Ausgaben = Gewinn."
+            : "Zählt oder summiert Datensätze direkt, z. B. alle offenen Angebote."}
+        </p>
       </div>
 
-      <input
-        value={label}
-        onChange={(e) => setLabel(e.target.value)}
-        placeholder={kind === "FORMULA" ? "Name, z. B. Gewinn" : "Name, z. B. Offene Angebote"}
-        className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface"
-      />
+      <div>
+        <FieldLabel title="Name der Kennzahl" hint="So heißt die Kachel auf deinem Dashboard." />
+        <input
+          value={label}
+          onChange={(e) => setLabel(e.target.value)}
+          placeholder={kind === "FORMULA" ? "z. B. Gewinn" : "z. B. Offene Angebote"}
+          className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface"
+        />
+      </div>
 
       {kind === "BASIC" ? (
         <>
-          <select
-            value={entity}
-            onChange={(e) => {
-              const next = e.target.value as EntityKey;
-              setEntity(next);
-              setStatusValue("");
-              setAggregation("count");
-              setSumField(numberFieldsFor(next)[0]?.key ?? "");
-              setDateField("");
-            }}
-            className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface"
-          >
-            {ENTITY_KEYS.map((key) => (
-              <option key={key} value={key}>
-                {ENTITY_META[key].label}
-              </option>
-            ))}
-          </select>
+          <div>
+            <FieldLabel title="Was soll ausgewertet werden?" hint="Der Bereich, aus dem gezählt wird, z. B. Angebote oder Rechnungen." />
+            <select
+              value={entity}
+              onChange={(e) => {
+                const next = e.target.value as EntityKey;
+                setEntity(next);
+                setStatusValue("");
+                setAggregation("count");
+                setSumField(numberFieldsFor(next)[0]?.key ?? "");
+                setDateField("");
+              }}
+              className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface"
+            >
+              {ENTITY_KEYS.map((key) => (
+                <option key={key} value={key}>
+                  {ENTITY_META[key].label}
+                </option>
+              ))}
+            </select>
+          </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            <select
-              value={aggregation}
-              onChange={(e) => setAggregation(e.target.value as KpiAggregation)}
-              className="rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface"
-            >
-              <option value="count">{AGGREGATION_LABELS.count}</option>
-              {numberFields.length > 0 && (
-                <>
-                  <option value="sum">{AGGREGATION_LABELS.sum}</option>
-                  <option value="avg">{AGGREGATION_LABELS.avg}</option>
-                  <option value="min">{AGGREGATION_LABELS.min}</option>
-                  <option value="max">{AGGREGATION_LABELS.max}</option>
-                </>
-              )}
-            </select>
-            {aggregation !== "count" && numberFields.length > 0 ? (
+            <div>
+              <FieldLabel
+                title="Wie soll gerechnet werden?"
+                hint={
+                  numberFields.length > 0
+                    ? "Anzahl zählt die Einträge, Summe addiert einen Betrag."
+                    : "Hier wird die Anzahl der Einträge gezählt."
+                }
+              />
               <select
-                value={sumField}
-                onChange={(e) => setSumField(e.target.value)}
-                className="rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface"
+                value={aggregation}
+                onChange={(e) => setAggregation(e.target.value as KpiAggregation)}
+                className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface"
               >
-                {numberFields.map((f) => (
-                  <option key={f.key} value={f.key}>
-                    {f.label}
-                  </option>
-                ))}
+                <option value="count">{AGGREGATION_LABELS.count}</option>
+                {numberFields.length > 0 && (
+                  <>
+                    <option value="sum">{AGGREGATION_LABELS.sum}</option>
+                    <option value="avg">{AGGREGATION_LABELS.avg}</option>
+                    <option value="min">{AGGREGATION_LABELS.min}</option>
+                    <option value="max">{AGGREGATION_LABELS.max}</option>
+                  </>
+                )}
               </select>
-            ) : (
-              statusOptions.length > 0 && (
+            </div>
+            {aggregation !== "count" && numberFields.length > 0 ? (
+              <div>
+                <FieldLabel title="Von welchem Betrag?" hint="Das Feld, das berechnet wird." />
                 <select
-                  value={statusValue}
-                  onChange={(e) => setStatusValue(e.target.value)}
-                  className="rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface"
+                  value={sumField}
+                  onChange={(e) => setSumField(e.target.value)}
+                  className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface"
                 >
-                  <option value="">Alle Status</option>
-                  {statusOptions.map((s) => (
-                    <option key={s.value} value={s.value}>
-                      {s.label}
+                  {numberFields.map((f) => (
+                    <option key={f.key} value={f.key}>
+                      {f.label}
                     </option>
                   ))}
                 </select>
+              </div>
+            ) : (
+              statusOptions.length > 0 && (
+                <div>
+                  <FieldLabel title="Nur bestimmter Status?" hint="Leer lassen („Alle Status“) zählt alles." />
+                  <select
+                    value={statusValue}
+                    onChange={(e) => setStatusValue(e.target.value)}
+                    className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface"
+                  >
+                    <option value="">Alle Status</option>
+                    {statusOptions.map((s) => (
+                      <option key={s.value} value={s.value}>
+                        {s.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               )
             )}
           </div>
 
           {aggregation !== "count" && numberFields.length > 0 && statusOptions.length > 0 && (
-            <select
-              value={statusValue}
-              onChange={(e) => setStatusValue(e.target.value)}
-              className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface"
-            >
-              <option value="">Alle Status</option>
-              {statusOptions.map((s) => (
-                <option key={s.value} value={s.value}>
-                  {s.label}
-                </option>
-              ))}
-            </select>
+            <div>
+              <FieldLabel title="Nur bestimmter Status?" hint="Leer lassen („Alle Status“) berücksichtigt alles." />
+              <select
+                value={statusValue}
+                onChange={(e) => setStatusValue(e.target.value)}
+                className="w-full rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 bg-surface"
+              >
+                <option value="">Alle Status</option>
+                {statusOptions.map((s) => (
+                  <option key={s.value} value={s.value}>
+                    {s.label}
+                  </option>
+                ))}
+              </select>
+            </div>
           )}
         </>
       ) : (
@@ -469,7 +551,7 @@ function KpiForm({
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         <div>
-          <label className="block text-xs text-ink-500 mb-1">Zeitfenster</label>
+          <FieldLabel title="Zeitraum" hint="Für welchen Zeitraum soll gerechnet werden?" />
           <select
             value={dateRangeType}
             onChange={(e) => setDateRangeType(e.target.value)}
@@ -484,7 +566,7 @@ function KpiForm({
         </div>
         {kind === "BASIC" && dateFields.length > 1 && (
           <div>
-            <label className="block text-xs text-ink-500 mb-1">Zeitfenster-Feld</label>
+            <FieldLabel title="Zeitraum bezieht sich auf" hint="Welches Datum zählt für den Zeitraum?" />
             <select
               value={dateField}
               onChange={(e) => setDateField(e.target.value)}
@@ -540,6 +622,11 @@ function KpiForm({
         />
         <p className="mt-1 text-xs text-ink-300">Zeigt einen Fortschrittsbalken zum Sollwert an.</p>
       </div>
+
+      <p className="rounded-lg bg-surface px-3 py-2 text-xs text-ink-500">
+        <span className="font-medium text-ink-700">Diese Kachel zeigt: </span>
+        {previewText}
+      </p>
 
       <div className="flex gap-2">
         <button

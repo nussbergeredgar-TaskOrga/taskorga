@@ -68,7 +68,7 @@ export const ADMIN_TOUR_STEPS: TourStep[] = [
     target: "kpi-create-button",
     requiredEvent: "kpiCreated",
     title: "Kennzahl erstellen",
-    body: "Klick auf „Neue Kennzahl erstellen“, gib ihr einen Namen und speichere sie.",
+    body: "Klick auf „Neue Kennzahl erstellen“. Gib ihr einen Namen (z. B. „Offene Angebote“), wähle den Bereich (z. B. Angebote) und klicke auf „Kennzahl erstellen“. Die Hinweise im Formular führen dich Schritt für Schritt.",
   },
   {
     id: "add-kpi-to-dashboard",
