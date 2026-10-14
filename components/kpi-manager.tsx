@@ -123,6 +123,8 @@ function KpiProgressBar({
   );
 }
 
+const FORM_TOUR_STEP_IDS = ["kpi-name", "kpi-entity", "kpi-aggregation", "kpi-range", "kpi-submit"];
+
 function describeKpi(kpi: Kpi) {
   if (kpi.kind === "FORMULA") {
     const rangeLabel = DATE_RANGE_OPTIONS.find((r) => r.value === kpi.dateRangeType)?.label;
@@ -362,7 +364,7 @@ function KpiForm({
         </p>
       </div>
 
-      <div>
+      <div data-tour="kpi-name-field">
         <FieldLabel title="Name der Kennzahl" hint="So heißt die Kachel auf deinem Dashboard." />
         <input
           value={label}
@@ -374,7 +376,7 @@ function KpiForm({
 
       {kind === "BASIC" ? (
         <>
-          <div>
+          <div data-tour="kpi-entity-field">
             <FieldLabel title="Was soll ausgewertet werden?" hint="Der Bereich, aus dem gezählt wird, z. B. Angebote oder Rechnungen." />
             <select
               value={entity}
@@ -396,7 +398,7 @@ function KpiForm({
             </select>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <div data-tour="kpi-aggregation-field" className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <div>
               <FieldLabel
                 title="Wie soll gerechnet werden?"
@@ -549,7 +551,7 @@ function KpiForm({
         </div>
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+      <div data-tour="kpi-range-field" className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         <div>
           <FieldLabel title="Zeitraum" hint="Für welchen Zeitraum soll gerechnet werden?" />
           <select
@@ -630,6 +632,7 @@ function KpiForm({
 
       <div className="flex gap-2">
         <button
+          data-tour="kpi-submit-button"
           disabled={pending || !label.trim() || (kind === "FORMULA" && formulaTerms.length === 0)}
           onClick={submit}
           className="rounded-lg bg-brand-500 text-white text-sm font-medium px-4 py-2 hover:bg-brand-600 disabled:opacity-60 transition-colors"
@@ -941,6 +944,7 @@ function KpiRow({ kpi, highlighted, onEdit }: { kpi: Kpi; highlighted?: boolean;
 export function KpiManager({ kpis }: { kpis: Kpi[] }) {
   const router = useRouter();
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const tour = useTour();
   const [editingId, setEditingId] = useState<string | null>(null);
   // Deep-Link von einer Dashboard-Kachel (z.B. Formel-Kennzahl, #kpi-<id>) --
   // direkt dorthin scrollen und kurz hervorheben statt nur auf der Seite zu
@@ -955,6 +959,15 @@ export function KpiManager({ kpis }: { kpis: Kpi[] }) {
     const timeout = setTimeout(() => setHighlightedId(null), 2000);
     return () => clearTimeout(timeout);
   }, []);
+
+  // Tour-Schritte, die im offenen Erstell-Formular stattfinden: Formular bei
+  // Bedarf selbst oeffnen (z.B. nach Neuladen oder "Abbrechen"), damit die
+  // Anleitung nie ins Leere zeigt.
+  useEffect(() => {
+    if (tour.currentStepId && FORM_TOUR_STEP_IDS.includes(tour.currentStepId) && !showCreateForm) {
+      setShowCreateForm(true);
+    }
+  }, [tour.currentStepId, showCreateForm]);
 
   function closeAll() {
     setShowCreateForm(false);
@@ -976,7 +989,10 @@ export function KpiManager({ kpis }: { kpis: Kpi[] }) {
       {!showCreateForm ? (
         <button
           data-tour="kpi-create-button"
-          onClick={() => setShowCreateForm(true)}
+          onClick={() => {
+            setShowCreateForm(true);
+            tour.reportAction("kpiFormOpened");
+          }}
           className="flex items-center gap-1.5 rounded-lg border border-ink-100 text-ink-700 text-sm font-medium px-4 py-2 hover:bg-ink-50 transition-colors"
         >
           <Plus size={15} />

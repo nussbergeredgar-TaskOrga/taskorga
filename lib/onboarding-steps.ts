@@ -11,6 +11,10 @@ export type TourStep = {
   // Dashboards existiert -- signalisiert DashboardGrid beim Fortsetzen der Tour
   // nach einem Reload, den Bearbeiten-Modus selbst zu aktivieren.
   requiresEditMode?: boolean;
+  // Zielelement kann je nach Zustand fehlen (z.B. Feld nur in einer Formularvariante):
+  // statt gar nichts zu zeigen erscheint die Anleitung dann als kleine, nicht
+  // blockierende Karte unten rechts.
+  floatingFallback?: boolean;
   title: string;
   body: string;
   cta?: string;
@@ -66,9 +70,54 @@ export const ADMIN_TOUR_STEPS: TourStep[] = [
     id: "create-kpi",
     route: "/einblicke",
     target: "kpi-create-button",
-    requiredEvent: "kpiCreated",
+    requiredEvent: "kpiFormOpened",
     title: "Kennzahl erstellen",
-    body: "Klick auf „Neue Kennzahl erstellen“. Gib ihr einen Namen (z. B. „Offene Angebote“), wähle den Bereich (z. B. Angebote) und klicke auf „Kennzahl erstellen“. Die Hinweise im Formular führen dich Schritt für Schritt.",
+    body: "Eine Kennzahl zählt oder summiert deine Daten und zeigt das Ergebnis als Kachel. Klick auf „Neue Kennzahl erstellen“ — wir füllen das Formular gemeinsam aus.",
+  },
+  {
+    id: "kpi-name",
+    route: "/einblicke",
+    target: "kpi-name-field",
+    floatingFallback: true,
+    title: "1. Name vergeben",
+    body: "Gib der Kennzahl einen Namen, z. B. „Offene Angebote“. So heißt die Kachel später auf deinem Dashboard.",
+    cta: "Weiter",
+  },
+  {
+    id: "kpi-entity",
+    route: "/einblicke",
+    target: "kpi-entity-field",
+    floatingFallback: true,
+    title: "2. Was auswerten?",
+    body: "Wähle den Bereich, aus dem gezählt wird — für „Offene Angebote“ also „Angebote“.",
+    cta: "Weiter",
+  },
+  {
+    id: "kpi-aggregation",
+    route: "/einblicke",
+    target: "kpi-aggregation-field",
+    floatingFallback: true,
+    title: "3. Wie rechnen?",
+    body: "„Anzahl“ zählt die Einträge. „Summe“ addiert einen Betrag, z. B. den Rechnungsbetrag. Rechts kannst du zusätzlich einen Status wählen, z. B. nur „Versendet“.",
+    cta: "Weiter",
+  },
+  {
+    id: "kpi-range",
+    route: "/einblicke",
+    target: "kpi-range-field",
+    floatingFallback: true,
+    title: "4. Welcher Zeitraum?",
+    body: "Lege fest, für welchen Zeitraum gerechnet wird — z. B. „Gesamter Zeitraum“ oder „Dieser Monat“.",
+    cta: "Weiter",
+  },
+  {
+    id: "kpi-submit",
+    route: "/einblicke",
+    target: "kpi-submit-button",
+    requiredEvent: "kpiCreated",
+    floatingFallback: true,
+    title: "5. Speichern",
+    body: "Unter „Diese Kachel zeigt“ siehst du, was berechnet wird. Klick jetzt auf „Kennzahl erstellen“.",
   },
   {
     id: "add-kpi-to-dashboard",

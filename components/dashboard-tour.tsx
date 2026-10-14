@@ -8,11 +8,14 @@ import { advanceOnboardingStep, completeOnboarding } from "@/lib/actions/onboard
 type TourContextValue = {
   reportAction: (type: string, detail?: unknown) => void;
   pendingEditModeRequest: boolean;
+  // Id des gerade aktiven Tour-Schritts (null, wenn keine Tour laeuft)
+  currentStepId: string | null;
 };
 
 const TourContext = createContext<TourContextValue>({
   reportAction: () => {},
   pendingEditModeRequest: false,
+  currentStepId: null,
 });
 
 // Von DashboardGrid/KpiManager genutzt, um der Tour eine ausgefuehrte Aktion zu
@@ -104,6 +107,7 @@ export function TourProvider({
   const value: TourContextValue = {
     reportAction,
     pendingEditModeRequest: !!currentStep?.requiresEditMode,
+    currentStepId: currentStep?.id ?? null,
   };
 
   return (
@@ -188,6 +192,17 @@ function TourBubbleOverlay({
     // die Eingabe verhindern, die als Naechstes noetig ist. Die Tour taucht
     // automatisch wieder auf, sobald das Zielelement erneut gefunden wird oder
     // die erforderliche Aktion (reportAction) den Schritt abschliesst.
+    //
+    // Ausnahme: Schritte mit floatingFallback (Formularfelder, die je nach
+    // Formularvariante fehlen koennen) zeigen die Anleitung als kleine,
+    // nicht blockierende Karte -- ohne Abdunkelung.
+    if (step.floatingFallback) {
+      return (
+        <div className="fixed bottom-20 right-4 z-[100] w-[min(22rem,calc(100vw-2rem))] md:bottom-4">
+          <TourCard title={step.title} body={step.body} cta={step.cta ?? "Weiter"} onCta={onCta} hideButton={!step.cta} />
+        </div>
+      );
+    }
     return null;
   }
 
@@ -219,22 +234,26 @@ function TourCard({
   body,
   cta,
   onCta,
+  hideButton,
 }: {
   title: string;
   body: string;
   cta: string;
   onCta: () => void;
+  hideButton?: boolean;
 }) {
   return (
     <div className="w-full max-w-sm rounded-card bg-surface border border-ink-100 shadow-cardHover p-5 space-y-3 transition-opacity duration-150">
       <h3 className="font-display font-semibold text-ink-900">{title}</h3>
       <p className="text-sm text-ink-500">{body}</p>
-      <button
-        onClick={onCta}
-        className="w-full rounded-lg bg-brand-500 text-white text-sm font-medium px-4 py-2 hover:bg-brand-600 transition-colors"
-      >
-        {cta}
-      </button>
+      {!hideButton && (
+        <button
+          onClick={onCta}
+          className="w-full rounded-lg bg-brand-500 text-white text-sm font-medium px-4 py-2 hover:bg-brand-600 transition-colors"
+        >
+          {cta}
+        </button>
+      )}
     </div>
   );
 }
