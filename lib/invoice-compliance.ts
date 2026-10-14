@@ -2,8 +2,8 @@
 // stammen: Name und Anschrift des leistenden Unternehmers und des
 // Leistungsempfaengers sowie Steuernummer oder USt-IdNr. des Ausstellers.
 // Bei Kleinbetragsrechnungen (bis 250 EUR brutto) entfaellt die Anschrift des
-// Empfaengers (§ 33 UStDV).
-export const SMALL_AMOUNT_LIMIT = 250;
+// Empfaengers (§ 33 UStDV) -- TaskOrga verlangt sie bewusst trotzdem immer
+// (Entscheidung von Edgar, 2026-10-14): die Anschrift kommt aus dem Kundenstamm.
 
 export type InvoiceGap = { label: string; href: string };
 
@@ -36,9 +36,9 @@ export function missingInvoiceDetails(company: CompanyData, customer: CustomerDa
   if (blank(company.taxNumber) && blank(company.vatId)) {
     gaps.push({ label: "Deine Steuernummer oder USt-IdNr.", href: companyHref });
   }
-  if (totalGross > SMALL_AMOUNT_LIMIT && (blank(customer.address) || blank(customer.zip) || blank(customer.city))) {
+  if (blank(customer.address) || blank(customer.zip) || blank(customer.city)) {
     gaps.push({
-      label: `Anschrift des Kunden „${customer.name}“ (bei Rechnungen über ${SMALL_AMOUNT_LIMIT} € Pflicht)`,
+      label: `Anschrift des Kunden „${customer.name}“`,
       href: `/kunden/${customer.id}/bearbeiten`,
     });
   }
