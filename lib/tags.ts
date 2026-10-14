@@ -9,6 +9,10 @@ export const TAG_ENTITIES = {
   project: { relation: "projects", path: (id: string) => `/arbeit/${id}`, listPath: "/arbeit" },
   invoice: { relation: "invoices", path: (id: string) => `/finanzen/${id}`, listPath: "/finanzen" },
   task: { relation: "tasks", path: (id: string) => `/aufgaben/${id}`, listPath: "/aufgaben" },
+  // Ohne eigene Detailseite: nur die Listen werden neu geladen
+  contact: { relation: "contacts", path: null, listPath: "/kunden" },
+  document: { relation: "documents", path: null, listPath: null },
+  expense: { relation: "expenses", path: null, listPath: "/finanzen" },
 } as const;
 
 export type TagEntity = keyof typeof TAG_ENTITIES;

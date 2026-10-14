@@ -5,8 +5,10 @@ import { upload } from "@vercel/blob/client";
 import { FileText, ExternalLink, Upload, Camera } from "lucide-react";
 import { addDocument } from "@/lib/actions/documents";
 import type { RecordLink } from "@/lib/record-link";
+import type { TagItem } from "@/lib/tags";
+import { TagPicker } from "@/components/tag-picker";
 
-type Doc = { id: string; fileName: string; fileUrl: string; fileSize: number; createdAt: Date };
+type Doc = { id: string; fileName: string; fileUrl: string; fileSize: number; createdAt: Date; tags: TagItem[] };
 
 function formatSize(bytes: number) {
   if (!bytes) return "";
@@ -98,22 +100,26 @@ export function DocumentTab({ link, documents }: { link: RecordLink; documents: 
 
       <div className="space-y-2 pt-2">
         {documents.map((d) => (
-          <a
-            key={d.id}
-            href={`/api/files/${d.id}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center justify-between rounded-lg bg-ink-50 p-3 text-sm hover:bg-ink-100 transition-colors"
-          >
-            <span className="flex items-center gap-2 text-ink-900">
-              <FileText size={16} className="text-ink-300" />
-              {d.fileName}
-              {d.fileSize > 0 && (
-                <span className="text-xs text-ink-300 font-mono">{formatSize(d.fileSize)}</span>
-              )}
-            </span>
-            <ExternalLink size={14} className="text-ink-300" />
-          </a>
+          <div key={d.id} className="rounded-lg bg-ink-50 p-3 text-sm">
+            <a
+              href={`/api/files/${d.id}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-between hover:underline"
+            >
+              <span className="flex items-center gap-2 text-ink-900">
+                <FileText size={16} className="text-ink-300" />
+                {d.fileName}
+                {d.fileSize > 0 && (
+                  <span className="text-xs text-ink-300 font-mono">{formatSize(d.fileSize)}</span>
+                )}
+              </span>
+              <ExternalLink size={14} className="text-ink-300" />
+            </a>
+            <div className="mt-2">
+              <TagPicker entity="document" recordId={d.id} initialTags={d.tags} />
+            </div>
+          </div>
         ))}
         {documents.length === 0 && (
           <p className="text-xs text-ink-300">Noch keine Dokumente hochgeladen.</p>

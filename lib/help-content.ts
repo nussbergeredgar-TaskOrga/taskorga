@@ -33,9 +33,9 @@ export const HELP_CHAPTERS: HelpChapter[] = [
     title: "Tags",
     description: "Kunden, Anfragen, Termine & Co. verschlagworten.",
     paragraphs: [
-      "Mit **Tags** kannst du Kunden, Anfragen, Termine, Angebote, Aufträge, Rechnungen und Aufgaben verschlagworten. Im Datensatz klickst du unter dem Titel auf **+ Tag**, tippst einen Begriff in das Suchfeld und wählst den passenden Tag aus.",
+      "Mit **Tags** kannst du Kunden, Ansprechpartner, Anfragen, Termine, Angebote, Aufträge, Rechnungen, Aufgaben, Ausgaben und Dokumente verschlagworten. Im Datensatz klickst du unter dem Titel auf **+ Tag**, tippst einen Begriff in das Suchfeld und wählst den passenden Tag aus.",
       "Welche Tags es gibt, legt ein Admin unter **Einstellungen → Anfragen & Vertrieb → Tags** fest. Dort lassen sie sich auch in Gruppen ordnen (z. B. „Herkunft“: Messe, Empfehlung). Löschst du einen Tag, wird er überall entfernt, wo er vergeben war.",
-      "In der Kundenliste gibt es eine **Tags-Spalte** und einen Filter nach Tags; der CSV-Export enthält die Tags ebenfalls.",
+      "In allen Listen gibt es eine **Tags-Spalte** und einen Filter nach Tags, die globale Suche findet auch Tag-Namen, und die CSV-Exporte enthalten die Tags ebenfalls.",
     ],
   },
   {

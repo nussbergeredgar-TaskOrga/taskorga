@@ -1,6 +1,6 @@
 import type { ColumnConfig } from "@/lib/actions/list-view";
 
-export type ExpenseColumnKey = "category" | "amount" | "date" | "status" | "projectNumber";
+export type ExpenseColumnKey = "category" | "amount" | "date" | "status" | "projectNumber" | "tags";
 
 export const EXPENSE_STATUS_LABELS: Record<string, string> = {
   OPEN: "Offen",
@@ -13,6 +13,7 @@ export const EXPENSE_COLUMN_LABELS: Record<ExpenseColumnKey, string> = {
   date: "Datum",
   status: "Status",
   projectNumber: "Auftrag",
+  tags: "Tags",
 };
 
 // "Titel" (Link/Text) ist immer sichtbar und fixiert -- alle anderen Spalten
@@ -23,4 +24,5 @@ export const EXPENSE_COLUMNS_DEFAULT: ColumnConfig[] = [
   { key: "date", visible: true, order: 2, width: 110 },
   { key: "category", visible: true, order: 3, width: 130 },
   { key: "projectNumber", visible: false, order: 4, width: 120 },
+  { key: "tags", visible: true, order: 10, width: 180 },
 ];

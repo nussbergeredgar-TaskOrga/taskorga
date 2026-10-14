@@ -31,12 +31,12 @@ async function getCustomer(id: string, companyId: string) {
       projects: { orderBy: { createdAt: "desc" } },
       invoices: { orderBy: { createdAt: "desc" } },
       appointments: { orderBy: { createdAt: "desc" } },
-      documents: { orderBy: { createdAt: "desc" } },
+      documents: { orderBy: { createdAt: "desc" }, include: { tags: { select: { id: true, name: true, groupId: true }, orderBy: { name: "asc" } } } },
       tasks: { orderBy: { createdAt: "desc" } },
       activities: { orderBy: { createdAt: "desc" }, include: { user: true } },
       comments: { orderBy: { createdAt: "desc" }, include: { user: true } },
       insight: true,
-      contacts: { orderBy: { name: "asc" } },
+      contacts: { orderBy: { name: "asc" }, include: { tags: { select: { id: true, name: true, groupId: true }, orderBy: { name: "asc" } } } },
     },
   });
 }

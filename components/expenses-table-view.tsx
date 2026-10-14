@@ -9,6 +9,7 @@ import { saveListViewConfig, type ColumnConfig } from "@/lib/actions/list-view";
 import { updateExpenseStatus } from "@/lib/actions/expenses";
 import { EXPENSE_COLUMN_LABELS, EXPENSE_STATUS_LABELS, type ExpenseColumnKey } from "@/lib/expense-columns";
 import type { ExpenseStatus } from "@prisma/client";
+import type { TagItem } from "@/lib/tags";
 
 export type ExpenseRow = {
   id: string;
@@ -20,6 +21,7 @@ export type ExpenseRow = {
   documentId: string | null;
   projectId: string | null;
   projectNumber: string | null;
+  tags: TagItem[];
 };
 
 const STATUS_OPTIONS = Object.entries(EXPENSE_STATUS_LABELS).map(([value, label]) => ({ value, label }));
@@ -155,6 +157,15 @@ export function ExpensesTableView({
                         ) : (
                           <span className="text-ink-300">—</span>
                         ))}
+                      {col.key === "tags" && (
+                        <span className="flex items-center gap-1 overflow-hidden">
+                          {e.tags.map((tag) => (
+                            <span key={tag.id} className="shrink-0 rounded-full bg-brand-50 px-2 py-0.5 text-xs font-medium text-brand-700">
+                              {tag.name}
+                            </span>
+                          ))}
+                        </span>
+                      )}
                     </td>
                   ))}
                 </tr>

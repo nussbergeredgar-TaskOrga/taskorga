@@ -39,6 +39,7 @@ export default async function FinanzenPage({
       include: {
         documents: { select: { id: true, fileName: true, fileUrl: true } },
         project: { select: { id: true, title: true, number: true } },
+        tags: { select: { id: true, name: true, groupId: true }, orderBy: { name: "asc" } },
       },
     }),
     prisma.project.findMany({
@@ -253,6 +254,7 @@ export default async function FinanzenPage({
             documentId: e.documents[0]?.id ?? null,
             projectId: e.project?.id ?? null,
             projectNumber: e.project?.number ?? null,
+            tags: e.tags,
           }))}
           initialViewMode={savedExpenseListConfig?.viewMode ?? "cards"}
           initialColumns={expenseColumns}

@@ -10,6 +10,7 @@ import { saveListViewConfig, type ColumnConfig } from "@/lib/actions/list-view";
 import { updateCustomerField } from "@/lib/actions/customers";
 import { CUSTOMER_COLUMN_LABELS, type CustomerColumnKey } from "@/lib/customer-columns";
 import type { ContactRow } from "@/components/customers-view";
+import { TagChips } from "@/components/tag-chips";
 
 type CustomerRow = {
   id: string;
@@ -215,6 +216,7 @@ export function CustomersTableView({
                     Ansprechpartner bei {c.parentCustomerName}
                     {c.role ? ` · ${c.role}` : ""}
                     {c.email || c.phone ? ` · ${[c.email, c.phone].filter(Boolean).join(" · ")}` : ""}
+                    <TagChips tags={c.tags} />
                   </td>
                 </tr>
               ))}

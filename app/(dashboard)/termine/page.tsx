@@ -134,6 +134,7 @@ export default async function TerminePage({
         customerName: a.customer?.name ?? null,
         assigneeName: a.assignee?.name ?? null,
         assigneeId: a.assigneeId ?? null,
+        tags: a.tags.map((t) => t.name),
       })),
     };
   });

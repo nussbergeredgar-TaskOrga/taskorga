@@ -5,7 +5,6 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentCompany, requireAdmin } from "@/lib/session";
 import { TAG_ENTITIES, type TagEntity, type TagItem, type TagCatalog } from "@/lib/tags";
 
-const SETTINGS_PATH = "/einstellungen/vertrieb";
 const MAX_NAME_LENGTH = 40;
 
 type ActionResult = { error?: string };
@@ -54,7 +53,7 @@ export async function createTagGroup(name: string): Promise<ActionResult> {
     data: { companyId: admin.companyId, name: label, order: (max._max.order ?? -1) + 1 },
   });
 
-  revalidatePath(SETTINGS_PATH);
+  revalidatePath("/", "layout");
   return {};
 }
 
@@ -69,7 +68,7 @@ export async function renameTagGroup(id: string, name: string): Promise<ActionRe
   if (clash) return { error: `Die Gruppe „${clash.name}“ gibt es bereits.` };
 
   await prisma.tagGroup.updateMany({ where: { id, companyId: admin.companyId }, data: { name: label } });
-  revalidatePath(SETTINGS_PATH);
+  revalidatePath("/", "layout");
   return {};
 }
 
@@ -78,7 +77,7 @@ export async function renameTagGroup(id: string, name: string): Promise<ActionRe
 export async function deleteTagGroup(id: string): Promise<ActionResult> {
   const admin = await requireAdmin();
   await prisma.tagGroup.deleteMany({ where: { id, companyId: admin.companyId } });
-  revalidatePath(SETTINGS_PATH);
+  revalidatePath("/", "layout");
   return {};
 }
 
@@ -98,7 +97,7 @@ export async function createTag(name: string, groupId: string | null): Promise<A
   if (existing) return { error: `Den Tag „${existing.name}“ gibt es bereits.` };
 
   await prisma.tag.create({ data: { companyId: admin.companyId, name: label, groupId } });
-  revalidatePath(SETTINGS_PATH);
+  revalidatePath("/", "layout");
   return {};
 }
 
@@ -113,7 +112,7 @@ export async function renameTag(id: string, name: string): Promise<ActionResult>
   if (clash) return { error: `Den Tag „${clash.name}“ gibt es bereits.` };
 
   await prisma.tag.updateMany({ where: { id, companyId: admin.companyId }, data: { name: label } });
-  revalidatePath(SETTINGS_PATH);
+  revalidatePath("/", "layout");
   return {};
 }
 
@@ -124,7 +123,7 @@ export async function moveTagToGroup(id: string, groupId: string | null): Promis
     if (!group) return { error: "Gruppe nicht gefunden." };
   }
   await prisma.tag.updateMany({ where: { id, companyId: admin.companyId }, data: { groupId } });
-  revalidatePath(SETTINGS_PATH);
+  revalidatePath("/", "layout");
   return {};
 }
 
@@ -133,7 +132,7 @@ export async function moveTagToGroup(id: string, groupId: string | null): Promis
 export async function deleteTag(id: string): Promise<ActionResult> {
   const admin = await requireAdmin();
   await prisma.tag.deleteMany({ where: { id, companyId: admin.companyId } });
-  revalidatePath(SETTINGS_PATH);
+  revalidatePath("/", "layout");
   return {};
 }
 
@@ -162,6 +161,12 @@ async function recordBelongsToCompany(entity: TagEntity, id: string, companyId: 
       return !!(await prisma.invoice.findFirst({ where, select: { id: true } }));
     case "task":
       return !!(await prisma.task.findFirst({ where, select: { id: true } }));
+    case "contact":
+      return !!(await prisma.contact.findFirst({ where, select: { id: true } }));
+    case "document":
+      return !!(await prisma.document.findFirst({ where, select: { id: true } }));
+    case "expense":
+      return !!(await prisma.expense.findFirst({ where, select: { id: true } }));
   }
 }
 
@@ -182,6 +187,12 @@ async function setTagLink(entity: TagEntity, id: string, tagId: string, op: "con
       return prisma.invoice.update({ where: { id }, data: { tags }, select: { id: true } });
     case "task":
       return prisma.task.update({ where: { id }, data: { tags }, select: { id: true } });
+    case "contact":
+      return prisma.contact.update({ where: { id }, data: { tags }, select: { id: true } });
+    case "document":
+      return prisma.document.update({ where: { id }, data: { tags }, select: { id: true } });
+    case "expense":
+      return prisma.expense.update({ where: { id }, data: { tags }, select: { id: true } });
   }
 }
 
@@ -211,6 +222,15 @@ async function readRecordTags(entity: TagEntity, id: string): Promise<TagItem[]>
     case "task":
       row = await prisma.task.findUnique({ where, select });
       break;
+    case "contact":
+      row = await prisma.contact.findUnique({ where, select });
+      break;
+    case "document":
+      row = await prisma.document.findUnique({ where, select });
+      break;
+    case "expense":
+      row = await prisma.expense.findUnique({ where, select });
+      break;
   }
   return row?.tags ?? [];
 }
@@ -233,8 +253,12 @@ async function changeRecordTag(
 
   await setTagLink(entity, recordId, tagId, op);
 
-  revalidatePath(TAG_ENTITIES[entity].path(recordId));
-  revalidatePath(TAG_ENTITIES[entity].listPath);
+  const { path, listPath } = TAG_ENTITIES[entity];
+  if (path) revalidatePath(path(recordId));
+  if (listPath) revalidatePath(listPath);
+  // Datensaetze ohne eigene Seite (Ansprechpartner, Dokumente, Ausgaben)
+  // erscheinen auf Detailseiten anderer Datensaetze
+  if (!path) revalidatePath("/", "layout");
   return { tags: await readRecordTags(entity, recordId) };
 }
 

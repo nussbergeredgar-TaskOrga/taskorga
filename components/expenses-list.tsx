@@ -4,6 +4,8 @@ import { useTransition } from "react";
 import Link from "next/link";
 import { FileText } from "lucide-react";
 import { updateExpenseStatus } from "@/lib/actions/expenses";
+import { TagPicker } from "@/components/tag-picker";
+import type { TagItem } from "@/lib/tags";
 
 type Expense = {
   id: string;
@@ -14,6 +16,7 @@ type Expense = {
   status: "OPEN" | "PAID";
   documents: { id: string; fileName: string }[];
   project?: { id: string; title: string; number: string } | null;
+  tags: TagItem[];
 };
 
 function ExpenseRow({ expense }: { expense: Expense }) {
@@ -44,6 +47,9 @@ function ExpenseRow({ expense }: { expense: Expense }) {
             </>
           )}
         </p>
+        <div className="mt-1.5">
+          <TagPicker entity="expense" recordId={expense.id} initialTags={expense.tags} />
+        </div>
       </div>
       <div className="flex items-center gap-3 shrink-0">
         <span className="font-mono text-sm font-medium text-ink-900">{expense.amount.toLocaleString("de-DE")} €</span>

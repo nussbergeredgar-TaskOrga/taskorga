@@ -33,7 +33,10 @@ export default async function KundenPage({
       : prisma.contact.findMany({
           where: { companyId: company.id },
           orderBy: { name: "asc" },
-          include: { customer: { select: { id: true, name: true, archivedAt: true } } },
+          include: {
+            customer: { select: { id: true, name: true, archivedAt: true } },
+            tags: { select: { name: true }, orderBy: { name: "asc" } },
+          },
         }),
     getListViewConfig("customer"),
     getFilterState("customer"),
@@ -145,6 +148,7 @@ export default async function KundenPage({
             phone: c.phone,
             parentCustomerId: c.customer.id,
             parentCustomerName: c.customer.name,
+            tags: c.tags.map((t) => t.name),
           }))}
           initialViewMode={savedListConfig?.viewMode ?? "cards"}
           initialColumns={columns}

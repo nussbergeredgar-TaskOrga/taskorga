@@ -8,6 +8,7 @@ import { FilterSwitcher } from "@/components/filter-switcher";
 import { saveListViewConfig, type ColumnConfig } from "@/lib/actions/list-view";
 import type { FilterEntityState, FilterFieldDef } from "@/lib/actions/filters";
 import { updateExpenseStatus } from "@/lib/actions/expenses";
+import { TagPicker } from "@/components/tag-picker";
 import { EXPENSE_STATUS_LABELS } from "@/lib/expense-columns";
 import { cn } from "@/lib/utils";
 
@@ -55,6 +56,13 @@ export function ExpensesView({
       },
       { key: "category", label: "Kategorie", options: distinctOptions((e) => e.category) },
       { key: "projectNumber", label: "Auftrag", options: distinctOptions((e) => e.projectNumber) },
+      {
+        key: "tags",
+        label: "Tags",
+        options: Array.from(new Set(expenses.flatMap((e) => e.tags.map((t) => t.name))))
+          .sort()
+          .map((t) => ({ value: t, label: t })),
+      },
     ];
   }, [expenses]);
 
@@ -67,6 +75,11 @@ export function ExpensesView({
       if (activeFilter) {
         for (const cond of activeFilter.conditions) {
           if (cond.values.length === 0) continue;
+          // Tags sind eine Liste: ein Treffer genuegt (ODER-Verknuepfung)
+          if (cond.field === "tags") {
+            if (!e.tags.some((t) => cond.values.includes(t.name))) return false;
+            continue;
+          }
           const raw = e[cond.field as keyof ExpenseRow];
           const value = raw == null ? "" : String(raw);
           if (!cond.values.includes(value)) return false;
@@ -149,6 +162,9 @@ export function ExpensesView({
                     </>
                   )}
                 </p>
+                <div className="mt-1.5">
+                  <TagPicker entity="expense" recordId={e.id} initialTags={e.tags} />
+                </div>
               </div>
               <div className="flex items-center gap-3 shrink-0">
                 <span className="font-mono text-sm font-medium text-ink-900">{e.amount.toLocaleString("de-DE")} €</span>

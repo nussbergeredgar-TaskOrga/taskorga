@@ -4,6 +4,8 @@ import { useRef, useState, useTransition } from "react";
 import { Pencil, Plus, Trash2, User } from "lucide-react";
 import { createContact, deleteContact, updateContact } from "@/lib/actions/customers";
 import type { FieldConfigMap } from "@/lib/actions/field-config";
+import type { TagItem } from "@/lib/tags";
+import { TagPicker } from "@/components/tag-picker";
 
 type Contact = {
   id: string;
@@ -12,6 +14,7 @@ type Contact = {
   role: string | null;
   email: string | null;
   phone: string | null;
+  tags: TagItem[];
 };
 
 const DEFAULT_FIELD_STATE = { visible: true, required: false };
@@ -194,6 +197,9 @@ export function ContactsList({
                     <p className="text-xs text-ink-500 truncate">
                       {[c.number, c.email, c.phone].filter(Boolean).join(" · ")}
                     </p>
+                    <div className="mt-1.5">
+                      <TagPicker entity="contact" recordId={c.id} initialTags={c.tags} />
+                    </div>
                   </div>
                 </div>
                 <div className="flex items-center gap-3 shrink-0">

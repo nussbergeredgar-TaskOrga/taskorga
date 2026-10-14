@@ -22,7 +22,7 @@ export default async function AngebotDetailPage({ params }: { params: { id: stri
         project: true,
         comments: { orderBy: { createdAt: "desc" }, include: { user: true } },
         tasks: { orderBy: { createdAt: "desc" } },
-        documents: { orderBy: { createdAt: "desc" } },
+        documents: { orderBy: { createdAt: "desc" }, include: { tags: { select: { id: true, name: true, groupId: true }, orderBy: { name: "asc" } } } },
         invoices: { orderBy: { createdAt: "desc" } },
       },
     }),

@@ -9,6 +9,7 @@ import { saveListViewConfig, type ColumnConfig } from "@/lib/actions/list-view";
 import type { FilterEntityState, FilterFieldDef } from "@/lib/actions/filters";
 import { CUSTOMER_COLUMN_LABELS } from "@/lib/customer-columns";
 import { cn } from "@/lib/utils";
+import { TagChips } from "@/components/tag-chips";
 
 function ContactCard({ contact }: { contact: ContactRow }) {
   return (
@@ -26,6 +27,7 @@ function ContactCard({ contact }: { contact: ContactRow }) {
         </div>
         <UserRound size={18} className="text-ink-300 shrink-0" />
       </div>
+      <TagChips tags={contact.tags} className="mt-2 block" />
       {(contact.email || contact.phone) && (
         <p className="mt-4 text-xs text-ink-500 truncate">
           {[contact.email, contact.phone].filter(Boolean).join(" · ")}
@@ -142,6 +144,7 @@ export type ContactRow = {
   phone: string | null;
   parentCustomerId: string;
   parentCustomerName: string;
+  tags: string[];
 };
 
 // Filterung passiert hier statt in der Tabellen-Ansicht, damit sie fuer

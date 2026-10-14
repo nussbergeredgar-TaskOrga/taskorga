@@ -32,7 +32,7 @@ export default async function AufgabeDetailPage({ params }: { params: { id: stri
   const [task, users, customers, linkables, fieldConfig] = await Promise.all([
     prisma.task.findFirst({
       where: { id: params.id, companyId: company.id },
-      include: { documents: { orderBy: { createdAt: "desc" } } },
+      include: { documents: { orderBy: { createdAt: "desc" }, include: { tags: { select: { id: true, name: true, groupId: true }, orderBy: { name: "asc" } } } }, },
     }),
     getCompanyUsers(),
     prisma.customer.findMany({

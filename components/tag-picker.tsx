@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { Plus, Search, X } from "lucide-react";
 import { addTagToRecord, removeTagFromRecord } from "@/lib/actions/tags";
+import { useTagCatalog } from "@/components/tag-catalog-context";
 import type { TagCatalog, TagEntity, TagItem } from "@/lib/tags";
 
 // Zeigt die Tags eines Datensatzes als Chips und erlaubt, per Suchfenster
@@ -13,15 +14,19 @@ export function TagPicker({
   entity,
   recordId,
   initialTags,
-  catalog,
-  isAdmin,
+  catalog: catalogProp,
+  isAdmin: isAdminProp,
 }: {
   entity: TagEntity;
   recordId: string;
   initialTags: TagItem[];
-  catalog: TagCatalog;
-  isAdmin: boolean;
+  // Ohne Angabe kommen Katalog und Admin-Status aus dem Layout-Kontext
+  catalog?: TagCatalog;
+  isAdmin?: boolean;
 }) {
+  const ctx = useTagCatalog();
+  const catalog = catalogProp ?? ctx.catalog;
+  const isAdmin = isAdminProp ?? ctx.isAdmin;
   const [tags, setTags] = useState<TagItem[]>(initialTags);
   const [open, setOpen] = useState(false);
   const [term, setTerm] = useState("");

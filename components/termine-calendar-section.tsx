@@ -16,6 +16,7 @@ type DayAppointment = {
   customerName: string | null;
   assigneeName?: string | null;
   assigneeId?: string | null;
+  tags?: string[];
 };
 
 type Day = {
@@ -182,10 +183,13 @@ export function TermineCalendarSection({
               onClick={(e) => e.stopPropagation()}
               className="absolute left-1 right-1 z-20 rounded bg-turquoise-500 text-white px-1.5 py-0.5 text-[11px] overflow-hidden hover:bg-turquoise-700 transition-colors shadow-sm"
               style={{ top, height }}
-              title={`${a.time} ${a.title}${a.customerName ? " — " + a.customerName : ""}${a.assigneeName ? " · " + a.assigneeName : ""}`}
+              title={`${a.time} ${a.title}${a.customerName ? " — " + a.customerName : ""}${a.assigneeName ? " · " + a.assigneeName : ""}${a.tags?.length ? " · Tags: " + a.tags.join(", ") : ""}`}
             >
               <span className="font-medium">{a.time}</span> {a.title}
               {!narrow && a.customerName && <span className="block truncate opacity-90">{a.customerName}</span>}
+              {!narrow && a.tags && a.tags.length > 0 && (
+                <span className="block truncate text-[10px] opacity-80">{a.tags.join(", ")}</span>
+              )}
             </Link>
           );
         })}
@@ -281,7 +285,7 @@ export function TermineCalendarSection({
                           href={`/termine/${a.id}`}
                           onClick={(e) => e.stopPropagation()}
                           className="block truncate rounded bg-turquoise-100 px-1.5 py-0.5 text-[11px] text-turquoise-700 hover:bg-turquoise-500 hover:text-white transition-colors"
-                          title={`${a.title} — ${a.customerName ?? ""}`}
+                          title={`${a.title} — ${a.customerName ?? ""}${a.tags?.length ? " · Tags: " + a.tags.join(", ") : ""}`}
                         >
                           {a.time} {a.title}
                         </Link>

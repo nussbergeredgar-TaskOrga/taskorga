@@ -5,6 +5,8 @@ import { MobileNav } from "@/components/mobile-nav";
 import { HelpBook } from "@/components/help-book";
 import { BrandColorStyle } from "@/components/brand-color-style";
 import { TourProvider } from "@/components/dashboard-tour";
+import { TagCatalogProvider } from "@/components/tag-catalog-context";
+import { getTagCatalog } from "@/lib/actions/tags";
 import { getNavConfig, getNavLabels } from "@/lib/actions/nav";
 import { getAnnouncementsForBell } from "@/lib/actions/announcements";
 import { DEFAULT_NAV, NAV_CATALOG } from "@/lib/nav-items";
@@ -21,12 +23,13 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const [user, savedConfig, labels, company, announcements] = await Promise.all([
+  const [user, savedConfig, labels, company, announcements, tagCatalog] = await Promise.all([
     getCurrentUserWithRole(),
     getNavConfig(),
     getNavLabels(),
     getCurrentCompany(),
     getAnnouncementsForBell(),
+    getTagCatalog(),
   ]);
 
   // Beide Gates ausserhalb dieser Gruppe, damit keine Redirect-Schleife
@@ -67,7 +70,9 @@ export default async function DashboardLayout({
             isAdmin={user.role?.name === "Admin"}
             updateRequestedAt={company.updateRequestedAt}
           />
-          <main className="flex-1 overflow-y-auto p-4 md:p-6 pb-20 md:pb-6">{children}</main>
+          <TagCatalogProvider catalog={tagCatalog} isAdmin={user.role?.name === "Admin"}>
+            <main className="flex-1 overflow-y-auto p-4 md:p-6 pb-20 md:pb-6">{children}</main>
+          </TagCatalogProvider>
         </div>
         <MobileNav config={config} labels={labels} showPlatformAdmin={company.isPlatformOwner} />
         <HelpBook />

@@ -26,9 +26,9 @@ export default async function AuftragDetailPage({ params }: { params: { id: stri
       timeEntries: { orderBy: { date: "desc" }, include: { user: { select: { name: true } } } },
       expenses: {
         orderBy: { date: "desc" },
-        include: { documents: { select: { id: true, fileName: true } } },
+        include: { documents: { select: { id: true, fileName: true } }, tags: { select: { id: true, name: true, groupId: true }, orderBy: { name: "asc" } } },
       },
-      documents: { orderBy: { createdAt: "desc" } },
+      documents: { orderBy: { createdAt: "desc" }, include: { tags: { select: { id: true, name: true, groupId: true }, orderBy: { name: "asc" } } } },
       appointments: { orderBy: { scheduledAt: "desc" } },
     },
   });
@@ -42,6 +42,7 @@ export default async function AuftragDetailPage({ params }: { params: { id: stri
     date: e.date,
     status: e.status,
     documents: e.documents,
+    tags: e.tags,
   }));
 
   return (

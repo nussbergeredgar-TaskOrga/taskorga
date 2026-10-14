@@ -22,7 +22,7 @@ export default async function AnfrageDetailPage({ params }: { params: { id: stri
         quotes: true,
         stepEntries: true,
         tasks: { orderBy: { createdAt: "desc" } },
-        documents: { orderBy: { createdAt: "desc" } },
+        documents: { orderBy: { createdAt: "desc" }, include: { tags: { select: { id: true, name: true, groupId: true }, orderBy: { name: "asc" } } } },
       },
     }),
     prisma.workflowStep.findMany({

@@ -216,6 +216,9 @@ model Tag {
 
   @@unique([companyId, name])
   @@index([companyId])
+  contacts     Contact[]
+  documents    Document[]
+  expenses     Expense[]
 }
 
 // Einladungscodes für die Registrierung neuer Firmenkonten. Nicht an eine
@@ -536,6 +539,7 @@ model Contact {
 
   @@unique([companyId, number])
   @@index([companyId])
+  tags Tag[]
 }
 
 // ------------------------------------------------------------
@@ -858,6 +862,7 @@ model Expense {
   documents Document[]
 
   @@index([companyId, date])
+  tags Tag[]
 }
 
 enum ExpenseStatus {
@@ -963,6 +968,7 @@ model Document {
   createdAt DateTime @default(now())
 
   @@index([companyId])
+  tags Tag[]
 }
 
 // ------------------------------------------------------------

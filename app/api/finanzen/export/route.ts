@@ -34,11 +34,14 @@ export async function GET(request: Request) {
     const expenses = await prisma.expense.findMany({
       where: { companyId },
       orderBy: { date: "asc" },
-      include: { project: { select: { number: true } } },
+      include: {
+        project: { select: { number: true } },
+        tags: { select: { name: true }, orderBy: { name: "asc" } },
+      },
     });
 
     const rows = [
-      ["Datum", "Titel", "Kategorie", "Auftrag", "Betrag", "Status"],
+      ["Datum", "Titel", "Kategorie", "Auftrag", "Betrag", "Status", "Tags"],
       ...expenses.map((e) => [
         e.date.toLocaleDateString("de-DE"),
         e.title,
@@ -46,6 +49,7 @@ export async function GET(request: Request) {
         e.project?.number ?? "",
         num(Number(e.amount)),
         STATUS_LABELS[e.status] ?? e.status,
+        e.tags.map((t) => t.name).join(", "),
       ]),
     ];
 
@@ -57,11 +61,14 @@ export async function GET(request: Request) {
   const invoices = await prisma.invoice.findMany({
     where: { companyId },
     orderBy: { createdAt: "asc" },
-    include: { customer: { select: { name: true } } },
+    include: {
+      customer: { select: { name: true } },
+      tags: { select: { name: true }, orderBy: { name: "asc" } },
+    },
   });
 
   const rows = [
-    ["Rechnungsnummer", "Datum", "Fällig", "Kunde", "Netto", "Brutto", "Bezahlt", "Status"],
+    ["Rechnungsnummer", "Datum", "Fällig", "Kunde", "Netto", "Brutto", "Bezahlt", "Status", "Tags"],
     ...invoices.map((inv) => [
       inv.number,
       (inv.issueDate ?? inv.createdAt).toLocaleDateString("de-DE"),
@@ -71,6 +78,7 @@ export async function GET(request: Request) {
       num(Number(inv.totalGross)),
       num(Number(inv.paidAmount)),
       STATUS_LABELS[inv.status] ?? inv.status,
+      inv.tags.map((t) => t.name).join(", "),
     ]),
   ];
 
