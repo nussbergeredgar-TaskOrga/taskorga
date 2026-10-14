@@ -1,4 +1,6 @@
+import { del } from "@vercel/blob";
 import { prisma } from "@/lib/prisma";
+import { stripe } from "@/lib/stripe";
 
 // Entfernt eine komplette Firma inkl. aller verknuepften Daten unwiderruflich.
 // Loeschreihenfolge ist so gewaehlt, dass referenzierte Zeilen (z.B.
@@ -11,6 +13,16 @@ import { prisma } from "@/lib/prisma";
 // (lib/actions/platform-admin.ts) -- eine einzige Quelle fuer diese
 // riskante ~25-Tabellen-Kaskade statt zwei separat gepflegter Kopien.
 export async function deleteCompanyData(companyId: string): Promise<void> {
+  // Externe Ressourcen vorab ermitteln -- nach dem Loeschen der Zeilen waeren
+  // die Verweise darauf weg.
+  const [companyRow, documentRows] = await Promise.all([
+    prisma.company.findUnique({
+      where: { id: companyId },
+      select: { logoUrl: true, stripeSubscriptionId: true, subscriptionStatus: true },
+    }),
+    prisma.document.findMany({ where: { companyId }, select: { fileUrl: true } }),
+  ]);
+
   const [users, customers, inquiries, quotes, invoices, appointments, projects] = await Promise.all([
     prisma.user.findMany({ where: { companyId }, select: { id: true } }),
     prisma.customer.findMany({ where: { companyId }, select: { id: true } }),
@@ -82,4 +94,27 @@ export async function deleteCompanyData(companyId: string): Promise<void> {
     prisma.role.deleteMany({ where: { companyId } }),
     prisma.company.delete({ where: { id: companyId } }),
   ]);
+
+  // Nach erfolgreicher Datenbank-Loeschung: laufendes Abo beenden (sonst
+  // wuerde weiter abgerechnet) und hochgeladene Dateien aus dem Speicher
+  // entfernen. Best-Effort -- ein Fehler hier darf die bereits erfolgte
+  // Loeschung nicht rueckgaengig machen oder als Fehlschlag melden.
+  if (stripe && companyRow?.stripeSubscriptionId && companyRow.subscriptionStatus !== "CANCELED") {
+    try {
+      await stripe.subscriptions.cancel(companyRow.stripeSubscriptionId);
+    } catch (err) {
+      console.error(`Stripe-Abo von Firma ${companyId} konnte nicht beendet werden:`, err);
+    }
+  }
+
+  const urls = [...documentRows.map((d) => d.fileUrl), ...(companyRow?.logoUrl ? [companyRow.logoUrl] : [])].filter(
+    (u) => /^https?:\/\//.test(u)
+  );
+  for (let i = 0; i < urls.length; i += 100) {
+    try {
+      await del(urls.slice(i, i + 100));
+    } catch (err) {
+      console.error(`Dateien von Firma ${companyId} konnten nicht vollstaendig entfernt werden:`, err);
+    }
+  }
 }

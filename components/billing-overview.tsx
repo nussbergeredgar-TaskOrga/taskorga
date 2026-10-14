@@ -46,6 +46,13 @@ export function BillingOverview({
           <p className="text-sm text-ink-500">
             {seatCount} Mitarbeiter · {monthlyPrice.toLocaleString("de-DE")} €/Monat bei aktuellem Stand
           </p>
+          {subscriptionStatus === "TRIALING" && (
+            <p className="text-xs text-ink-500">
+              Nach der Testphase wird der Zugang gesperrt, sofern kein Abo abgeschlossen ist. Mit einer
+              hinterlegten Zahlungsmethode schließt du das Abo ab; es läuft dann ab Ende der Testphase
+              kostenpflichtig weiter.
+            </p>
+          )}
         </>
       )}
 

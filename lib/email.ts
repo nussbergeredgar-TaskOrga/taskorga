@@ -326,11 +326,13 @@ export async function sendTrialEndingSoonEmail({
       bodyHtml: `
         <p style="margin:0 0 14px;">
           Die kostenlose Testphase für „${companyName}" endet am <strong>${formattedDate}</strong>.
-          Ist bis dahin keine Zahlungsmethode hinterlegt, kann die erste Abbuchung fehlschlagen und
-          der Zugriff wird vorübergehend gesperrt.
+          Die Testphase wird nicht automatisch in ein kostenpflichtiges Abo umgewandelt: Ohne
+          abgeschlossenes Abo wird der Zugang danach gesperrt. Du kannst dann deine Daten exportieren
+          oder das Konto löschen.
         </p>
         <p style="margin:0 0 14px;">
-          Hinterlege jetzt eine Zahlungsmethode, damit es nahtlos weitergeht:
+          Möchtest du TaskOrga weiter nutzen, schließe bis dahin dein Abo ab, indem du hier eine
+          Zahlungsmethode hinterlegst:
         </p>
         <p style="margin:0 0 14px;">
           <a href="${baseUrl}/einstellungen/firma" style="color:#2F5FFF;">${baseUrl}/einstellungen/firma</a>

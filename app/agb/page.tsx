@@ -68,11 +68,12 @@ export default function AgbPage() {
           <p className="mt-1">
             Neue Konten erhalten eine kostenlose, unverbindliche Testphase von 14 Tagen mit vollem
             Funktionsumfang. Während der Testphase entstehen keine Kosten und es ist keine
-            Zahlungsmethode erforderlich. Wird die Testphase nicht vorzeitig durch Löschung des
-            Kontos beendet, geht sie nach Ablauf in ein kostenpflichtiges Abonnement gemäß Ziffer 5
-            über. Zur Fortsetzung der Nutzung nach Ablauf der Testphase ist eine gültige
-            Zahlungsmethode zu hinterlegen; ohne hinterlegte Zahlungsmethode kann der Zugriff auf
-            die Software eingeschränkt werden.
+            Zahlungsmethode erforderlich. Die Testphase endet nach Ablauf der 14 Tage automatisch
+            und geht nicht selbsttätig in ein kostenpflichtiges Abonnement über. Nach Ablauf wird
+            der Zugang gesperrt; er wird erst durch den Abschluss eines kostenpflichtigen
+            Abonnements gemäß Ziffer 5 wieder freigeschaltet. Bis zur Löschung der Daten
+            (Ziffer 7) kann der Kunde seine Daten bei gesperrtem Zugang exportieren oder sein Konto
+            löschen.
           </p>
         </section>
 
@@ -98,7 +99,7 @@ export default function AgbPage() {
         <section>
           <H2>6. Laufzeit und Kündigung</H2>
           <p className="mt-1">
-            Das Abonnement läuft nach Ablauf der Testphase auf unbestimmte Zeit und kann von beiden
+            Das kostenpflichtige Abonnement läuft ab Abschluss auf unbestimmte Zeit und kann von beiden
             Seiten jederzeit zum Ende des laufenden Abrechnungszeitraums (Monat) gekündigt werden,
             ohne dass es eines wichtigen Grundes bedarf. Die Kündigung kann selbständig über das
             Kunden-Zahlungsportal oder in Textform (z. B. per E-Mail an{" "}

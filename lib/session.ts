@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { hasPermission, type PermissionKey } from "@/lib/permissions";
+import { isBillingBlocked } from "@/lib/billing-lock";
 
 /**
  * Liefert die Firma des eingeloggten Nutzers. Leitet zu /login um,
@@ -33,12 +34,7 @@ export const getCurrentCompany = cache(async function getCurrentCompany() {
     redirect("/login?suspended=1");
   }
 
-  const billingBlocked =
-    !company.billingExempt &&
-    (company.subscriptionStatus === "PAST_DUE" ||
-      company.subscriptionStatus === "CANCELED" ||
-      company.subscriptionStatus === "INCOMPLETE");
-  if (billingBlocked) {
+  if (isBillingBlocked(company)) {
     redirect("/abrechnung-erforderlich");
   }
 

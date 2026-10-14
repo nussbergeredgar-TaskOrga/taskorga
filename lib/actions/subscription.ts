@@ -35,6 +35,10 @@ export async function createSubscriptionForCompany(
       customer: customer.id,
       items: [{ price: priceId, quantity: 1 }],
       trial_period_days: trialDays,
+      // Keine automatische Weiterfuehrung: ohne Zahlungsmethode wird das Abo am Ende
+      // der Testphase beendet (-> customer.subscription.deleted -> Konto gesperrt).
+      // Freigeschaltet wird nur durch ein neu abgeschlossenes, kostenpflichtiges Abo.
+      trial_settings: { end_behavior: { missing_payment_method: "cancel" } },
     });
 
     const item = subscription.items.data[0];

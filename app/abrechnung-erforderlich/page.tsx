@@ -1,12 +1,15 @@
 import { redirect } from "next/navigation";
+import { addDays } from "date-fns";
 import { getCurrentUserWithRole } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
-import { BillingPortalButton } from "@/components/billing-portal-button";
+import { isBillingBlocked, DELETION_GRACE_DAYS } from "@/lib/billing-lock";
+import { applyCheckoutSession } from "@/lib/billing-checkout";
+import { BillingLockPanel } from "@/components/billing-lock-panel";
 import { BillingRequiredSignOutButton } from "@/components/billing-required-signout-button";
 
 const STATUS_TEXT: Record<string, string> = {
   PAST_DUE: "Die letzte Zahlung für dieses Konto ist fehlgeschlagen.",
-  CANCELED: "Das Abo für dieses Konto wurde gekündigt.",
+  CANCELED: "Die Testphase bzw. das Abo für dieses Konto ist beendet — der Zugang ist gesperrt.",
   INCOMPLETE: "Die Zahlungseinrichtung für dieses Konto ist noch nicht abgeschlossen.",
 };
 
@@ -14,44 +17,74 @@ const STATUS_TEXT: Record<string, string> = {
 // getCurrentCompany() auf, das bei blockierter Abrechnung genau hierher
 // umleitet -- innerhalb der Gruppe gaebe es also eine Redirect-Schleife.
 // Diese Seite holt Nutzer/Firma deshalb direkt, ohne getCurrentCompany().
-export default async function AbrechnungErforderlichPage() {
+export default async function AbrechnungErforderlichPage({
+  searchParams,
+}: {
+  searchParams: { checkout?: string; session_id?: string };
+}) {
   const user = await getCurrentUserWithRole();
-  const company = await prisma.company.findUnique({ where: { id: user.companyId } });
-
+  let company = await prisma.company.findUnique({ where: { id: user.companyId } });
   if (!company) redirect("/login");
 
-  const blocked =
-    !company.billingExempt &&
-    ["PAST_DUE", "CANCELED", "INCOMPLETE"].includes(company.subscriptionStatus);
-
-  if (!blocked) redirect("/heute");
-
   const isAdmin = user.role?.name === "Admin";
-  const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
+
+  // Rueckkehr von der Stripe-Zahlungsseite: Abo sofort uebernehmen, ohne auf den
+  // Webhook zu warten (dieser fuehrt dieselbe, idempotente Uebernahme aus).
+  let checkoutPending = false;
+  if (isAdmin && searchParams.checkout === "success" && searchParams.session_id) {
+    try {
+      await applyCheckoutSession(company.id, searchParams.session_id);
+    } catch (err) {
+      console.error("Checkout-Rueckkehr konnte nicht uebernommen werden:", err);
+    }
+    const refreshed = await prisma.company.findUnique({ where: { id: company.id } });
+    if (refreshed) company = refreshed;
+    checkoutPending = isBillingBlocked(company);
+  }
+
+  if (!isBillingBlocked(company)) redirect("/heute");
+
+  const deadline =
+    company.subscriptionStatus === "CANCELED" && company.canceledAt
+      ? addDays(company.canceledAt, DELETION_GRACE_DAYS)
+      : null;
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-ink-50 px-4">
-      <div className="w-full max-w-md bg-surface rounded-card border border-ink-100 shadow-card p-6 space-y-4 text-center">
-        <h1 className="font-display font-semibold text-xl text-ink-900">Zahlung erforderlich</h1>
+    <div className="flex min-h-screen items-center justify-center bg-ink-50 px-4 py-8">
+      <div className="w-full max-w-lg space-y-4 rounded-card border border-ink-100 bg-surface p-6 text-center shadow-card">
+        <h1 className="font-display text-xl font-semibold text-ink-900">Zugang gesperrt</h1>
         <p className="text-sm text-ink-500">
           {STATUS_TEXT[company.subscriptionStatus] ?? "Für dieses Konto ist eine Zahlung erforderlich."}
         </p>
 
+        {searchParams.checkout === "cancel" && (
+          <p className="rounded-lg bg-warning/10 px-3 py-2 text-sm text-warning">
+            Der Abschluss wurde abgebrochen. Es wurde nichts berechnet.
+          </p>
+        )}
+        {checkoutPending && (
+          <p className="rounded-lg bg-warning/10 px-3 py-2 text-sm text-warning">
+            Deine Zahlung wird noch verarbeitet. Bitte lade diese Seite in einem Moment neu.
+          </p>
+        )}
+
         {isAdmin ? (
           <>
             <p className="text-sm text-ink-500">
-              Aktualisiere die Zahlungsmethode, um den Zugriff für „{company.name}" wieder freizuschalten.
+              Du hast jetzt drei Möglichkeiten für „{company.name}“. Jede Entscheidung bestätigst du mit deinem
+              Passwort.
             </p>
-            <div className="flex justify-center">
-              <BillingPortalButton
-                returnUrl={`${baseUrl}/heute`}
-                label="Zahlungsmethode aktualisieren"
-              />
-            </div>
+            <BillingLockPanel
+              companyName={company.name}
+              canResubscribe={company.subscriptionStatus === "CANCELED"}
+              deadlineLabel={
+                deadline ? deadline.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" }) : null
+              }
+            />
           </>
         ) : (
           <p className="text-sm text-ink-500">
-            Bitte wende dich an den Admin von „{company.name}", um den Zugriff wieder freizuschalten.
+            Bitte wende dich an den Admin von „{company.name}“, um den Zugriff wieder freizuschalten.
           </p>
         )}
 

@@ -4,6 +4,7 @@ import { stripe } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
 import { mapStripeStatus } from "@/lib/subscription-pricing";
 import { sendAccountDeletionWarningEmail, sendTrialEndingSoonEmail } from "@/lib/email";
+import { applyCheckoutSession } from "@/lib/billing-checkout";
 
 // Erste Route im Projekt, die den rohen Anfrage-Body braucht: Stripes
 // Signaturpruefung (stripe.webhooks.constructEvent) berechnet die Signatur
@@ -35,6 +36,20 @@ export async function POST(request: Request) {
   }
 
   switch (event.type) {
+    case "checkout.session.completed": {
+      // Neues kostenpflichtiges Abo nach gesperrtem Zugang (siehe
+      // lib/actions/billing-lock.ts, startSubscriptionCheckout).
+      const session = event.data.object as Stripe.Checkout.Session;
+      if (session.mode === "subscription" && session.client_reference_id) {
+        try {
+          await applyCheckoutSession(session.client_reference_id, session.id);
+        } catch (err) {
+          console.error("Checkout-Abschluss konnte nicht uebernommen werden:", err);
+          return NextResponse.json({ error: "Verarbeitung fehlgeschlagen." }, { status: 500 });
+        }
+      }
+      break;
+    }
     case "customer.subscription.updated": {
       const subscription = event.data.object as Stripe.Subscription;
       const newStatus = mapStripeStatus(subscription.status);
