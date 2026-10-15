@@ -446,6 +446,56 @@ export async function sendCancellationConfirmationEmail({
   assertSent(result);
 }
 
+// E-Rechnung (XRechnung-XML) zu einer bezahlten TaskOrga-Abo-Rechnung, siehe
+// lib/subscription-einvoice.ts. Zusaetzlich zu Stripes eigener Beleg-Mail mit PDF.
+export async function sendSubscriptionEInvoiceEmail({
+  to,
+  recipientName,
+  companyName,
+  invoiceNumber,
+  amountLabel,
+  xml,
+  hostedInvoiceUrl,
+}: {
+  to: string;
+  recipientName?: string | null;
+  companyName: string;
+  invoiceNumber: string;
+  amountLabel: string;
+  xml: string;
+  hostedInvoiceUrl?: string | null;
+}) {
+  if (!resend) {
+    throw new Error("E-Mail-Versand ist nicht eingerichtet (RESEND_API_KEY).");
+  }
+
+  const settings = await getSystemEmailSettings();
+
+  const result = await resend.emails.send({
+    from: process.env.EMAIL_FROM || "TaskOrga <onboarding@resend.dev>",
+    to,
+    subject: `E-Rechnung ${invoiceNumber} — TaskOrga`,
+    html: renderSystemEmail({
+      branding: settings,
+      greetingName: recipientName ?? undefined,
+      bodyHtml: `
+        <p style="margin:0 0 14px;">
+          anbei erhältst du die E-Rechnung <strong>${escapeHtml(invoiceNumber)}</strong> für „${escapeHtml(companyName)}"
+          über ${escapeHtml(amountLabel)} als strukturierte Datei (XRechnung, XML) für deine Buchhaltung.
+        </p>
+        ${
+          hostedInvoiceUrl
+            ? `<p style="margin:0 0 14px;">Die Rechnung als PDF findest du hier: <a href="${escapeHtml(hostedInvoiceUrl)}" style="color:#2F5FFF;">Rechnung ansehen</a></p>`
+            : ""
+        }
+        <p style="margin:0 0 14px;">Der Betrag wurde bereits bezahlt.</p>
+      `,
+    }),
+    attachments: [{ filename: `${invoiceNumber}-xrechnung.xml`.replace(/[\\/:*?"<>|]/g, "_"), content: Buffer.from(xml, "utf8") }],
+  });
+  assertSent(result);
+}
+
 // Bestaetigung, dass eine Kuendigung zurueckgenommen wurde und das Abo
 // unveraendert weiterlaeuft, siehe lib/subscription-cancellation.ts.
 export async function sendCancellationRevokedEmail({

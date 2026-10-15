@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { mapStripeStatus } from "@/lib/subscription-pricing";
 import { sendAccountDeletionWarningEmail, sendTrialEndingSoonEmail } from "@/lib/email";
 import { notifyCancellation, releaseCancellation } from "@/lib/subscription-cancellation";
+import { sendSubscriptionEInvoice } from "@/lib/subscription-einvoice";
 import { applyCheckoutSession } from "@/lib/billing-checkout";
 
 // Erste Route im Projekt, die den rohen Anfrage-Body braucht: Stripes
@@ -169,6 +170,19 @@ export async function POST(request: Request) {
         } catch (err) {
           console.error(`Trial-Ende-Erinnerung fuer Firma ${company.id} fehlgeschlagen:`, err);
         }
+      }
+      break;
+    }
+    case "invoice.paid": {
+      // E-Rechnung (XRechnung) zusaetzlich zu Stripes PDF-Beleg an den Kunden.
+      // Ohne vollstaendige Betreiber-Daten (Steuernummer etc.) wird still uebersprungen.
+      const invoice = event.data.object as Stripe.Invoice;
+      try {
+        await sendSubscriptionEInvoice(invoice);
+      } catch (err) {
+        console.error("E-Rechnung zur Abo-Rechnung fehlgeschlagen:", err);
+        // 500 -> Stripe stellt das Ereignis erneut zu (Merker wurde zurueckgenommen)
+        return NextResponse.json({ error: "Verarbeitung fehlgeschlagen." }, { status: 500 });
       }
       break;
     }

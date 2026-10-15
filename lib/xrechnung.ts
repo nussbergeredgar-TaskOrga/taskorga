@@ -15,6 +15,11 @@ export type XRechnungInput = {
   note?: string | null;
   // Kleinunternehmer (§ 19 UStG): keine Umsatzsteuer, Steuerkategorie "E"
   kleinunternehmer: boolean;
+  // Bereits vollstaendig bezahlt (z.B. Abo-Rechnung nach Zahlungseingang): keine
+  // Zahlungsanweisung/IBAN noetig, Restbetrag 0
+  paidInFull?: boolean;
+  // Leistungszeitraum (BG-14), z.B. Abo-Periode
+  servicePeriod?: { start: Date; end: Date } | null;
   discountValue?: number | null;
   discountType?: "AMOUNT" | "PERCENT" | string | null;
   seller: {
@@ -107,7 +112,7 @@ export function buildXRechnung(input: XRechnungInput): XRechnungResult {
   if (blank(s.taxNumber) && blank(s.vatId)) problems.push("Steuernummer oder USt-IdNr. der Firma");
   if (blank(s.email)) problems.push("Kontakt-E-Mail der Firma (Firmenprofil)");
   if (blank(s.phone)) problems.push("Telefonnummer der Firma (Firmenprofil)");
-  if (blank(s.iban)) problems.push("IBAN der Firma (Firmenprofil)");
+  if (!input.paidInFull && blank(s.iban)) problems.push("IBAN der Firma (Firmenprofil)");
   if (blank(b.address) || blank(b.zip) || blank(b.city)) problems.push(`Anschrift des Kunden „${b.name}“`);
   if (blank(b.email)) problems.push(`E-Mail-Adresse des Kunden „${b.name}“`);
   if (input.items.length === 0) problems.push("mindestens eine Position");
@@ -215,7 +220,25 @@ export function buildXRechnung(input: XRechnungInput): XRechnungResult {
   ].join("");
 
   const buyerReference = (b.reference && b.reference.trim()) || b.customerNumber || input.invoiceNumber;
-  const dueText = input.dueDate ? `Zahlbar bis ${input.dueDate.toLocaleDateString("de-DE")}.` : "Zahlbar nach Rechnungserhalt.";
+  const dueText = input.paidInFull
+    ? "Der Betrag wurde bereits bezahlt."
+    : input.dueDate
+      ? `Zahlbar bis ${input.dueDate.toLocaleDateString("de-DE")}.`
+      : "Zahlbar nach Rechnungserhalt.";
+  const paymentMeansXml = input.paidInFull
+    ? ""
+    : `
+      <ram:SpecifiedTradeSettlementPaymentMeans>
+        <ram:TypeCode>58</ram:TypeCode>
+        <ram:PayeePartyCreditorFinancialAccount><ram:IBANID>${esc(s.iban!.replace(/\s+/g, ""))}</ram:IBANID></ram:PayeePartyCreditorFinancialAccount>
+      </ram:SpecifiedTradeSettlementPaymentMeans>`;
+  const periodXml = input.servicePeriod
+    ? `
+      <ram:BillingSpecifiedPeriod>
+        <ram:StartDateTime><udt:DateTimeString format="102">${date102(input.servicePeriod.start)}</udt:DateTimeString></ram:StartDateTime>
+        <ram:EndDateTime><udt:DateTimeString format="102">${date102(input.servicePeriod.end)}</udt:DateTimeString></ram:EndDateTime>
+      </ram:BillingSpecifiedPeriod>`
+    : "";
 
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <rsm:CrossIndustryInvoice xmlns:rsm="urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100" xmlns:ram="urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:100" xmlns:udt="urn:un:unece:uncefact:data:standard:UnqualifiedDataType:100">
@@ -270,14 +293,10 @@ export function buildXRechnung(input: XRechnungInput): XRechnungResult {
     </ram:ApplicableHeaderTradeDelivery>
     <ram:ApplicableHeaderTradeSettlement>
       <ram:PaymentReference>${esc(input.invoiceNumber)}</ram:PaymentReference>
-      <ram:InvoiceCurrencyCode>${currency}</ram:InvoiceCurrencyCode>
-      <ram:SpecifiedTradeSettlementPaymentMeans>
-        <ram:TypeCode>58</ram:TypeCode>
-        <ram:PayeePartyCreditorFinancialAccount><ram:IBANID>${esc(s.iban!.replace(/\s+/g, ""))}</ram:IBANID></ram:PayeePartyCreditorFinancialAccount>
-      </ram:SpecifiedTradeSettlementPaymentMeans>${taxXml}${allowanceXml}
+      <ram:InvoiceCurrencyCode>${currency}</ram:InvoiceCurrencyCode>${paymentMeansXml}${taxXml}${periodXml}${allowanceXml}
       <ram:SpecifiedTradePaymentTerms>
         <ram:Description>${esc(dueText)}</ram:Description>${
-          input.dueDate
+          input.dueDate && !input.paidInFull
             ? `\n        <ram:DueDateDateTime><udt:DateTimeString format="102">${date102(input.dueDate)}</udt:DateTimeString></ram:DueDateDateTime>`
             : ""
         }
@@ -288,8 +307,10 @@ export function buildXRechnung(input: XRechnungInput): XRechnungResult {
         }
         <ram:TaxBasisTotalAmount>${amount(taxBasisTotal)}</ram:TaxBasisTotalAmount>
         <ram:TaxTotalAmount currencyID="${currency}">${amount(taxTotal)}</ram:TaxTotalAmount>
-        <ram:GrandTotalAmount>${amount(grandTotal)}</ram:GrandTotalAmount>
-        <ram:DuePayableAmount>${amount(grandTotal)}</ram:DuePayableAmount>
+        <ram:GrandTotalAmount>${amount(grandTotal)}</ram:GrandTotalAmount>${
+          input.paidInFull ? `\n        <ram:TotalPrepaidAmount>${amount(grandTotal)}</ram:TotalPrepaidAmount>` : ""
+        }
+        <ram:DuePayableAmount>${amount(input.paidInFull ? 0 : grandTotal)}</ram:DuePayableAmount>
       </ram:SpecifiedTradeSettlementHeaderMonetarySummation>
     </ram:ApplicableHeaderTradeSettlement>
   </rsm:SupplyChainTradeTransaction>

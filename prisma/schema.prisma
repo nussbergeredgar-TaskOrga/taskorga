@@ -178,6 +178,15 @@ model AppointmentTypeOption {
   @@unique([companyId, order])
 }
 
+// Merker, dass zu einer bezahlten Stripe-Abo-Rechnung die E-Rechnung bereits
+// versendet wurde (Webhooks koennen wiederholt zugestellt werden).
+model SubscriptionEInvoice {
+  stripeInvoiceId String   @id
+  companyId       String?
+  recipients      String
+  sentAt          DateTime @default(now())
+}
+
 // Vom Admin frei definierbare Tags (Verschlagwortung) fuer Kunden, Anfragen,
 // Termine, Angebote, Auftraege, Rechnungen und Aufgaben. Optional in Gruppen
 // gegliedert (z.B. Gruppe "Herkunft": Messe, Empfehlung).
