@@ -7,6 +7,7 @@ import { BrandColorStyle } from "@/components/brand-color-style";
 import { TourProvider } from "@/components/dashboard-tour";
 import { TagCatalogProvider } from "@/components/tag-catalog-context";
 import { getTagCatalog } from "@/lib/actions/tags";
+import { syncCancellationState } from "@/lib/subscription-cancellation";
 import { getNavConfig, getNavLabels } from "@/lib/actions/nav";
 import { getAnnouncementsForBell } from "@/lib/actions/announcements";
 import { DEFAULT_NAV, NAV_CATALOG } from "@/lib/nav-items";
@@ -45,6 +46,9 @@ export default async function DashboardLayout({
     redirect("/dokumente-bestaetigen");
   }
 
+  // Gekuendigtes Abo: Ende des Zugangs aktuell halten (Abgleich mit Stripe, gedrosselt)
+  const cancelAt = await syncCancellationState(company);
+
   const allowedIds = new Set(
     NAV_CATALOG.filter(
       (item) => !PERMISSION_GATED_IDS.has(item.id as PermissionKey) || hasPermission(user.role, item.id as PermissionKey)
@@ -70,9 +74,7 @@ export default async function DashboardLayout({
             isAdmin={user.role?.name === "Admin"}
             updateRequestedAt={company.updateRequestedAt}
             accessEndsAt={
-              !company.billingExempt && company.subscriptionStatus === "ACTIVE" && company.cancelAt
-                ? company.cancelAt
-                : null
+              !company.billingExempt && company.subscriptionStatus === "ACTIVE" && cancelAt ? cancelAt : null
             }
           />
           <TagCatalogProvider catalog={tagCatalog} isAdmin={user.role?.name === "Admin"}>

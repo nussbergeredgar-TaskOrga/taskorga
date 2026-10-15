@@ -2,13 +2,16 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { getCurrentCompany, getCurrentUserWithRole } from "@/lib/session";
 import { CancellationRevoke } from "@/components/cancellation-revoke";
+import { syncCancellationState } from "@/lib/subscription-cancellation";
 
 // Ziel des "Noch X Tage Zugriff"-Buttons in der Kopfzeile: zeigt, bis wann der
 // Zugang noch besteht, und erlaubt dem Admin, die Kuendigung zurueckzunehmen.
 export default async function AboPage() {
   const [company, user] = await Promise.all([getCurrentCompany(), getCurrentUserWithRole()]);
   const isAdmin = user.role?.name === "Admin";
-  const endsAt = company.subscriptionStatus === "ACTIVE" && !company.billingExempt ? company.cancelAt : null;
+  // Stand mit Stripe abgleichen, damit die Seite auch bei einer frueheren Kuendigung stimmt
+  const cancelAt = await syncCancellationState(company);
+  const endsAt = company.subscriptionStatus === "ACTIVE" && !company.billingExempt ? cancelAt : null;
 
   return (
     <div className="mx-auto max-w-xl space-y-5">

@@ -1,6 +1,7 @@
 import { requireAdmin } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { CompanyProfileForm } from "@/components/company-profile-form";
+import { syncCancellationState } from "@/lib/subscription-cancellation";
 import { TeamManager } from "@/components/team-manager";
 import { RolePermissionsManager } from "@/components/role-permissions-manager";
 import { NavLabelManager } from "@/components/nav-label-manager";
@@ -38,6 +39,9 @@ export default async function FirmaSettingsPage({
     getActiveSupportAccessCode(),
     getTaskEscalationLevels(),
   ]);
+
+  // Kuendigungsstand mit Stripe abgleichen (gedrosselt), damit die Anzeige stimmt
+  const cancelAtSynced = await syncCancellationState(company);
 
   const validUserIds = new Set(users.map((u) => u.id));
   const scheduleUserId =
@@ -129,7 +133,7 @@ export default async function FirmaSettingsPage({
         <BillingOverview
           subscriptionStatus={company.subscriptionStatus}
           trialEndsAt={company.trialEndsAt}
-          cancelAt={company.cancelAt}
+          cancelAt={cancelAtSynced}
           billingExempt={company.billingExempt}
           hasStripeCustomer={Boolean(company.stripeCustomerId)}
           seatCount={users.length}

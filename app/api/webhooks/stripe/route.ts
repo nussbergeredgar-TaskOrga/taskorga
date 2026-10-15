@@ -3,7 +3,8 @@ import type Stripe from "stripe";
 import { stripe } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
 import { mapStripeStatus } from "@/lib/subscription-pricing";
-import { sendAccountDeletionWarningEmail, sendTrialEndingSoonEmail, sendCancellationConfirmationEmail } from "@/lib/email";
+import { sendAccountDeletionWarningEmail, sendTrialEndingSoonEmail } from "@/lib/email";
+import { notifyCancellation } from "@/lib/subscription-cancellation";
 import { applyCheckoutSession } from "@/lib/billing-checkout";
 
 // Erste Route im Projekt, die den rohen Anfrage-Body braucht: Stripes
@@ -80,26 +81,9 @@ export async function POST(request: Request) {
           select: { id: true, name: true, email: true, cancellationEmailSentAt: true },
         });
         for (const company of companies) {
-          // Nur einmal je Kuendigung (Stripe kann Events wiederholen)
-          if (company.cancellationEmailSentAt) continue;
-          try {
-            const admins = await prisma.user.findMany({
-              where: { companyId: company.id, role: { name: "Admin" } },
-              select: { email: true, name: true },
-            });
-            const recipients = admins.length > 0 ? admins : company.email ? [{ email: company.email, name: null }] : [];
-            for (const recipient of recipients) {
-              await sendCancellationConfirmationEmail({
-                to: recipient.email,
-                recipientName: recipient.name,
-                companyName: company.name,
-                accessUntil: cancelAtDate,
-              });
-            }
-            await prisma.company.update({ where: { id: company.id }, data: { cancellationEmailSentAt: new Date() } });
-          } catch (err) {
-            console.error(`Kuendigungsbestaetigung fuer Firma ${company.id} fehlgeschlagen:`, err);
-          }
+          // Nur einmal je Kuendigung (Stripe kann Events wiederholen) -- der
+          // Helfer prueft cancellationEmailSentAt selbst.
+          await notifyCancellation(company, cancelAtDate);
         }
       }
       break;
