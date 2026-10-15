@@ -34,6 +34,8 @@ export async function applyCheckoutSession(companyId: string, sessionId: string)
       // Neue Zahlungsbeziehung: Loeschfrist und Warnmail-Marker zuruecksetzen
       canceledAt: null,
       deletionWarningEmailSentAt: null,
+      cancelAt: null,
+      cancellationEmailSentAt: null,
     },
   });
 

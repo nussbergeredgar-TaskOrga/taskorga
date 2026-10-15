@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Search, Bell, Plus, LogOut, Users, Inbox, FileText, Briefcase, Calendar, ListTodo, Wallet, X, Megaphone } from "lucide-react";
+import { Search, Bell, Plus, LogOut, Users, Inbox, FileText, Briefcase, Calendar, ListTodo, Wallet, X, Megaphone, Clock } from "lucide-react";
 import { signOut, useSession } from "next-auth/react";
 import { markAnnouncementsSeen, type AnnouncementItem, type LatestVersion } from "@/lib/actions/announcements";
 import { requestUpdate } from "@/lib/actions/update-request";
@@ -48,12 +48,15 @@ export function TopBar({
   latestVersion,
   isAdmin,
   updateRequestedAt,
+  accessEndsAt,
 }: {
   announcements: AnnouncementItem[];
   hasUnseen: boolean;
   latestVersion: LatestVersion;
   isAdmin: boolean;
   updateRequestedAt: Date | null;
+  // Gesetzt, wenn das Abo gekuendigt ist: Zugang laeuft noch bis zu diesem Zeitpunkt
+  accessEndsAt?: Date | null;
 }) {
   const { data: session } = useSession();
   const router = useRouter();
@@ -72,6 +75,13 @@ export function TopBar({
   // gibt UND diese neuer ist als die letzte Anfrage dieser Firma -- sonst
   // laeuft man ja schon auf der aktuellsten Version.
   const newVersionAvailable = latestVersion && (!requestedAt || latestVersion.publishedAt > requestedAt);
+
+  // "Noch X Tage Zugriff" bei gekuendigtem Abo
+  const daysLeft = accessEndsAt
+    ? Math.max(0, Math.ceil((new Date(accessEndsAt).getTime() - Date.now()) / (24 * 60 * 60 * 1000)))
+    : null;
+  const accessLabel =
+    daysLeft === null ? null : daysLeft === 0 ? "Zugriff endet heute" : `Noch ${daysLeft} Tag${daysLeft === 1 ? "" : "e"} Zugriff`;
 
   const initials = session?.user?.name
     ? session.user.name.split(" ").map((p) => p[0]).slice(0, 2).join("").toUpperCase()
@@ -168,6 +178,17 @@ export function TopBar({
       </div>
 
       <div className="flex items-center gap-2 shrink-0">
+      {accessLabel && (
+        <Link
+          href="/abo"
+          title={`Das Abo ist gekündigt. Der Zugang endet am ${new Date(accessEndsAt!).toLocaleDateString("de-DE")}.`}
+          className="flex items-center gap-1.5 rounded-full border border-warning/40 bg-warning/10 px-3 py-1.5 text-xs font-medium text-warning hover:bg-warning/20 transition-colors"
+        >
+          <Clock size={13} />
+          <span className="hidden sm:inline">{accessLabel}</span>
+          <span className="sm:hidden">{daysLeft === 0 ? "heute" : `${daysLeft} T.`}</span>
+        </Link>
+      )}
       <div ref={bellRef} className="relative">
         <button
           onClick={toggleBell}

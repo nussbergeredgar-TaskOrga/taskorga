@@ -4,6 +4,15 @@ import { getSystemEmailSettings, resolveEmailPlaceholders, textToParagraphs } fr
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
+// Resend wirft bei API-Fehlern (z.B. nicht verifizierte Domain) nicht, sondern
+// liefert { error }. Fuer Mails, deren Versand-Marker in der Datenbank nur nach
+// echtem Erfolg gesetzt werden darf, wird das hier zum Fehler.
+function assertSent(result: { error?: { message?: string } | null }) {
+  if (result.error) {
+    throw new Error(`E-Mail-Versand fehlgeschlagen: ${result.error.message ?? "unbekannter Fehler"}`);
+  }
+}
+
 // Mails an die eigenen Kunden einer Firma (Angebote, Rechnungen, Mahnungen)
 // laufen technisch weiter ueber die TaskOrga-Absenderadresse (SPF/DKIM dafuer
 // sind eingerichtet, eine beliebige Fremd-Domain waere das nicht), zeigen dem
@@ -192,7 +201,7 @@ export async function sendOperatorEventEmail({
     .map(([label, value]) => `<strong>${escapeHtml(label)}:</strong> ${escapeHtml(value)}`)
     .join("<br/>");
 
-  await resend.emails.send({
+  const result = await resend.emails.send({
     from: process.env.EMAIL_FROM || "TaskOrga <onboarding@resend.dev>",
     to,
     subject,
@@ -205,6 +214,7 @@ export async function sendOperatorEventEmail({
       `,
     }),
   });
+  assertSent(result);
 }
 
 // Wenn eine andere Person eine Aufgabe fuer jemanden anlegt (nicht bei
@@ -384,6 +394,56 @@ export async function sendTrialEndingSoonEmail({
       `,
     }),
   });
+}
+
+// Bestaetigung einer Kuendigung zum Periodenende (Stripe
+// "customer.subscription.updated" mit cancel_at_period_end), siehe
+// app/api/webhooks/stripe/route.ts -- der Zugang bleibt bis accessUntil bestehen.
+export async function sendCancellationConfirmationEmail({
+  to,
+  recipientName,
+  companyName,
+  accessUntil,
+}: {
+  to: string;
+  recipientName?: string | null;
+  companyName: string;
+  accessUntil: Date;
+}) {
+  if (!resend) {
+    throw new Error("E-Mail-Versand ist nicht eingerichtet (RESEND_API_KEY).");
+  }
+
+  const settings = await getSystemEmailSettings();
+  const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
+  const formattedDate = accessUntil.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
+
+  const result = await resend.emails.send({
+    from: process.env.EMAIL_FROM || "TaskOrga <onboarding@resend.dev>",
+    to,
+    subject: `Kündigung bestätigt: Zugang für „${companyName}" bis ${formattedDate}`,
+    html: renderSystemEmail({
+      branding: settings,
+      greetingName: recipientName ?? undefined,
+      bodyHtml: `
+        <p style="margin:0 0 14px;">
+          wir bestätigen den Eingang deiner Kündigung für „${companyName}".
+          Du kannst TaskOrga noch bis einschließlich <strong>${formattedDate}</strong> nutzen.
+        </p>
+        <p style="margin:0 0 14px;">
+          Danach wird der Zugang gesperrt. Du kannst dann deine Daten exportieren oder das Konto löschen.
+          Wir löschen das Konto 30 Tage nach Ablauf automatisch.
+        </p>
+        <p style="margin:0 0 14px;">
+          Hast du es dir anders überlegt? Du kannst die Kündigung hier zurücknehmen:
+        </p>
+        <p style="margin:0 0 14px;">
+          <a href="${baseUrl}/abo" style="color:#2F5FFF;">${baseUrl}/abo</a>
+        </p>
+      `,
+    }),
+  });
+  assertSent(result);
 }
 
 // Nach tatsaechlich vollzogener automatischer Loeschung, siehe

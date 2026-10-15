@@ -13,6 +13,7 @@ const STATUS_LABELS: Record<SubscriptionStatus, string> = {
 export function BillingOverview({
   subscriptionStatus,
   trialEndsAt,
+  cancelAt,
   billingExempt,
   hasStripeCustomer,
   seatCount,
@@ -20,6 +21,7 @@ export function BillingOverview({
 }: {
   subscriptionStatus: SubscriptionStatus;
   trialEndsAt: Date | null;
+  cancelAt?: Date | null;
   billingExempt: boolean;
   hasStripeCustomer: boolean;
   seatCount: number;
@@ -46,6 +48,16 @@ export function BillingOverview({
           <p className="text-sm text-ink-500">
             {seatCount} Mitarbeiter · {monthlyPrice.toLocaleString("de-DE")} €/Monat netto zzgl. 19 % USt bei aktuellem Stand
           </p>
+          {subscriptionStatus === "ACTIVE" && cancelAt && (
+            <p className="rounded-lg bg-warning/10 px-3 py-2 text-sm text-warning">
+              Gekündigt — du kannst TaskOrga noch bis einschließlich{" "}
+              <strong>{cancelAt.toLocaleDateString("de-DE")}</strong> nutzen. Danach wird der Zugang gesperrt; du
+              kannst deine Daten dann exportieren.{" "}
+              <a href="/abo" className="font-medium underline">
+                Kündigung zurücknehmen
+              </a>
+            </p>
+          )}
           {subscriptionStatus === "TRIALING" && (
             <p className="text-xs text-ink-500">
               Nach der Testphase wird der Zugang gesperrt, sofern kein Abo abgeschlossen ist. Mit einer

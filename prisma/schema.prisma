@@ -91,6 +91,8 @@ model Company {
   // Stripe-Webhook-Retries fuer dasselbe "customer.subscription.trial_will_end"-
   // Ereignis -- gleiches Idempotenz-Muster wie deletionWarningEmailSentAt.
   trialEndingWarningEmailSentAt DateTime?
+  cancelAt                 DateTime? // Zugang laeuft bis zu diesem Zeitpunkt (Abo zum Periodenende gekuendigt)
+  cancellationEmailSentAt  DateTime? // Kuendigungsbestaetigung an die Admins versendet
   // Nur gesetzt, wenn die Firma ueber eine E-Mail-Einladung mit begrenzter
   // Platzanzahl entstanden ist (siehe EmailInvite unten) -- null bedeutet
   // unbegrenzt (regulaere Selbstregistrierung, Kosten regeln sich ueber die

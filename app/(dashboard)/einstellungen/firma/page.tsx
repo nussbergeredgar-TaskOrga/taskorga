@@ -129,6 +129,7 @@ export default async function FirmaSettingsPage({
         <BillingOverview
           subscriptionStatus={company.subscriptionStatus}
           trialEndsAt={company.trialEndsAt}
+          cancelAt={company.cancelAt}
           billingExempt={company.billingExempt}
           hasStripeCustomer={Boolean(company.stripeCustomerId)}
           seatCount={users.length}

@@ -3,7 +3,7 @@ import type Stripe from "stripe";
 import { stripe } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
 import { mapStripeStatus } from "@/lib/subscription-pricing";
-import { sendAccountDeletionWarningEmail, sendTrialEndingSoonEmail } from "@/lib/email";
+import { sendAccountDeletionWarningEmail, sendTrialEndingSoonEmail, sendCancellationConfirmationEmail } from "@/lib/email";
 import { applyCheckoutSession } from "@/lib/billing-checkout";
 
 // Erste Route im Projekt, die den rohen Anfrage-Body braucht: Stripes
@@ -53,9 +53,19 @@ export async function POST(request: Request) {
     case "customer.subscription.updated": {
       const subscription = event.data.object as Stripe.Subscription;
       const newStatus = mapStripeStatus(subscription.status);
+
+      // Kuendigung zum Periodenende: Stripe laesst das Abo bis dahin aktiv und
+      // setzt cancel_at_period_end bzw. cancel_at. Wird sie zurueckgenommen,
+      // fallen beide wieder weg.
+      const periodEnd = subscription.items.data[0]?.current_period_end;
+      const cancelTs = subscription.cancel_at ?? (subscription.cancel_at_period_end ? periodEnd : null);
+      const cancelAtDate = cancelTs && newStatus !== "CANCELED" ? new Date(cancelTs * 1000) : null;
+
       await prisma.company.updateMany({
         where: { stripeSubscriptionId: subscription.id },
         data: {
+          cancelAt: cancelAtDate,
+          ...(cancelAtDate ? {} : { cancellationEmailSentAt: null }),
           subscriptionStatus: newStatus,
           trialEndsAt: subscription.trial_end ? new Date(subscription.trial_end * 1000) : null,
           // Reaktivierung (z.B. erneutes Abo nach vorheriger Kuendigung) setzt
@@ -63,6 +73,35 @@ export async function POST(request: Request) {
           ...(newStatus !== "CANCELED" ? { canceledAt: null, deletionWarningEmailSentAt: null } : {}),
         },
       });
+
+      if (cancelAtDate) {
+        const companies = await prisma.company.findMany({
+          where: { stripeSubscriptionId: subscription.id },
+          select: { id: true, name: true, email: true, cancellationEmailSentAt: true },
+        });
+        for (const company of companies) {
+          // Nur einmal je Kuendigung (Stripe kann Events wiederholen)
+          if (company.cancellationEmailSentAt) continue;
+          try {
+            const admins = await prisma.user.findMany({
+              where: { companyId: company.id, role: { name: "Admin" } },
+              select: { email: true, name: true },
+            });
+            const recipients = admins.length > 0 ? admins : company.email ? [{ email: company.email, name: null }] : [];
+            for (const recipient of recipients) {
+              await sendCancellationConfirmationEmail({
+                to: recipient.email,
+                recipientName: recipient.name,
+                companyName: company.name,
+                accessUntil: cancelAtDate,
+              });
+            }
+            await prisma.company.update({ where: { id: company.id }, data: { cancellationEmailSentAt: new Date() } });
+          } catch (err) {
+            console.error(`Kuendigungsbestaetigung fuer Firma ${company.id} fehlgeschlagen:`, err);
+          }
+        }
+      }
       break;
     }
     case "customer.subscription.deleted": {
