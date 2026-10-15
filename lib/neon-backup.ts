@@ -6,6 +6,11 @@ const NEON_PROJECT_ID = "dry-poetry-92290212";
 const PRODUCTION_BRANCH_ID = "br-cold-waterfall-agi41kjg";
 const BACKUP_BRANCH_PREFIX = "backup-";
 const BACKUP_RETENTION_DAYS = 14;
+// Der Neon-Plan erlaubt nur 10 Branches insgesamt (production, staging, support
+// + Sicherungen). Mit 14 Tagen Aufbewahrung wurde das Limit nach 7 Tagen
+// erreicht und das Anlegen schlug seit dem 21.09.2026 unbemerkt fehl -- deshalb
+// gilt zusaetzlich eine feste Obergrenze, und es wird VOR dem Anlegen aufgeraeumt.
+const MAX_BACKUP_BRANCHES = 6;
 
 type NeonBranch = { id: string; name: string; created_at: string };
 
@@ -48,6 +53,24 @@ export async function createDailyBackupBranch(): Promise<{
 
     // Idempotent bei mehrfachem Lauf am selben Tag (z.B. manueller Testaufruf).
     const alreadyExists = branches.some((b) => b.name === branchName);
+
+    // Erst aufraeumen, dann anlegen: zu alte Sicherungen und alles ueber der
+    // Obergrenze (aelteste zuerst) -- sonst scheitert das Anlegen am Branch-Limit.
+    const pruned: string[] = [];
+    const backups = branches
+      .filter((b) => b.name.startsWith(BACKUP_BRANCH_PREFIX))
+      .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+    const cutoff = new Date(Date.now() - BACKUP_RETENTION_DAYS * 24 * 60 * 60 * 1000);
+    let remaining = backups.length;
+    for (const b of backups) {
+      const tooOld = new Date(b.created_at) < cutoff;
+      const overLimit = !alreadyExists ? remaining >= MAX_BACKUP_BRANCHES : remaining > MAX_BACKUP_BRANCHES;
+      if (!tooOld && !overLimit) continue;
+      await neonRequest(`/projects/${NEON_PROJECT_ID}/branches/${b.id}`, { method: "DELETE" });
+      pruned.push(b.name);
+      remaining--;
+    }
+
     let created: string | undefined;
     if (!alreadyExists) {
       await neonRequest(`/projects/${NEON_PROJECT_ID}/branches`, {
@@ -55,15 +78,6 @@ export async function createDailyBackupBranch(): Promise<{
         body: JSON.stringify({ branch: { parent_id: PRODUCTION_BRANCH_ID, name: branchName } }),
       });
       created = branchName;
-    }
-
-    const cutoff = new Date(Date.now() - BACKUP_RETENTION_DAYS * 24 * 60 * 60 * 1000);
-    const pruned: string[] = [];
-    for (const b of branches) {
-      if (!b.name.startsWith(BACKUP_BRANCH_PREFIX)) continue;
-      if (new Date(b.created_at) >= cutoff) continue;
-      await neonRequest(`/projects/${NEON_PROJECT_ID}/branches/${b.id}`, { method: "DELETE" });
-      pruned.push(b.name);
     }
 
     return { created, pruned };
