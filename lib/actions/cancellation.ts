@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { stripe } from "@/lib/stripe";
 import { requireAdmin } from "@/lib/session";
 import { confirmPassword } from "@/lib/password-confirm";
+import { releaseCancellation } from "@/lib/subscription-cancellation";
 
 // Nimmt eine Kuendigung zum Periodenende zurueck: das Abo laeuft einfach weiter.
 // Wie jede Abo-Entscheidung nur nach erneuter Passwort-Bestaetigung.
@@ -36,10 +37,8 @@ export async function revokeCancellation(password: string): Promise<{ success?: 
     return { error: "Die Kündigung konnte nicht zurückgenommen werden. Bitte später erneut versuchen." };
   }
 
-  await prisma.company.update({
-    where: { id: company.id },
-    data: { cancelAt: null, cancellationEmailSentAt: null },
-  });
+  // Stand zuruecksetzen und Bestaetigungsmail senden (einmalig)
+  await releaseCancellation(company.id);
 
   revalidatePath("/", "layout");
   return { success: true };

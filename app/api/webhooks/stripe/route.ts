@@ -4,7 +4,7 @@ import { stripe } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
 import { mapStripeStatus } from "@/lib/subscription-pricing";
 import { sendAccountDeletionWarningEmail, sendTrialEndingSoonEmail } from "@/lib/email";
-import { notifyCancellation } from "@/lib/subscription-cancellation";
+import { notifyCancellation, releaseCancellation } from "@/lib/subscription-cancellation";
 import { applyCheckoutSession } from "@/lib/billing-checkout";
 
 // Erste Route im Projekt, die den rohen Anfrage-Body braucht: Stripes
@@ -61,6 +61,16 @@ export async function POST(request: Request) {
       const periodEnd = subscription.items.data[0]?.current_period_end;
       const cancelTs = subscription.cancel_at ?? (subscription.cancel_at_period_end ? periodEnd : null);
       const cancelAtDate = cancelTs && newStatus !== "CANCELED" ? new Date(cancelTs * 1000) : null;
+
+      // Kuendigung zurueckgenommen (Abo laeuft weiter): einmalig bestaetigen,
+      // bevor der allgemeine Abgleich unten den Stand ueberschreibt.
+      if (!cancelAtDate && newStatus !== "CANCELED") {
+        const withCancellation = await prisma.company.findMany({
+          where: { stripeSubscriptionId: subscription.id, cancelAt: { not: null } },
+          select: { id: true },
+        });
+        for (const c of withCancellation) await releaseCancellation(c.id);
+      }
 
       await prisma.company.updateMany({
         where: { stripeSubscriptionId: subscription.id },

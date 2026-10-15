@@ -446,6 +446,48 @@ export async function sendCancellationConfirmationEmail({
   assertSent(result);
 }
 
+// Bestaetigung, dass eine Kuendigung zurueckgenommen wurde und das Abo
+// unveraendert weiterlaeuft, siehe lib/subscription-cancellation.ts.
+export async function sendCancellationRevokedEmail({
+  to,
+  recipientName,
+  companyName,
+}: {
+  to: string;
+  recipientName?: string | null;
+  companyName: string;
+}) {
+  if (!resend) {
+    throw new Error("E-Mail-Versand ist nicht eingerichtet (RESEND_API_KEY).");
+  }
+
+  const settings = await getSystemEmailSettings();
+  const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
+
+  const result = await resend.emails.send({
+    from: process.env.EMAIL_FROM || "TaskOrga <onboarding@resend.dev>",
+    to,
+    subject: `Kündigung zurückgenommen: „${companyName}" bleibt aktiv`,
+    html: renderSystemEmail({
+      branding: settings,
+      greetingName: recipientName ?? undefined,
+      bodyHtml: `
+        <p style="margin:0 0 14px;">
+          die Kündigung für „${companyName}" wurde zurückgenommen. Dein Abo läuft unverändert weiter,
+          die nächste Abrechnung erfolgt wie gewohnt.
+        </p>
+        <p style="margin:0 0 14px;">
+          Deinen Zugang musst du nicht neu einrichten, alles bleibt wie es ist.
+        </p>
+        <p style="margin:0 0 14px;">
+          <a href="${baseUrl}/abo" style="color:#2F5FFF;">${baseUrl}/abo</a>
+        </p>
+      `,
+    }),
+  });
+  assertSent(result);
+}
+
 // Nach tatsaechlich vollzogener automatischer Loeschung, siehe
 // app/api/cron/daily/route.ts -- letzte Bestaetigung, da danach keine Firmen-
 // oder Nutzerdaten mehr existieren, an die sich sonst erinnert werden koennte.

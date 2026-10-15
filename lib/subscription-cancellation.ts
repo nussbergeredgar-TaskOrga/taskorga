@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { stripe } from "@/lib/stripe";
 import { mapStripeStatus } from "@/lib/subscription-pricing";
-import { sendCancellationConfirmationEmail } from "@/lib/email";
+import { sendCancellationConfirmationEmail, sendCancellationRevokedEmail, sendOperatorEventEmail } from "@/lib/email";
 
 // Schickt die Kuendigungsbestaetigung an alle Admins der Firma -- einmal je
 // Kuendigung (cancellationEmailSentAt). Fehler werden protokolliert, nicht
@@ -28,6 +28,55 @@ export async function notifyCancellation(
     await prisma.company.update({ where: { id: company.id }, data: { cancellationEmailSentAt: new Date() } });
   } catch (err) {
     console.error(`Kuendigungsbestaetigung fuer Firma ${company.id} fehlgeschlagen:`, err);
+  }
+}
+
+// Setzt eine Kuendigung zurueck und informiert -- aber nur, wenn DIESER Aufruf
+// den Uebergang tatsaechlich vollzogen hat. Das bedingte updateMany macht den
+// Versand eindeutig, auch wenn App-Aktion, Webhook und Abgleich gleichzeitig
+// dasselbe feststellen (sonst gaebe es doppelte Mails).
+export async function releaseCancellation(companyId: string): Promise<void> {
+  const res = await prisma.company.updateMany({
+    where: { id: companyId, cancelAt: { not: null } },
+    data: { cancelAt: null, cancellationEmailSentAt: null },
+  });
+  if (res.count === 0) return;
+
+  try {
+    const company = await prisma.company.findUnique({
+      where: { id: companyId },
+      select: { name: true, email: true },
+    });
+    if (!company) return;
+
+    const admins = await prisma.user.findMany({
+      where: { companyId, role: { name: "Admin" } },
+      select: { email: true, name: true },
+    });
+    const recipients = admins.length > 0 ? admins : company.email ? [{ email: company.email, name: null }] : [];
+    for (const recipient of recipients) {
+      await sendCancellationRevokedEmail({
+        to: recipient.email,
+        recipientName: recipient.name,
+        companyName: company.name,
+      });
+    }
+
+    // Kurze Info an den Betreiber
+    try {
+      await sendOperatorEventEmail({
+        subject: `Kündigung zurückgenommen: ${company.name}`,
+        headline: `„${company.name}" hat die Kündigung zurückgenommen — das Abo läuft weiter.`,
+        facts: [
+          ["Firma", company.name],
+          ["Admins", admins.map((a) => a.email).join(", ")],
+        ],
+      });
+    } catch (err) {
+      console.error("Betreiber-Info (Kuendigung zurueckgenommen) fehlgeschlagen:", err);
+    }
+  } catch (err) {
+    console.error(`Bestaetigung der zurueckgenommenen Kuendigung fuer Firma ${companyId} fehlgeschlagen:`, err);
   }
 }
 
@@ -73,12 +122,13 @@ export async function syncCancellationState(company: SyncCompany): Promise<Date 
       (cancelAt !== null && company.cancelAt !== null && cancelAt.getTime() === company.cancelAt.getTime());
     if (unchanged) return company.cancelAt;
 
-    await prisma.company.update({
-      where: { id: company.id },
-      data: { cancelAt, ...(cancelAt ? {} : { cancellationEmailSentAt: null }) },
-    });
-
-    if (cancelAt) await notifyCancellation(company, cancelAt);
+    if (cancelAt) {
+      await prisma.company.update({ where: { id: company.id }, data: { cancelAt } });
+      await notifyCancellation(company, cancelAt);
+    } else {
+      // Kuendigung wurde (z.B. im Stripe-Dashboard) zurueckgenommen
+      await releaseCancellation(company.id);
+    }
     return cancelAt;
   } catch (err) {
     console.error(`Abgleich des Kuendigungsstands fuer Firma ${company.id} fehlgeschlagen:`, err);
