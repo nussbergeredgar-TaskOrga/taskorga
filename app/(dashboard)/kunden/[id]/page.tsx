@@ -49,11 +49,12 @@ function EmptyRow({ text }: { text: string }) {
   );
 }
 
-export default async function KundeDetailPage({
-  params,
-}: {
-  params: { id: string };
-}) {
+export default async function KundeDetailPage(
+  props: {
+    params: Promise<{ id: string }>;
+  }
+) {
+  const params = await props.params;
   const company = await getCurrentCompany();
   const [customer, tabsConfig, appointmentTypes, appointmentFieldConfig, contactFieldConfig, currentUser] = await Promise.all([
     getCustomer(params.id, company.id),

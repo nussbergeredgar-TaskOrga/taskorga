@@ -1,6 +1,7 @@
 "use client";
 
-import { useFormState, useFormStatus } from "react-dom";
+import { useActionState } from "react";
+import { useFormStatus } from "react-dom";
 import Link from "next/link";
 import { signUp, type SignupState } from "@/lib/actions/signup";
 import { PasswordInput } from "@/components/password-input";
@@ -35,7 +36,7 @@ export function RegistrierenForm({
   pilot: boolean;
   trialDays: number;
 }) {
-  const [state, formAction] = useFormState(signUp, initialState);
+  const [state, formAction] = useActionState(signUp, initialState);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-ink-50 px-4">

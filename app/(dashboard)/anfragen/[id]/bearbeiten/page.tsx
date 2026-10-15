@@ -6,7 +6,8 @@ import { getCurrentCompany } from "@/lib/session";
 import { InquiryForm } from "@/components/inquiry-form";
 import { getFieldConfig } from "@/lib/actions/field-config";
 
-export default async function AnfrageBearbeitenPage({ params }: { params: { id: string } }) {
+export default async function AnfrageBearbeitenPage(props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const company = await getCurrentCompany();
   const [inquiry, customers, fieldConfig] = await Promise.all([
     prisma.inquiry.findFirst({ where: { id: params.id, companyId: company.id } }),

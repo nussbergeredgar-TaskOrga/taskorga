@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useFormState, useFormStatus } from "react-dom";
+import { useState, useActionState } from "react";
+import { useFormStatus } from "react-dom";
 import { Plus, Trash2, Library, Save } from "lucide-react";
 import { createQuote, updateQuote, type QuoteFormState } from "@/lib/actions/quotes";
 import { createItemTemplate } from "@/lib/actions/item-templates";
@@ -68,7 +68,7 @@ export function QuoteForm({
   const fc = (key: string) => fieldConfig?.[key] ?? DEFAULT_FIELD_STATE;
   const editing = Boolean(editQuoteId);
   const action = editing ? updateQuote.bind(null, editQuoteId!) : createQuote;
-  const [state, formAction] = useFormState(action, initialState);
+  const [state, formAction] = useActionState(action, initialState);
   const [customerId, setCustomerId] = useState(defaultCustomerId || "");
   const [items, setItems] = useState<Item[]>(initialItems?.length ? initialItems : [emptyItem()]);
   const [discountValue, setDiscountValue] = useState(initialDiscountValue || "");

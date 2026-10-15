@@ -27,7 +27,8 @@ const LINK_LABELS: Record<string, string> = {
   appointmentId: "Zum Termin",
 };
 
-export default async function AufgabeDetailPage({ params }: { params: { id: string } }) {
+export default async function AufgabeDetailPage(props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const company = await getCurrentCompany();
   const [task, users, customers, linkables, fieldConfig] = await Promise.all([
     prisma.task.findFirst({

@@ -12,7 +12,8 @@ import { getAppointmentTypes } from "@/lib/actions/appointment-types";
 import { getFieldConfig } from "@/lib/actions/field-config";
 import { RecordTags } from "@/components/record-tags";
 
-export default async function TerminDetailPage({ params }: { params: { id: string } }) {
+export default async function TerminDetailPage(props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const company = await getCurrentCompany();
   const appointment = await prisma.appointment.findFirst({
     where: { id: params.id, companyId: company.id },

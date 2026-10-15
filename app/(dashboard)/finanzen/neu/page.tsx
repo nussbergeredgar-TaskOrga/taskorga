@@ -6,11 +6,12 @@ import { InvoiceForm } from "@/components/invoice-form";
 import { getItemTemplates } from "@/lib/actions/item-templates";
 import { getFieldConfig } from "@/lib/actions/field-config";
 
-export default async function NeueRechnungPage({
-  searchParams,
-}: {
-  searchParams: { customerId?: string };
-}) {
+export default async function NeueRechnungPage(
+  props: {
+    searchParams: Promise<{ customerId?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const company = await getCurrentCompany();
   const [customers, contacts, projects, quotes, itemTemplates, fieldConfig] = await Promise.all([
     prisma.customer.findMany({

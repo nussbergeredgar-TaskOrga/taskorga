@@ -5,7 +5,8 @@ import { prisma } from "@/lib/prisma";
 import { QuoteSendFromPreview } from "@/components/quote-send-from-preview";
 import { getCurrentCompany } from "@/lib/session";
 
-export default async function AngebotVorschauPage({ params }: { params: { id: string } }) {
+export default async function AngebotVorschauPage(props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const company = await getCurrentCompany();
   const quote = await prisma.quote.findFirst({
     where: { id: params.id, companyId: company.id },

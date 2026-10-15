@@ -41,7 +41,7 @@ async function checkSecret(secret: string) {
 // Wirft, wenn keine gueltige Sitzung vorliegt -- ersetzt die bisherigen
 // checkSecret(secret)-Aufrufe in allen anderen Funktionen dieser Datei.
 async function requireSession() {
-  const raw = cookies().get(SESSION_COOKIE)?.value;
+  const raw = (await cookies()).get(SESSION_COOKIE)?.value;
   const [expiresAtRaw, token] = raw?.split(".") ?? [];
   const expiresAt = Number(expiresAtRaw);
   if (!raw || !expiresAt || !token || Date.now() > expiresAt || token !== signSessionToken(expiresAt)) {
@@ -53,7 +53,7 @@ export async function verifyPlatformSecret(secret: string): Promise<{ ok: boolea
   try {
     await checkSecret(secret);
     const expiresAt = Date.now() + SESSION_TTL_MS;
-    cookies().set(SESSION_COOKIE, `${expiresAt}.${signSessionToken(expiresAt)}`, {
+    (await cookies()).set(SESSION_COOKIE, `${expiresAt}.${signSessionToken(expiresAt)}`, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
@@ -67,7 +67,7 @@ export async function verifyPlatformSecret(secret: string): Promise<{ ok: boolea
 }
 
 export async function platformAdminLogout() {
-  cookies().delete(SESSION_COOKIE);
+  (await cookies()).delete(SESSION_COOKIE);
 }
 
 export async function listInviteCodes() {

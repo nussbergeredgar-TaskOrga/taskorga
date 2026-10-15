@@ -7,7 +7,8 @@ import { getSignedFileUrl, pathnameFromBlobUrl } from "@/lib/blob-signed-url";
 // Store ist privat, daher wird bei jedem Abruf frisch eine kurzlebige,
 // signierte URL ausgestellt und dorthin weitergeleitet -- so bleibt z.B. ein
 // vor Wochen verschicktes E-Mail-Signatur-Bild dauerhaft ladbar.
-export async function GET(request: Request, { params }: { params: { companyId: string } }) {
+export async function GET(request: Request, props: { params: Promise<{ companyId: string }> }) {
+  const params = await props.params;
   const company = await prisma.company.findUnique({
     where: { id: params.companyId },
     select: { logoUrl: true },

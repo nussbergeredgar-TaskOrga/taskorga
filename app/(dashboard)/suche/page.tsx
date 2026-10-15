@@ -49,11 +49,12 @@ const ResultRow = ({
   </Link>
 );
 
-export default async function SuchePage({
-  searchParams,
-}: {
-  searchParams: { q?: string };
-}) {
+export default async function SuchePage(
+  props: {
+    searchParams: Promise<{ q?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const query = searchParams.q?.trim() ?? "";
   const company = await getCurrentCompany();
 

@@ -16,11 +16,12 @@ import { EXPENSE_COLUMNS_DEFAULT, EXPENSE_STATUS_LABELS } from "@/lib/expense-co
 
 const OPEN_INVOICE_STATUSES = ["SENT", "OPEN", "PARTIALLY_PAID", "OVERDUE"];
 
-export default async function FinanzenPage({
-  searchParams,
-}: {
-  searchParams: { status?: string; expenseStatus?: string };
-}) {
+export default async function FinanzenPage(
+  props: {
+    searchParams: Promise<{ status?: string; expenseStatus?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const admin = await requirePermission("finanzen");
   const company = { id: admin.companyId };
 

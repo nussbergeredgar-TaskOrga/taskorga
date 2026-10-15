@@ -3,11 +3,12 @@ import { RegistrierenForm } from "@/components/registrieren-form";
 
 const DEFAULT_TRIAL_DAYS = 14;
 
-export default async function RegistrierenPage({
-  searchParams,
-}: {
-  searchParams: { invite?: string; code?: string };
-}) {
+export default async function RegistrierenPage(
+  props: {
+    searchParams: Promise<{ invite?: string; code?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const token = searchParams.invite?.trim() || null;
   const preview = token ? await getInvitePreview(token) : null;
 

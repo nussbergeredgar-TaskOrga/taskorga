@@ -17,11 +17,12 @@ import { DEFAULT_WIDGETS } from "@/lib/dashboard-widgets";
 import { format, isSameDay, startOfDay, endOfDay } from "date-fns";
 import { computeRevenue } from "@/lib/revenue";
 
-export default async function HeutePage({
-  searchParams,
-}: {
-  searchParams: { dashboard?: string };
-}) {
+export default async function HeutePage(
+  props: {
+    searchParams: Promise<{ dashboard?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const company = await getCurrentCompany();
   const user = await getCurrentUser();
   const isAdmin = (await getCurrentUserWithRole()).role?.name === "Admin";

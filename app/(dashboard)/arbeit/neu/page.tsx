@@ -4,11 +4,12 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentCompany } from "@/lib/session";
 import { ProjectQuickForm } from "@/components/project-quick-form";
 
-export default async function NeuerAuftragPage({
-  searchParams,
-}: {
-  searchParams: { customerId?: string };
-}) {
+export default async function NeuerAuftragPage(
+  props: {
+    searchParams: Promise<{ customerId?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const company = await getCurrentCompany();
   const customers = await prisma.customer.findMany({
     where: { companyId: company.id },

@@ -10,7 +10,8 @@ import { DocumentTab } from "@/components/document-tab";
 import { getCurrentCompany } from "@/lib/session";
 import { RecordTags } from "@/components/record-tags";
 
-export default async function AngebotDetailPage({ params }: { params: { id: string } }) {
+export default async function AngebotDetailPage(props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const company = await getCurrentCompany();
   const [quote, versions] = await Promise.all([
     prisma.quote.findFirst({

@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { useFormState, useFormStatus } from "react-dom";
+import { useState, useTransition, useActionState } from "react";
+import { useFormStatus } from "react-dom";
 import { updateOwnName, changeOwnPassword, type ProfileState } from "@/lib/actions/profile";
 import { PasswordInput } from "@/components/password-input";
 
@@ -24,7 +24,7 @@ export function ProfileForm({ name, email }: { name: string; email: string }) {
   const [nameValue, setNameValue] = useState(name);
   const [nameSaved, setNameSaved] = useState(false);
   const [pending, startTransition] = useTransition();
-  const [pwState, pwAction] = useFormState(changeOwnPassword, initialState);
+  const [pwState, pwAction] = useActionState(changeOwnPassword, initialState);
 
   function saveName() {
     if (nameValue.trim() === name) return;

@@ -9,7 +9,8 @@ import { RecordTasks } from "@/components/record-tasks";
 import { RecordTags } from "@/components/record-tags";
 import { missingInvoiceDetails } from "@/lib/invoice-compliance";
 
-export default async function RechnungDetailPage({ params }: { params: { id: string } }) {
+export default async function RechnungDetailPage(props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const admin = await requirePermission("finanzen");
   const invoice = await prisma.invoice.findFirst({
     where: { id: params.id, companyId: admin.companyId },

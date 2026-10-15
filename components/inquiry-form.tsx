@@ -1,6 +1,7 @@
 "use client";
 
-import { useFormState, useFormStatus } from "react-dom";
+import { useActionState } from "react";
+import { useFormStatus } from "react-dom";
 import { createInquiry, updateInquiry, type InquiryFormState } from "@/lib/actions/inquiries";
 import { CustomerAutocomplete } from "@/components/customer-autocomplete";
 import type { FieldConfigMap } from "@/lib/actions/field-config";
@@ -43,7 +44,7 @@ export function InquiryForm({
 }) {
   const editing = Boolean(editInquiryId);
   const action = editing ? updateInquiry.bind(null, editInquiryId!) : createInquiry;
-  const [state, formAction] = useFormState(action, initialState);
+  const [state, formAction] = useActionState(action, initialState);
   const fc = (key: string) => fieldConfig?.[key] ?? DEFAULT_FIELD_STATE;
 
   return (

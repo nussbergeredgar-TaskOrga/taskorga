@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useFormState, useFormStatus } from "react-dom";
+import { useState, useActionState } from "react";
+import { useFormStatus } from "react-dom";
 import { createCustomer, updateCustomer, type CustomerFormState } from "@/lib/actions/customers";
 import type { FieldConfigMap } from "@/lib/actions/field-config";
 
@@ -82,7 +82,7 @@ export function CustomerForm({
   fieldConfig?: FieldConfigMap;
 }) {
   const action = customer ? updateCustomer.bind(null, customer.id) : createCustomer;
-  const [state, formAction] = useFormState(action, initialState);
+  const [state, formAction] = useActionState(action, initialState);
   const [type, setType] = useState<"PRIVATE" | "BUSINESS">(customer?.type ?? "PRIVATE");
 
   const fc = (key: string) => fieldConfig?.[key] ?? DEFAULT_FIELD_STATE;

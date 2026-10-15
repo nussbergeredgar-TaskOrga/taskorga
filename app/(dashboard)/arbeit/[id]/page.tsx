@@ -12,7 +12,8 @@ import { DocumentTab } from "@/components/document-tab";
 import { getFieldConfig } from "@/lib/actions/field-config";
 import { RecordTags } from "@/components/record-tags";
 
-export default async function AuftragDetailPage({ params }: { params: { id: string } }) {
+export default async function AuftragDetailPage(props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const user = await getCurrentUser();
   const company = await getCurrentCompany();
   const expenseFieldConfig = await getFieldConfig("expense");

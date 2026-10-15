@@ -9,7 +9,8 @@ import { getSignedFileUrl, pathnameFromBlobUrl } from "@/lib/blob-signed-url";
 // Aufruf wird frisch eine kurzlebige, signierte URL ausgestellt und dorthin
 // weitergeleitet -- so bleiben bestehende Links (E-Mails, gespeicherte
 // Lesezeichen) auf Dauer funktionsfaehig statt nach Ablauf der Signatur tot zu sein.
-export async function GET(request: Request, { params }: { params: { id: string } }) {
+export async function GET(request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const session = await getServerSession(authOptions);
   if (!session?.user) {
     return NextResponse.json({ error: "Nicht eingeloggt." }, { status: 401 });

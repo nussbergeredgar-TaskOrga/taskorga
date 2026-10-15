@@ -5,7 +5,8 @@ import { buildInvoiceEInvoice } from "@/lib/invoice-einvoice";
 
 // E-Rechnung (XRechnung 3.0, XML) zu einer Rechnung herunterladen. Fehlen
 // Pflichtangaben, kommt statt der Datei eine verstaendliche Fehlerseite.
-export async function GET(_request: Request, { params }: { params: { id: string } }) {
+export async function GET(_request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const session = await getServerSession(authOptions);
   if (!session?.user) {
     return NextResponse.json({ error: "Nicht eingeloggt." }, { status: 401 });

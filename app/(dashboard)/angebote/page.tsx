@@ -9,11 +9,12 @@ import { QUOTE_COLUMNS_DEFAULT, QUOTE_STATUS_LABELS } from "@/lib/quote-columns"
 
 const OPEN_QUOTE_STATUSES = ["DRAFT", "SENT"];
 
-export default async function AngebotePage({
-  searchParams,
-}: {
-  searchParams: { status?: string };
-}) {
+export default async function AngebotePage(
+  props: {
+    searchParams: Promise<{ status?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const company = await getCurrentCompany();
   const [quotes, savedListConfig, filterState] = await Promise.all([
     prisma.quote.findMany({

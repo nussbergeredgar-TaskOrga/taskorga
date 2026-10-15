@@ -17,11 +17,12 @@ import { getWorkingHours, getAbsences } from "@/lib/actions/schedule";
 import { getActiveSupportAccessCode } from "@/lib/actions/support-access";
 import { getTaskEscalationLevels } from "@/lib/actions/task-escalation-levels";
 
-export default async function FirmaSettingsPage({
-  searchParams,
-}: {
-  searchParams: { scheduleUser?: string };
-}) {
+export default async function FirmaSettingsPage(
+  props: {
+    searchParams: Promise<{ scheduleUser?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const admin = await requireAdmin();
 
   const [company, users, navLabels, nonAdminRoles, activeSupportAccessCode, taskEscalationLevels] = await Promise.all([

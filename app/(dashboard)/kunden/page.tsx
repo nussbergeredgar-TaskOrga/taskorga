@@ -8,11 +8,12 @@ import { getListViewConfig } from "@/lib/actions/list-view";
 import { getFilterState } from "@/lib/actions/filters";
 import { CUSTOMER_COLUMNS_DEFAULT } from "@/lib/customer-columns";
 
-export default async function KundenPage({
-  searchParams,
-}: {
-  searchParams: { archiviert?: string };
-}) {
+export default async function KundenPage(
+  props: {
+    searchParams: Promise<{ archiviert?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const company = await getCurrentCompany();
   const isAdmin = (await getCurrentUserWithRole()).role?.name === "Admin";
   const showArchived = searchParams.archiviert === "1";

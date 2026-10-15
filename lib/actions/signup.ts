@@ -16,10 +16,11 @@ const MAX_SIGNUP_ATTEMPTS_PER_HOUR = 10;
 // waere der Header faelschbar, hier aber ausreichend, um blosses Durchprobieren
 // vieler Codes von derselben Quelle zu bremsen (kein alleiniger Schutz --
 // siehe auch die durch mehr Entropie erschwerte Erratbarkeit des Codes selbst).
-function getClientIp(): string {
-  const forwarded = headers().get("x-forwarded-for");
+async function getClientIp(): Promise<string> {
+  const h = await headers();
+  const forwarded = h.get("x-forwarded-for");
   if (forwarded) return forwarded.split(",")[0].trim();
-  return headers().get("x-real-ip") ?? "unknown";
+  return h.get("x-real-ip") ?? "unknown";
 }
 
 const signupSchema = z.object({
@@ -89,7 +90,7 @@ export async function signUp(_prevState: SignupState, formData: FormData): Promi
     return { errors: parsed.error.flatten().fieldErrors };
   }
 
-  const ip = getClientIp();
+  const ip = await getClientIp();
   const recentAttempts = await prisma.signupAttempt.count({
     where: { ipAddress: ip, createdAt: { gte: new Date(Date.now() - 60 * 60 * 1000) } },
   });

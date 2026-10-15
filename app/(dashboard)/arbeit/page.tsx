@@ -7,11 +7,12 @@ import { getListViewConfig } from "@/lib/actions/list-view";
 import { getFilterState } from "@/lib/actions/filters";
 import { PROJECT_COLUMNS_DEFAULT, PROJECT_STATUS_LABELS as STATUS_LABELS } from "@/lib/project-columns";
 
-export default async function ArbeitPage({
-  searchParams,
-}: {
-  searchParams: { status?: string };
-}) {
+export default async function ArbeitPage(
+  props: {
+    searchParams: Promise<{ status?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const company = await getCurrentCompany();
   const [projects, savedListConfig, filterState] = await Promise.all([
     prisma.project.findMany({

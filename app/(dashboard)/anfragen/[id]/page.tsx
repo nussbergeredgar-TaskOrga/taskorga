@@ -11,7 +11,8 @@ import { RecordTasks } from "@/components/record-tasks";
 import { DocumentTab } from "@/components/document-tab";
 import { RecordTags } from "@/components/record-tags";
 
-export default async function AnfrageDetailPage({ params }: { params: { id: string } }) {
+export default async function AnfrageDetailPage(props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const company = await getCurrentCompany();
 
   const [inquiry, steps] = await Promise.all([

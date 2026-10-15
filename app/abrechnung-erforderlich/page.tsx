@@ -18,11 +18,12 @@ const STATUS_TEXT: Record<string, string> = {
 // getCurrentCompany() auf, das bei blockierter Abrechnung genau hierher
 // umleitet -- innerhalb der Gruppe gaebe es also eine Redirect-Schleife.
 // Diese Seite holt Nutzer/Firma deshalb direkt, ohne getCurrentCompany().
-export default async function AbrechnungErforderlichPage({
-  searchParams,
-}: {
-  searchParams: { checkout?: string; session_id?: string };
-}) {
+export default async function AbrechnungErforderlichPage(
+  props: {
+    searchParams: Promise<{ checkout?: string; session_id?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const user = await getCurrentUserWithRole();
   let company = await prisma.company.findUnique({ where: { id: user.companyId } });
   if (!company) redirect("/login");

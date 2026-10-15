@@ -5,7 +5,8 @@ import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/session";
 import { InvoiceSendFromPreview } from "@/components/invoice-send-from-preview";
 
-export default async function RechnungVorschauPage({ params }: { params: { id: string } }) {
+export default async function RechnungVorschauPage(props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const admin = await requirePermission("finanzen");
   const invoice = await prisma.invoice.findFirst({
     where: { id: params.id, companyId: admin.companyId },

@@ -1,7 +1,7 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
-import { useFormState, useFormStatus } from "react-dom";
+import { useRef, useState, useTransition, useActionState } from "react";
+import { useFormStatus } from "react-dom";
 import { UserPlus, Trash2, KeyRound, Eye, EyeOff, RefreshCw } from "lucide-react";
 import { createUser, updateUserRole, deleteUser, resetUserPassword, type CreateUserState } from "@/lib/actions/team";
 
@@ -30,7 +30,7 @@ function PasswordField({
   placeholder,
   onKeyDown,
 }: {
-  inputRef: React.RefObject<HTMLInputElement>;
+  inputRef: React.RefObject<HTMLInputElement | null>;
   name?: string;
   placeholder: string;
   onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
@@ -207,7 +207,7 @@ export function TeamManager({
   maxUsers?: number | null;
 }) {
   const [showForm, setShowForm] = useState(false);
-  const [state, formAction] = useFormState(createUser, initialState);
+  const [state, formAction] = useActionState(createUser, initialState);
   const newPasswordRef = useRef<HTMLInputElement>(null);
   const limitReached = maxUsers != null && users.length >= maxUsers;
 

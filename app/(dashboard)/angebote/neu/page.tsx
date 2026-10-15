@@ -6,11 +6,12 @@ import { QuoteForm } from "@/components/quote-form";
 import { getItemTemplates } from "@/lib/actions/item-templates";
 import { getFieldConfig } from "@/lib/actions/field-config";
 
-export default async function NeuesAngebotPage({
-  searchParams,
-}: {
-  searchParams: { customerId?: string; inquiryId?: string; title?: string };
-}) {
+export default async function NeuesAngebotPage(
+  props: {
+    searchParams: Promise<{ customerId?: string; inquiryId?: string; title?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const company = await getCurrentCompany();
   const [customers, contacts, inquiries, projects, itemTemplates, fieldConfig] = await Promise.all([
     prisma.customer.findMany({

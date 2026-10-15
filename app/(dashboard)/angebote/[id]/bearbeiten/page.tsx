@@ -7,7 +7,8 @@ import { QuoteForm } from "@/components/quote-form";
 import { getItemTemplates } from "@/lib/actions/item-templates";
 import { getFieldConfig } from "@/lib/actions/field-config";
 
-export default async function AngebotBearbeitenPage({ params }: { params: { id: string } }) {
+export default async function AngebotBearbeitenPage(props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const company = await getCurrentCompany();
   const [quote, customers, contacts, inquiries, projects, itemTemplates, fieldConfig] = await Promise.all([
     prisma.quote.findFirst({

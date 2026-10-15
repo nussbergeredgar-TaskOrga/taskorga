@@ -9,11 +9,12 @@ import { getFilterState } from "@/lib/actions/filters";
 import { TASK_COLUMNS_DEFAULT } from "@/lib/task-columns";
 import { TasksListView } from "@/components/tasks-list-view";
 
-export default async function AufgabenPage({
-  searchParams,
-}: {
-  searchParams: { status?: string };
-}) {
+export default async function AufgabenPage(
+  props: {
+    searchParams: Promise<{ status?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const company = await getCurrentCompany();
 
   const [tasks, users, customers, linkables, fieldConfig, savedListConfig, filterState] = await Promise.all([

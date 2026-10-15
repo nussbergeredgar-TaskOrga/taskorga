@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useFormState, useFormStatus } from "react-dom";
+import { useState, useActionState } from "react";
+import { useFormStatus } from "react-dom";
 import { Plus, Trash2, Library, Save } from "lucide-react";
 import { createInvoice, type InvoiceFormState } from "@/lib/actions/invoices";
 import { createItemTemplate } from "@/lib/actions/item-templates";
@@ -51,7 +51,7 @@ export function InvoiceForm({
   fieldConfig?: FieldConfigMap;
 }) {
   const fc = (key: string) => fieldConfig?.[key] ?? DEFAULT_FIELD_STATE;
-  const [state, formAction] = useFormState(createInvoice, initialState);
+  const [state, formAction] = useActionState(createInvoice, initialState);
   const [customerId, setCustomerId] = useState(defaultCustomerId || "");
   const [items, setItems] = useState<Item[]>([emptyItem()]);
   const [discountValue, setDiscountValue] = useState("");

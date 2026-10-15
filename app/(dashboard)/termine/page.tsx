@@ -31,11 +31,12 @@ import { APPOINTMENT_COLUMNS_DEFAULT } from "@/lib/appointment-columns";
 import { KpiCard } from "@/components/kpi-card";
 import { CalendarCheck, CalendarClock, Wallet } from "lucide-react";
 
-export default async function TerminePage({
-  searchParams,
-}: {
-  searchParams: { month?: string; status?: string; day?: string };
-}) {
+export default async function TerminePage(
+  props: {
+    searchParams: Promise<{ month?: string; status?: string; day?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const company = await getCurrentCompany();
   const currentUser = await getCurrentUser();
 

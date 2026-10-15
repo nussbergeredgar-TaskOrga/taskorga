@@ -12,11 +12,12 @@ import { getFilterState } from "@/lib/actions/filters";
 import { INQUIRY_COLUMNS_DEFAULT } from "@/lib/inquiry-columns";
 import { INQUIRY_STATUS_LABELS } from "@/lib/status-labels";
 
-export default async function AnfragenPage({
-  searchParams,
-}: {
-  searchParams: { range?: string };
-}) {
+export default async function AnfragenPage(
+  props: {
+    searchParams: Promise<{ range?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const company = await getCurrentCompany();
   const isMonthFilter = searchParams.range === "month";
   const startOfMonth = new Date();

@@ -9,11 +9,12 @@ import { VerifyStatus } from "@/components/verify-status";
 // funktioniert auch ohne Sitzung) oder ohne Token -- dann der harte
 // Zugriffs-Riegel fuer eingeloggte, aber noch nicht verifizierte Nutzer
 // (siehe app/(dashboard)/layout.tsx, das hierher umleitet).
-export default async function EmailVerifizierenPage({
-  searchParams,
-}: {
-  searchParams: { token?: string };
-}) {
+export default async function EmailVerifizierenPage(
+  props: {
+    searchParams: Promise<{ token?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   if (searchParams.token) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-ink-50 px-4">
