@@ -5,6 +5,7 @@ import { stripe } from "@/lib/stripe";
 import { requireAdmin } from "@/lib/session";
 import { mapStripeStatus } from "@/lib/subscription-pricing";
 import { BILLING_PROFILE_LABELS, missingBillingProfile } from "@/lib/billing-profile";
+import { getVatTaxRateId } from "@/lib/stripe-tax";
 
 const TRIAL_DAYS = 14;
 
@@ -32,9 +33,13 @@ export async function createSubscriptionForCompany(
       metadata: { companyId },
     });
 
+    // Preise sind netto -- die Umsatzsteuer kommt als exklusiver Steuersatz hinzu
+    const vatRateId = await getVatTaxRateId();
+
     const subscription = await stripe.subscriptions.create({
       customer: customer.id,
       items: [{ price: priceId, quantity: 1 }],
+      default_tax_rates: [vatRateId],
       trial_period_days: trialDays,
       // Keine automatische Weiterfuehrung: ohne Zahlungsmethode wird das Abo am Ende
       // der Testphase beendet (-> customer.subscription.deleted -> Konto gesperrt).

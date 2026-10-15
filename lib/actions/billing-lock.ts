@@ -6,6 +6,7 @@ import { requireAdmin } from "@/lib/session";
 import { isBillingBlocked } from "@/lib/billing-lock";
 import { confirmPassword } from "@/lib/password-confirm";
 import { deleteCompanyData } from "@/lib/company-deletion";
+import { getVatTaxRateId } from "@/lib/stripe-tax";
 import {
   BILLING_PROFILE_LABELS,
   isPlausiblePhone,
@@ -129,7 +130,10 @@ export async function startSubscriptionCheckout(
       mode: "subscription",
       customer: customerId,
       client_reference_id: company.id,
-      line_items: [{ price: priceId, quantity: seatCount }],
+      // Preis ist netto, 19 % USt werden obendrauf berechnet (siehe lib/stripe-tax.ts)
+      line_items: [{ price: priceId, quantity: seatCount, tax_rates: [await getVatTaxRateId()] }],
+      // Firmenkunden koennen ihre USt-IdNr. direkt hinterlegen (erscheint auf der Rechnung)
+      tax_id_collection: { enabled: true },
       locale: "de",
       // TaskOrga rechnet als Verkaeufer selbst ab (Preise netto zzgl. USt). Stripes
       // "Managed Payments" (Stripe als Haendler) ist am Konto standardmaessig aktiv

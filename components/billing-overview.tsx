@@ -44,7 +44,7 @@ export function BillingOverview({
             )}
           </div>
           <p className="text-sm text-ink-500">
-            {seatCount} Mitarbeiter · {monthlyPrice.toLocaleString("de-DE")} €/Monat bei aktuellem Stand
+            {seatCount} Mitarbeiter · {monthlyPrice.toLocaleString("de-DE")} €/Monat netto zzgl. 19 % USt bei aktuellem Stand
           </p>
           {subscriptionStatus === "TRIALING" && (
             <p className="text-xs text-ink-500">
