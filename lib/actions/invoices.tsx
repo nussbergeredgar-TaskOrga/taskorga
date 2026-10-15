@@ -15,6 +15,7 @@ import { createWithUniqueNumber } from "@/lib/numbering";
 import { resolveCompanyLogoUrl } from "@/lib/blob-signed-url";
 import { addDays } from "@/lib/date-utils";
 import { missingInvoiceDetails, describeInvoiceGaps } from "@/lib/invoice-compliance";
+import { buildInvoiceEInvoice } from "@/lib/invoice-einvoice";
 
 const invoiceSchema = z.object({
   customerId: z.string().min(1, "Bitte einen Kunden auswählen"),
@@ -444,7 +445,9 @@ export async function sendPaymentReminder(invoiceId: string): Promise<{ error?: 
 // gleichzeitig als "Versendet" inkl. Fälligkeitsdatum (Firmeneinstellung).
 export async function sendInvoiceEmail(
   invoiceId: string,
-  customMessage?: string
+  customMessage?: string,
+  // E-Rechnung (XRechnung-XML) beilegen -- ohne Angabe bei Geschaeftskunden an
+  includeEInvoice?: boolean
 ): Promise<{ error?: string; success?: boolean }> {
   const currentCompany = await getCurrentCompany();
   const invoice = await prisma.invoice.findFirst({
@@ -491,6 +494,20 @@ export async function sendInvoiceEmail(
     totalNet: Number(invoice.totalNet),
     totalGross: Number(invoice.totalGross),
   });
+
+  // E-Rechnung zusaetzlich zum PDF: fehlen Pflichtangaben, wird nicht stillschweigend
+  // ohne versendet, sondern der Nutzer informiert (und kann sie abwaehlen).
+  const attachEInvoice = includeEInvoice ?? invoice.customer.type === "BUSINESS";
+  const extraAttachments: { filename: string; content: Buffer }[] = [];
+  if (attachEInvoice) {
+    const einvoice = await buildInvoiceEInvoice(invoice.id, invoice.companyId, { issueDate, dueDate });
+    if (!einvoice.xml) {
+      return {
+        error: `Die E-Rechnung kann noch nicht erzeugt werden. Es fehlen: ${einvoice.problems.join("; ")}. Du kannst die E-Rechnung für diesen Versand auch abwählen.`,
+      };
+    }
+    extraAttachments.push({ filename: einvoice.filename, content: Buffer.from(einvoice.xml, "utf8") });
+  }
 
   const pdfCompany = await resolveCompanyLogoUrl(invoice.company);
   const pdfBuffer = await renderToBuffer(
@@ -543,6 +560,7 @@ export async function sendInvoiceEmail(
       message: customMessage,
       pdfBuffer,
       company: invoice.company,
+      extraAttachments,
     });
   } catch (err) {
     return { error: err instanceof Error ? err.message : "E-Mail-Versand fehlgeschlagen." };

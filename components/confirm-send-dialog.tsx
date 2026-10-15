@@ -7,6 +7,7 @@ export function ConfirmSendDialog({
   onSendDirect,
   documentLabel,
   sending,
+  option,
 }: {
   open: boolean;
   onClose: () => void;
@@ -14,6 +15,8 @@ export function ConfirmSendDialog({
   onSendDirect: () => void;
   documentLabel: string;
   sending: boolean;
+  // Optionaler Haken, z.B. "E-Rechnung (XML) beilegen"
+  option?: { label: string; hint?: string; checked: boolean; onChange: (v: boolean) => void };
 }) {
   if (!open) return null;
 
@@ -33,6 +36,20 @@ export function ConfirmSendDialog({
           Der Kunde erhält es direkt per E-Mail mit PDF im Anhang. Wir empfehlen, dir vorher in
           der Vorschau die Positionen, Beträge und Adresse anzusehen.
         </p>
+        {option && (
+          <label className="flex items-start gap-2 rounded-lg border border-ink-100 p-3 text-sm text-ink-700">
+            <input
+              type="checkbox"
+              checked={option.checked}
+              onChange={(e) => option.onChange(e.target.checked)}
+              className="mt-0.5"
+            />
+            <span>
+              {option.label}
+              {option.hint && <span className="block text-xs text-ink-500">{option.hint}</span>}
+            </span>
+          </label>
+        )}
         <div className="flex flex-col sm:flex-row gap-2">
           <button
             onClick={onPreview}

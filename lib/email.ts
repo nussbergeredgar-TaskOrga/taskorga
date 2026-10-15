@@ -577,6 +577,7 @@ export async function sendDocumentEmail({
   message,
   pdfBuffer,
   company,
+  extraAttachments,
 }: {
   to: string;
   greeting: string;
@@ -586,6 +587,8 @@ export async function sendDocumentEmail({
   message?: string;
   pdfBuffer: Buffer;
   company: SignatureCompany;
+  // z.B. die E-Rechnung (XRechnung-XML) neben dem PDF
+  extraAttachments?: { filename: string; content: Buffer }[];
 }) {
   if (!resend) {
     throw new Error(
@@ -612,7 +615,11 @@ export async function sendDocumentEmail({
           <strong>${kind}:</strong> ${number}<br/>
           <strong>Betrag:</strong> ${amount}
         </p>
-        <p style="margin:0 0 14px;">Die Details finden Sie im PDF im Anhang.</p>
+        <p style="margin:0 0 14px;">Die Details finden Sie im PDF im Anhang.${
+          extraAttachments && extraAttachments.length > 0
+            ? " Zusätzlich liegt die Rechnung als E-Rechnung (XRechnung, XML) bei."
+            : ""
+        }</p>
       `,
     }),
     attachments: [
@@ -620,6 +627,7 @@ export async function sendDocumentEmail({
         filename: `${number}.pdf`,
         content: pdfBuffer,
       },
+      ...(extraAttachments ?? []),
     ],
   });
 }

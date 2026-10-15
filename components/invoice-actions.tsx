@@ -15,6 +15,7 @@ export function InvoiceActions({
   reminderLevel = 0,
   lastReminderSentAt,
   hasCustomerEmail,
+  isBusinessCustomer = false,
   totalGross = 0,
   paidAmount = 0,
 }: {
@@ -23,6 +24,7 @@ export function InvoiceActions({
   reminderLevel?: number;
   lastReminderSentAt?: Date | null;
   hasCustomerEmail: boolean;
+  isBusinessCustomer?: boolean;
   totalGross?: number;
   paidAmount?: number;
 }) {
@@ -30,6 +32,7 @@ export function InvoiceActions({
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [includeEInvoice, setIncludeEInvoice] = useState(isBusinessCustomer);
   const [partialOpen, setPartialOpen] = useState(false);
   const [partialAmount, setPartialAmount] = useState("");
   const remaining = Math.max(0, totalGross - paidAmount);
@@ -91,7 +94,7 @@ export function InvoiceActions({
   function sendEmail() {
     setError("");
     startTransition(async () => {
-      const result = await sendInvoiceEmail(invoiceId);
+      const result = await sendInvoiceEmail(invoiceId, undefined, includeEInvoice);
       if (result?.error) {
         setError(result.error);
         return;
@@ -210,6 +213,12 @@ export function InvoiceActions({
         onSendDirect={sendEmail}
         documentLabel="Rechnung"
         sending={pending}
+        option={{
+          label: "E-Rechnung (XRechnung, XML) zusätzlich beilegen",
+          hint: "Strukturierte Rechnungsdatei für die Buchhaltung des Kunden, neben dem PDF.",
+          checked: includeEInvoice,
+          onChange: setIncludeEInvoice,
+        }}
       />
     </div>
   );

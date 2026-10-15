@@ -486,6 +486,8 @@ model Customer {
   city        String?
   country     String?
   notes       String?
+  vatId          String? // USt-IdNr. des Kunden (E-Rechnung, optional)
+  buyerReference String? // Leitweg-ID bzw. Referenz des Kunden (E-Rechnung, BT-10)
   customerSince DateTime @default(now())
   archivedAt    DateTime?
 

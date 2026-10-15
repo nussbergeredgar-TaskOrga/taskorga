@@ -5,16 +5,25 @@ import { useRouter } from "next/navigation";
 import { Send } from "lucide-react";
 import { sendInvoiceEmail } from "@/lib/actions/invoices";
 
-export function InvoiceSendFromPreview({ invoiceId, hasCustomerEmail }: { invoiceId: string; hasCustomerEmail: boolean }) {
+export function InvoiceSendFromPreview({
+  invoiceId,
+  hasCustomerEmail,
+  isBusinessCustomer = false,
+}: {
+  invoiceId: string;
+  hasCustomerEmail: boolean;
+  isBusinessCustomer?: boolean;
+}) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState("");
   const [sent, setSent] = useState(false);
+  const [includeEInvoice, setIncludeEInvoice] = useState(isBusinessCustomer);
 
   function send() {
     setError("");
     startTransition(async () => {
-      const result = await sendInvoiceEmail(invoiceId);
+      const result = await sendInvoiceEmail(invoiceId, undefined, includeEInvoice);
       if (result?.error) {
         setError(result.error);
         return;
@@ -33,7 +42,11 @@ export function InvoiceSendFromPreview({ invoiceId, hasCustomerEmail }: { invoic
   }
 
   return (
-    <div className="space-y-1.5">
+    <div className="space-y-2">
+      <label className="flex items-center gap-2 text-sm text-ink-700">
+        <input type="checkbox" checked={includeEInvoice} onChange={(e) => setIncludeEInvoice(e.target.checked)} />
+        E-Rechnung (XRechnung, XML) zusätzlich beilegen
+      </label>
       <button
         disabled={pending}
         onClick={send}

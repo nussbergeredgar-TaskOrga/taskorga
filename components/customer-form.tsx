@@ -21,6 +21,8 @@ type ExistingCustomer = {
   zip: string | null;
   city: string | null;
   notes: string | null;
+  vatId?: string | null;
+  buyerReference?: string | null;
 };
 
 function Field({
@@ -214,6 +216,33 @@ export function CustomerForm({
           {state.errors?.notes && <p className="text-xs text-danger mt-1">{state.errors.notes[0]}</p>}
         </div>
       )}
+
+      <div className="space-y-4 rounded-lg border border-ink-100 p-4">
+        <div>
+          <p className="text-sm font-medium text-ink-700">E-Rechnung (optional)</p>
+          <p className="text-xs text-ink-500">
+            Angaben, die für die elektronische Rechnung (XRechnung) gebraucht werden können.
+          </p>
+        </div>
+        <Field
+          label="USt-IdNr. des Kunden"
+          name="vatId"
+          defaultValue={customer?.vatId}
+          errors={state.errors?.vatId}
+        />
+        <div>
+          <Field
+            label="Leitweg-ID / Referenz des Kunden"
+            name="buyerReference"
+            defaultValue={customer?.buyerReference}
+            errors={state.errors?.buyerReference}
+          />
+          <p className="mt-1 text-xs text-ink-300">
+            Bei Behörden die Leitweg-ID, sonst eine Bestell- oder Kostenstellen-Referenz des Kunden. Ohne Angabe
+            wird die Kundennummer verwendet.
+          </p>
+        </div>
+      </div>
 
       <SubmitButton label={customer ? "Änderungen speichern" : "Kunde anlegen"} />
     </form>

@@ -22,6 +22,8 @@ const customerSchema = z.object({
   zip: z.string().nullish(),
   city: z.string().nullish(),
   notes: z.string().nullish(),
+  vatId: z.string().max(40).nullish(),
+  buyerReference: z.string().max(100).nullish(),
 });
 
 // Bei Privatkunden wird der Anzeigename automatisch aus Vor-/Nachname
@@ -78,6 +80,8 @@ export async function createCustomer(
     zip: formData.get("zip"),
     city: formData.get("city"),
     notes: formData.get("notes"),
+    vatId: formData.get("vatId"),
+    buyerReference: formData.get("buyerReference"),
   });
 
   if (!parsed.success) {
@@ -117,6 +121,8 @@ export async function createCustomer(
       zip: parsed.data.zip || null,
       city: parsed.data.city || null,
       notes: parsed.data.notes || null,
+      vatId: parsed.data.vatId?.trim() || null,
+      buyerReference: parsed.data.buyerReference?.trim() || null,
     },
   });
 
@@ -151,6 +157,8 @@ export async function updateCustomer(
     zip: formData.get("zip"),
     city: formData.get("city"),
     notes: formData.get("notes"),
+    vatId: formData.get("vatId"),
+    buyerReference: formData.get("buyerReference"),
   });
 
   if (!parsed.success) {
@@ -201,6 +209,8 @@ export async function updateCustomer(
       zip: parsed.data.zip || null,
       city: parsed.data.city || null,
       notes: parsed.data.notes || null,
+      vatId: parsed.data.vatId?.trim() || null,
+      buyerReference: parsed.data.buyerReference?.trim() || null,
     },
   });
 

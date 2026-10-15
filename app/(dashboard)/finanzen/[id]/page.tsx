@@ -97,12 +97,23 @@ export default async function RechnungDetailPage({ params }: { params: { id: str
             <FileDown size={15} />
             PDF
           </a>
+          <a
+            href={`/api/rechnungen/${invoice.id}/xrechnung`}
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Strukturierte E-Rechnung im Format XRechnung (XML)"
+            className="flex items-center gap-1.5 rounded-lg border border-ink-100 text-ink-700 text-sm font-medium px-3 py-2 hover:bg-ink-50 transition-colors"
+          >
+            <FileDown size={15} />
+            E-Rechnung
+          </a>
           <InvoiceActions
             invoiceId={invoice.id}
             status={invoice.status}
             reminderLevel={invoice.reminderLevel}
             lastReminderSentAt={invoice.lastReminderSentAt}
             hasCustomerEmail={!!invoice.customer.email}
+            isBusinessCustomer={invoice.customer.type === "BUSINESS"}
             totalGross={Number(invoice.totalGross)}
             paidAmount={Number(invoice.paidAmount)}
           />

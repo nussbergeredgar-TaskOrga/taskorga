@@ -9,7 +9,7 @@ export default async function RechnungVorschauPage({ params }: { params: { id: s
   const admin = await requirePermission("finanzen");
   const invoice = await prisma.invoice.findFirst({
     where: { id: params.id, companyId: admin.companyId },
-    include: { customer: { select: { email: true } } },
+    include: { customer: { select: { email: true, type: true } } },
   });
   if (!invoice) notFound();
 
@@ -61,7 +61,11 @@ export default async function RechnungVorschauPage({ params }: { params: { id: s
       </div>
 
       <div className="rounded-card border border-ink-100 bg-surface p-5 shadow-card">
-        <InvoiceSendFromPreview invoiceId={invoice.id} hasCustomerEmail={!!invoice.customer.email} />
+        <InvoiceSendFromPreview
+          invoiceId={invoice.id}
+          hasCustomerEmail={!!invoice.customer.email}
+          isBusinessCustomer={invoice.customer.type === "BUSINESS"}
+        />
       </div>
     </div>
   );
