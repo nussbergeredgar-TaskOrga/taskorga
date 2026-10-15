@@ -53,6 +53,7 @@ export type XRechnungInput = {
 export type XRechnungResult = { xml: string | null; problems: string[] };
 
 const GUIDELINE = "urn:cen.eu:en16931:2017#compliant#urn:xeinkauf.de:kosit:xrechnung_3.0";
+const BUSINESS_PROCESS = "urn:fdc:peppol.eu:2017:poacc:billing:01:1.0";
 
 const r2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
 const amount = (n: number) => r2(n).toFixed(2);
@@ -80,6 +81,14 @@ function countryCode(country: string | null): string {
   if (!c || /^(de|deutschland|germany)$/i.test(c)) return "DE";
   if (/^[A-Za-z]{2}$/.test(c)) return c.toUpperCase();
   return "DE";
+}
+
+// USt-IdNr. muss mit dem Laendercode beginnen (BR-CO-09). Im Profil steht sie
+// haeufig nur als Ziffernfolge -- dann wird der Code des Landes vorangestellt.
+function vatIdWithPrefix(vatId: string, country: string | null): string {
+  const v = vatId.replace(/\s+/g, "").toUpperCase();
+  if (/^[A-Z]{2}/.test(v)) return v;
+  return countryCode(country) + v;
 }
 
 // Einheiten in UN/ECE-Recommendation-20-Codes
@@ -215,7 +224,7 @@ export function buildXRechnung(input: XRechnungInput): XRechnungResult {
     .join("");
 
   const sellerTax = [
-    !blank(s.vatId) ? `<ram:SpecifiedTaxRegistration><ram:ID schemeID="VA">${esc(s.vatId!.trim())}</ram:ID></ram:SpecifiedTaxRegistration>` : "",
+    !blank(s.vatId) ? `<ram:SpecifiedTaxRegistration><ram:ID schemeID="VA">${esc(vatIdWithPrefix(s.vatId!, s.country))}</ram:ID></ram:SpecifiedTaxRegistration>` : "",
     !blank(s.taxNumber) ? `<ram:SpecifiedTaxRegistration><ram:ID schemeID="FC">${esc(s.taxNumber!.trim())}</ram:ID></ram:SpecifiedTaxRegistration>` : "",
   ].join("");
 
@@ -226,7 +235,11 @@ export function buildXRechnung(input: XRechnungInput): XRechnungResult {
       ? `Zahlbar bis ${input.dueDate.toLocaleDateString("de-DE")}.`
       : "Zahlbar nach Rechnungserhalt.";
   const paymentMeansXml = input.paidInFull
-    ? ""
+    ? `
+      <ram:SpecifiedTradeSettlementPaymentMeans>
+        <ram:TypeCode>1</ram:TypeCode>
+        <ram:Information>Bereits bezahlt</ram:Information>
+      </ram:SpecifiedTradeSettlementPaymentMeans>`
     : `
       <ram:SpecifiedTradeSettlementPaymentMeans>
         <ram:TypeCode>58</ram:TypeCode>
@@ -243,6 +256,7 @@ export function buildXRechnung(input: XRechnungInput): XRechnungResult {
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <rsm:CrossIndustryInvoice xmlns:rsm="urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100" xmlns:ram="urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:100" xmlns:udt="urn:un:unece:uncefact:data:standard:UnqualifiedDataType:100">
   <rsm:ExchangedDocumentContext>
+    <ram:BusinessProcessSpecifiedDocumentContextParameter><ram:ID>${BUSINESS_PROCESS}</ram:ID></ram:BusinessProcessSpecifiedDocumentContextParameter>
     <ram:GuidelineSpecifiedDocumentContextParameter><ram:ID>${GUIDELINE}</ram:ID></ram:GuidelineSpecifiedDocumentContextParameter>
   </rsm:ExchangedDocumentContext>
   <rsm:ExchangedDocument>
@@ -282,7 +296,7 @@ export function buildXRechnung(input: XRechnungInput): XRechnungResult {
           <ram:CountryID>${countryCode(b.country)}</ram:CountryID>
         </ram:PostalTradeAddress>
         <ram:URIUniversalCommunication><ram:URIID schemeID="EM">${esc(b.email!.trim())}</ram:URIID></ram:URIUniversalCommunication>${
-          !blank(b.vatId) ? `\n        <ram:SpecifiedTaxRegistration><ram:ID schemeID="VA">${esc(b.vatId!.trim())}</ram:ID></ram:SpecifiedTaxRegistration>` : ""
+          !blank(b.vatId) ? `\n        <ram:SpecifiedTaxRegistration><ram:ID schemeID="VA">${esc(vatIdWithPrefix(b.vatId!, b.country))}</ram:ID></ram:SpecifiedTaxRegistration>` : ""
         }
       </ram:BuyerTradeParty>
     </ram:ApplicableHeaderTradeAgreement>
