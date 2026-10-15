@@ -228,6 +228,11 @@ export function buildXRechnung(input: XRechnungInput): XRechnungResult {
     !blank(s.taxNumber) ? `<ram:SpecifiedTaxRegistration><ram:ID schemeID="FC">${esc(s.taxNumber!.trim())}</ram:ID></ram:SpecifiedTaxRegistration>` : "",
   ].join("");
 
+  // BR-CO-26: der Verkaeufer braucht eine eigene Kennung (BT-29), eine
+  // Registernummer oder eine USt-IdNr. Eine reine Steuernummer (BT-32) genuegt
+  // nicht -- sie wird deshalb zusaetzlich als Verkaeufer-Kennung gefuehrt.
+  const sellerIdentifier = !blank(s.taxNumber) ? s.taxNumber!.trim() : vatIdWithPrefix(s.vatId!, s.country);
+
   const buyerReference = (b.reference && b.reference.trim()) || b.customerNumber || input.invoiceNumber;
   const dueText = input.paidInFull
     ? "Der Betrag wurde bereits bezahlt."
@@ -272,6 +277,7 @@ export function buildXRechnung(input: XRechnungInput): XRechnungResult {
     <ram:ApplicableHeaderTradeAgreement>
       <ram:BuyerReference>${esc(buyerReference)}</ram:BuyerReference>
       <ram:SellerTradeParty>
+        <ram:ID>${esc(sellerIdentifier)}</ram:ID>
         <ram:Name>${esc(s.name)}</ram:Name>
         <ram:DefinedTradeContact>
           <ram:PersonName>${esc(s.contactName || s.name)}</ram:PersonName>
