@@ -6,6 +6,7 @@ import { mapStripeStatus } from "@/lib/subscription-pricing";
 import { sendAccountDeletionWarningEmail, sendTrialEndingSoonEmail } from "@/lib/email";
 import { notifyCancellation, releaseCancellation } from "@/lib/subscription-cancellation";
 import { sendSubscriptionEInvoice } from "@/lib/subscription-einvoice";
+import { notifyFirstPayment } from "@/lib/first-payment-notice";
 import { applyCheckoutSession } from "@/lib/billing-checkout";
 
 // Erste Route im Projekt, die den rohen Anfrage-Body braucht: Stripes
@@ -177,6 +178,13 @@ export async function POST(request: Request) {
       // E-Rechnung (XRechnung) zusaetzlich zu Stripes PDF-Beleg an den Kunden.
       // Ohne vollstaendige Betreiber-Daten (Steuernummer etc.) wird still uebersprungen.
       const invoice = event.data.object as Stripe.Invoice;
+      // Betreiber-Info "erster zahlender Kunde" (einmalig je Firma): Best-Effort,
+      // darf die E-Rechnung und die Webhook-Antwort nicht beeinflussen.
+      try {
+        await notifyFirstPayment(invoice);
+      } catch (err) {
+        console.error("Betreiber-Info zur ersten Zahlung fehlgeschlagen:", err);
+      }
       try {
         await sendSubscriptionEInvoice(invoice);
       } catch (err) {

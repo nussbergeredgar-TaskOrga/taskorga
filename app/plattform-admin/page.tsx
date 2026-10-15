@@ -3,7 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
-import { Ban, CheckCircle2, ChevronDown, Gift, LifeBuoy, Mail, Megaphone, Trash2 } from "lucide-react";
+import { Ban, CheckCircle2, ChevronDown, Copy, Gift, LifeBuoy, Mail, Megaphone, Trash2 } from "lucide-react";
 import {
   verifyPlatformSecret,
   platformAdminLogout,
@@ -39,6 +39,8 @@ type Code = {
   note: string | null;
   maxUses: number;
   usedCount: number;
+  trialDays: number | null;
+  maxUsers: number | null;
 };
 
 type Tab = "codes" | "firmen" | "mails" | "support" | "ankuendigungen";
@@ -91,6 +93,9 @@ function InvitesTab({
   const [pending, startTransition] = useTransition();
   const [note, setNote] = useState("");
   const [maxUses, setMaxUses] = useState("1");
+  const [codeTrialDays, setCodeTrialDays] = useState(30);
+  const [codeMaxUsers, setCodeMaxUsers] = useState("5");
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const [emailPending, startEmailTransition] = useTransition();
   const [inviteName, setInviteName] = useState("");
@@ -101,11 +106,30 @@ function InvitesTab({
 
   function addCode() {
     startTransition(async () => {
-      await createInviteCode({ note, maxUses: Number(maxUses) || 1 });
+      await createInviteCode({
+        note,
+        maxUses: Number(maxUses) || 1,
+        trialDays: codeTrialDays,
+        maxUsers: Number(codeMaxUsers) || undefined,
+      });
       setNote("");
       setMaxUses("1");
       refreshCodes();
     });
+  }
+
+  function inviteLink(code: string) {
+    return `${window.location.origin}/registrieren?code=${code}`;
+  }
+
+  async function copyLink(c: Code) {
+    try {
+      await navigator.clipboard.writeText(inviteLink(c.code));
+      setCopiedId(c.id);
+      setTimeout(() => setCopiedId((cur) => (cur === c.id ? null : cur)), 2000);
+    } catch {
+      window.prompt("Link kopieren:", inviteLink(c.code));
+    }
   }
 
   function removeCode(id: string) {
@@ -231,17 +255,38 @@ function InvitesTab({
       </div>
 
       <div className="space-y-3">
-        <h2 className="font-display font-semibold text-ink-900">Einladungscodes</h2>
+        <h2 className="font-display font-semibold text-ink-900">Pilot-Links</h2>
         <p className="text-sm text-ink-500">
-          Anonymer, mehrfach verwendbarer Code (Standard-Testdauer) statt einer persönlichen E-Mail-Einladung.
+          Ein Link, den du per WhatsApp, Mail oder im Gespräch weitergibst. Wer ihn öffnet, registriert sich mit
+          der hier eingestellten Testdauer — ohne dass du eine E-Mail-Adresse vorab kennen musst.
         </p>
         <div className="bg-surface rounded-card border border-ink-100 shadow-card p-5 space-y-3">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
             <input
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              placeholder="Notiz, z. B. Tester Max"
-              className="sm:col-span-2 rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500"
+              placeholder="Notiz, z. B. Elektro Griese"
+              className="sm:col-span-3 rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500"
+            />
+            <select
+              value={codeTrialDays}
+              onChange={(e) => setCodeTrialDays(Number(e.target.value))}
+              className="rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500"
+            >
+              {TRIAL_DAYS_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label} testen
+                </option>
+              ))}
+            </select>
+            <input
+              type="number"
+              value={codeMaxUsers}
+              onChange={(e) => setCodeMaxUsers(e.target.value)}
+              min={1}
+              placeholder="Max. Nutzer"
+              title="Maximale Nutzeranzahl für die entstehende Firma"
+              className="rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 font-mono"
             />
             <input
               type="number"
@@ -249,6 +294,7 @@ function InvitesTab({
               onChange={(e) => setMaxUses(e.target.value)}
               min={1}
               placeholder="Nutzungen"
+              title="Wie oft der Link zum Registrieren genutzt werden darf"
               className="rounded-lg border border-ink-100 px-3 py-2 text-sm outline-none focus:border-brand-500 font-mono"
             />
           </div>
@@ -257,7 +303,7 @@ function InvitesTab({
             onClick={addCode}
             className="rounded-lg bg-brand-500 text-white text-sm font-medium px-4 py-2 hover:bg-brand-600 disabled:opacity-60 transition-colors"
           >
-            Code erstellen
+            Pilot-Link erstellen
           </button>
         </div>
 
@@ -267,18 +313,30 @@ function InvitesTab({
               key={c.id}
               className="flex items-center justify-between bg-surface rounded-lg border border-ink-100 px-4 py-3"
             >
-              <div>
-                <p className="font-mono text-lg font-semibold text-ink-900">{c.code}</p>
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-ink-900 truncate">{c.note || "Ohne Notiz"}</p>
                 <p className="text-xs text-ink-500">
-                  {c.note || "—"} · {c.usedCount}/{c.maxUses} verwendet
+                  {TRIAL_DAYS_OPTIONS.find((o) => o.value === c.trialDays)?.label ??
+                    (c.trialDays ? `${c.trialDays} Tage` : "Standard-Testphase")}
+                  {c.maxUsers ? ` · bis zu ${c.maxUsers} Nutzer` : ""} · {c.usedCount}/{c.maxUses} verwendet
                 </p>
+                <p className="font-mono text-[11px] text-ink-300 mt-0.5">{c.code}</p>
               </div>
-              <button disabled={pending} onClick={() => removeCode(c.id)} className="text-xs text-danger hover:underline">
-                Löschen
-              </button>
+              <div className="flex items-center gap-3 shrink-0">
+                <button
+                  onClick={() => copyLink(c)}
+                  className="flex items-center gap-1 text-xs text-brand-700 hover:underline"
+                >
+                  <Copy size={12} />
+                  {copiedId === c.id ? "Kopiert" : "Link kopieren"}
+                </button>
+                <button disabled={pending} onClick={() => removeCode(c.id)} className="text-xs text-danger hover:underline">
+                  Löschen
+                </button>
+              </div>
             </div>
           ))}
-          {codes.length === 0 && <p className="text-sm text-ink-500">Noch keine Codes erstellt.</p>}
+          {codes.length === 0 && <p className="text-sm text-ink-500">Noch keine Pilot-Links erstellt.</p>}
         </div>
       </div>
     </div>

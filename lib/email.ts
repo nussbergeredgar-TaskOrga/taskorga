@@ -33,7 +33,7 @@ export async function sendPasswordResetEmail(to: string, resetUrl: string, name:
 
   const settings = await getSystemEmailSettings();
 
-  await resend.emails.send({
+  assertSent(await resend.emails.send({
     from: process.env.EMAIL_FROM || "TaskOrga <onboarding@resend.dev>",
     to,
     subject: settings.resetSubject,
@@ -46,7 +46,7 @@ export async function sendPasswordResetEmail(to: string, resetUrl: string, name:
         ${textToParagraphs(settings.resetOutro)}
       `,
     }),
-  });
+  }));
 }
 
 export async function sendEmailVerificationEmail(to: string, verifyUrl: string, name: string) {
@@ -58,7 +58,7 @@ export async function sendEmailVerificationEmail(to: string, verifyUrl: string, 
 
   const settings = await getSystemEmailSettings();
 
-  await resend.emails.send({
+  assertSent(await resend.emails.send({
     from: process.env.EMAIL_FROM || "TaskOrga <onboarding@resend.dev>",
     to,
     subject: settings.verifySubject,
@@ -71,7 +71,7 @@ export async function sendEmailVerificationEmail(to: string, verifyUrl: string, 
         ${textToParagraphs(settings.verifyOutro)}
       `,
     }),
-  });
+  }));
 }
 
 // Persoenliche Einladung aus der Plattform-Verwaltung, ein neues Firmenkonto
@@ -84,7 +84,7 @@ export async function sendPlatformInviteEmail(to: string, registerUrl: string, t
   const settings = await getSystemEmailSettings();
   const context = { tage: String(trialDays) };
 
-  await resend.emails.send({
+  assertSent(await resend.emails.send({
     from: process.env.EMAIL_FROM || "TaskOrga <onboarding@resend.dev>",
     to,
     subject: resolveEmailPlaceholders(settings.platformInviteSubject, context),
@@ -97,7 +97,7 @@ export async function sendPlatformInviteEmail(to: string, registerUrl: string, t
         ${textToParagraphs(resolveEmailPlaceholders(settings.platformInviteOutro, context))}
       `,
     }),
-  });
+  }));
 }
 
 export async function sendTeamInviteEmail({
@@ -120,7 +120,7 @@ export async function sendTeamInviteEmail({
   const settings = await getSystemEmailSettings();
   const context = { firma: company.name };
 
-  await resend.emails.send({
+  assertSent(await resend.emails.send({
     from: process.env.EMAIL_FROM || "TaskOrga <onboarding@resend.dev>",
     to,
     subject: resolveEmailPlaceholders(settings.teamInviteSubject, context),
@@ -133,7 +133,7 @@ export async function sendTeamInviteEmail({
         ${textToParagraphs(resolveEmailPlaceholders(settings.teamInviteOutro, context))}
       `,
     }),
-  });
+  }));
 }
 
 // Interne Betriebs-Benachrichtigung an den Betreiber (nicht konfigurierbar
@@ -155,7 +155,7 @@ export async function sendUpdateRequestEmail({
 
   const settings = await getSystemEmailSettings();
 
-  await resend.emails.send({
+  assertSent(await resend.emails.send({
     from: process.env.EMAIL_FROM || "TaskOrga <onboarding@resend.dev>",
     to,
     subject: `Update-Anfrage: ${companyName}`,
@@ -169,7 +169,7 @@ export async function sendUpdateRequestEmail({
         </p>
       `,
     }),
-  });
+  }));
 }
 
 function escapeHtml(value: string): string {
@@ -240,7 +240,7 @@ export async function sendTaskAssignedEmail({
 
   const settings = await getSystemEmailSettings();
 
-  await resend.emails.send({
+  assertSent(await resend.emails.send({
     from: process.env.EMAIL_FROM || "TaskOrga <onboarding@resend.dev>",
     to,
     subject: `Neue Aufgabe: ${taskTitle}`,
@@ -253,7 +253,7 @@ export async function sendTaskAssignedEmail({
         <p style="margin:0 0 14px;"><a href="${taskUrl}" style="color:#2F5FFF;">${taskUrl}</a></p>
       `,
     }),
-  });
+  }));
 }
 
 // Ueberfaellige Aufgabe, ausgeloest vom taeglichen Cron-Lauf (siehe
@@ -283,7 +283,7 @@ export async function sendTaskOverdueEmail({
 
   const settings = await getSystemEmailSettings();
 
-  await resend.emails.send({
+  assertSent(await resend.emails.send({
     from: process.env.EMAIL_FROM || "TaskOrga <onboarding@resend.dev>",
     to,
     subject: `Überfällige Aufgabe (${levelLabel}): ${taskTitle}`,
@@ -299,7 +299,7 @@ export async function sendTaskOverdueEmail({
         <p style="margin:0 0 14px;"><a href="${taskUrl}" style="color:#2F5FFF;">${taskUrl}</a></p>
       `,
     }),
-  });
+  }));
 }
 
 // Nach Kuendigung/Ablauf eines Abos (Stripe "customer.subscription.deleted"),
@@ -321,7 +321,7 @@ export async function sendAccountDeletionWarningEmail({
   const settings = await getSystemEmailSettings();
   const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
 
-  await resend.emails.send({
+  assertSent(await resend.emails.send({
     from: process.env.EMAIL_FROM || "TaskOrga <onboarding@resend.dev>",
     to,
     subject: `Dein Abo für „${companyName}" wurde beendet`,
@@ -344,7 +344,7 @@ export async function sendAccountDeletionWarningEmail({
         </p>
       `,
     }),
-  });
+  }));
 }
 
 // Kurz vor Ablauf der Testphase (Stripe "customer.subscription.trial_will_end",
@@ -370,7 +370,7 @@ export async function sendTrialEndingSoonEmail({
   const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
   const formattedDate = trialEndsAt.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
 
-  await resend.emails.send({
+  assertSent(await resend.emails.send({
     from: process.env.EMAIL_FROM || "TaskOrga <onboarding@resend.dev>",
     to,
     subject: `Testphase für „${companyName}" endet am ${formattedDate}`,
@@ -393,7 +393,7 @@ export async function sendTrialEndingSoonEmail({
         </p>
       `,
     }),
-  });
+  }));
 }
 
 // Bestaetigung einer Kuendigung zum Periodenende (Stripe
@@ -548,7 +548,7 @@ export async function sendAccountDeletedEmail({ to, companyName }: { to: string;
 
   const settings = await getSystemEmailSettings();
 
-  await resend.emails.send({
+  assertSent(await resend.emails.send({
     from: process.env.EMAIL_FROM || "TaskOrga <onboarding@resend.dev>",
     to,
     subject: `Konto „${companyName}" wurde gelöscht`,
@@ -561,7 +561,7 @@ export async function sendAccountDeletedEmail({ to, companyName }: { to: string;
         </p>
       `,
     }),
-  });
+  }));
 }
 
 export async function sendPaymentReminderEmail({
@@ -591,7 +591,7 @@ export async function sendPaymentReminderEmail({
     );
   }
 
-  await resend.emails.send({
+  assertSent(await resend.emails.send({
     from: brandedFrom(company.name),
     replyTo: company.email || undefined,
     to,
@@ -615,7 +615,7 @@ export async function sendPaymentReminderEmail({
         content: pdfBuffer,
       },
     ],
-  });
+  }));
 }
 
 export async function sendDocumentEmail({
@@ -651,7 +651,7 @@ export async function sendDocumentEmail({
       ? "anbei erhalten Sie unser Angebot. Bei Fragen melden Sie sich gerne."
       : "anbei erhalten Sie unsere Rechnung. Vielen Dank für Ihr Vertrauen.";
 
-  await resend.emails.send({
+  assertSent(await resend.emails.send({
     from: brandedFrom(company.name),
     replyTo: company.email || undefined,
     to,
@@ -679,5 +679,5 @@ export async function sendDocumentEmail({
       },
       ...(extraAttachments ?? []),
     ],
-  });
+  }));
 }

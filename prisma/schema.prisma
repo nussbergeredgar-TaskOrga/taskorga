@@ -93,6 +93,9 @@ model Company {
   trialEndingWarningEmailSentAt DateTime?
   cancelAt                 DateTime? // Zugang laeuft bis zu diesem Zeitpunkt (Abo zum Periodenende gekuendigt)
   cancellationEmailSentAt  DateTime? // Kuendigungsbestaetigung an die Admins versendet
+  // Betreiber-Mail "erster zahlender Kunde" -- einmalig je Firma (siehe
+  // lib/first-payment-notice.ts), bei Webhook-Wiederholungen nicht doppelt.
+  firstPaymentNotifiedAt   DateTime?
   // Nur gesetzt, wenn die Firma ueber eine E-Mail-Einladung mit begrenzter
   // Platzanzahl entstanden ist (siehe EmailInvite unten) -- null bedeutet
   // unbegrenzt (regulaere Selbstregistrierung, Kosten regeln sich ueber die
@@ -242,6 +245,11 @@ model InviteCode {
   maxUses   Int       @default(1)
   usedCount Int       @default(0)
   expiresAt DateTime?
+  // Pilot-Einladung per Link (/registrieren?code=...): eigene Testdauer und
+  // Nutzerobergrenze fuer die dadurch entstehende Firma. null = Standard
+  // (14 Tage, unbegrenzt), wie bei einem reinen Aktions-Code.
+  trialDays Int?
+  maxUsers  Int?
   createdAt DateTime  @default(now())
 }
 

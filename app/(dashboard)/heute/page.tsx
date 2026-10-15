@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { getCurrentCompany, getCurrentUser } from "@/lib/session";
+import { getCurrentCompany, getCurrentUser, getCurrentUserWithRole } from "@/lib/session";
 import { DashboardGrid } from "@/components/dashboard-grid";
 import { DashboardSwitcher } from "@/components/dashboard-switcher";
-import { OnboardingWelcome } from "@/components/onboarding-welcome";
+import { OnboardingChecklist } from "@/components/onboarding-checklist";
+import { getOnboardingChecklist } from "@/lib/onboarding-checklist";
 import { getDashboardLayout, getDashboards } from "@/lib/actions/dashboard";
 import { getCustomKpiValues } from "@/lib/actions/custom-kpi";
 import { getCustomChartsWithData } from "@/lib/actions/custom-chart";
@@ -23,7 +24,9 @@ export default async function HeutePage({
 }) {
   const company = await getCurrentCompany();
   const user = await getCurrentUser();
+  const isAdmin = (await getCurrentUserWithRole()).role?.name === "Admin";
   const dashboards = await getDashboards();
+  const checklist = isAdmin ? await getOnboardingChecklist(company.id) : [];
   const activeDashboardId = searchParams.dashboard ?? dashboards[0]?.id ?? null;
 
   const startOfMonth = new Date();
@@ -47,7 +50,6 @@ export default async function HeutePage({
     savedLayout,
     customKpis,
     customCharts,
-    customerCount,
   ] = await Promise.all([
     prisma.task.count({
       where: { companyId: company.id, status: { in: ["OPEN", "IN_PROGRESS"] } },
@@ -109,7 +111,6 @@ export default async function HeutePage({
     getDashboardLayout(activeDashboardId),
     getCustomKpiValues(),
     getCustomChartsWithData(),
-    prisma.customer.count({ where: { companyId: company.id } }),
   ]);
 
   const customKpiWidgetIds = customKpis.map((k) => `custom:${k.id}`);
@@ -467,7 +468,9 @@ export default async function HeutePage({
         </p>
       </div>
 
-      {customerCount === 0 && <OnboardingWelcome />}
+      {isAdmin && checklist.some((i) => !i.done) && (
+        <OnboardingChecklist companyId={company.id} items={checklist} />
+      )}
 
       <DashboardSwitcher dashboards={dashboards} activeId={activeDashboardId} />
 

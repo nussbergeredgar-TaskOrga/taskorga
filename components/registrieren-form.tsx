@@ -24,11 +24,15 @@ export function RegistrierenForm({
   inviteToken,
   inviteEmail,
   inviteInvalid,
+  inviteCode,
+  pilot,
   trialDays,
 }: {
   inviteToken: string | null;
   inviteEmail: string | null;
   inviteInvalid: boolean;
+  inviteCode: string | null;
+  pilot: boolean;
   trialDays: number;
 }) {
   const [state, formAction] = useFormState(signUp, initialState);
@@ -47,11 +51,18 @@ export function RegistrierenForm({
           </p>
         )}
 
+        {pilot && !inviteInvalid && (
+          <p className="text-center text-xs text-brand-700 bg-brand-500/10 rounded-lg px-3 py-2 mb-4">
+            Pilot-Einladung: Du testest TaskOrga {trialDays} Tage kostenlos.
+          </p>
+        )}
+
         <form
           action={formAction}
           className="bg-surface rounded-card border border-ink-100 shadow-card p-6 space-y-4"
         >
           {inviteToken && <input type="hidden" name="invite" value={inviteToken} />}
+          {inviteCode && <input type="hidden" name="inviteCode" value={inviteCode} />}
 
           <div>
             <label className="block text-sm font-medium text-ink-700 mb-1.5">Firmenname</label>

@@ -47,6 +47,21 @@ const signupSchema = z.object({
 // noch gueltigen (nicht verwendeten, nicht abgelaufenen) Einladung, damit das
 // Formular sie vorausfuellen kann. Bewusst ohne Master-Passwort erreichbar --
 // der Token selbst ist die Berechtigung, wie bei Passwort-Reset-/Verifizierungs-Links.
+// Pilot-Link (/registrieren?code=...): liefert Testdauer und Notiz eines noch
+// nutzbaren Codes fuer die Anzeige im Formular. Der Code selbst ist die
+// Berechtigung (64 Bit Entropie, siehe createInviteCode).
+export async function getInviteCodePreview(
+  code: string
+): Promise<{ trialDays: number | null; note: string | null } | null> {
+  const clean = code.trim().toUpperCase();
+  if (!clean || clean.length > 64) return null;
+  const invite = await prisma.inviteCode.findUnique({ where: { code: clean } });
+  if (!invite) return null;
+  if (invite.expiresAt && invite.expiresAt < new Date()) return null;
+  if (invite.usedCount >= invite.maxUses) return null;
+  return { trialDays: invite.trialDays, note: invite.note };
+}
+
 export async function getInvitePreview(token: string): Promise<{ email: string; trialDays: number } | null> {
   if (!token) return null;
   const invite = await prisma.emailInvite.findUnique({ where: { token } });
@@ -84,6 +99,9 @@ export async function signUp(_prevState: SignupState, formData: FormData): Promi
 
   const inviteCodeInput = parsed.data.inviteCode?.trim();
   let inviteId: string | null = null;
+  let inviteNote: string | null = null;
+  let trialDays: number | undefined;
+  let maxUsersFromInvite: number | undefined;
   if (inviteCodeInput) {
     const invite = await prisma.inviteCode.findUnique({
       where: { code: inviteCodeInput.toUpperCase() },
@@ -102,6 +120,11 @@ export async function signUp(_prevState: SignupState, formData: FormData): Promi
       return { message: "Dieser Einladungscode wurde bereits verwendet." };
     }
     inviteId = invite.id;
+    // Pilot-Link: Testdauer/Nutzerobergrenze des Codes (eine persoenliche
+    // E-Mail-Einladung unten hat bei Gleichzeitigkeit Vorrang).
+    if (invite.trialDays) trialDays = invite.trialDays;
+    if (invite.maxUsers) maxUsersFromInvite = invite.maxUsers;
+    inviteNote = invite.note;
   }
 
   // Persoenliche E-Mail-Einladung: bestimmt bei Gueltigkeit die Testdauer.
@@ -110,8 +133,6 @@ export async function signUp(_prevState: SignupState, formData: FormData): Promi
   // diese Pruefung durch manipulierte Requests umgehen.
   const emailInviteToken = parsed.data.invite?.trim();
   let emailInviteId: string | null = null;
-  let trialDays: number | undefined;
-  let maxUsersFromInvite: number | undefined;
   if (emailInviteToken) {
     const emailInvite = await prisma.emailInvite.findUnique({ where: { token: emailInviteToken } });
     if (
@@ -174,6 +195,7 @@ export async function signUp(_prevState: SignupState, formData: FormData): Promi
         ["E-Mail", parsed.data.email],
         ["Telefon", parsed.data.phone],
         ["Testphase", `${trialDays ?? 14} Tage`],
+        ...(inviteId ? ([["Einladungscode", inviteNote ? `Pilot-Link (${inviteNote})` : "Pilot-Link"]] as [string, string][]) : []),
         ["Registriert am", new Date().toLocaleString("de-DE")],
       ],
     });

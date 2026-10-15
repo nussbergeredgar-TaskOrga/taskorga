@@ -19,11 +19,16 @@ export async function requestUpdate() {
   // Absicherung.
   if (company.updateRequestedAt) return;
 
-  await sendUpdateRequestEmail({
-    companyName: company.name,
-    requesterName: admin.name,
-    requesterEmail: admin.email,
-  });
+  // Die Aufgabe unten ist der eigentliche Kanal -- ein Mail-Fehler darf sie nicht verhindern.
+  try {
+    await sendUpdateRequestEmail({
+      companyName: company.name,
+      requesterName: admin.name,
+      requesterEmail: admin.email,
+    });
+  } catch (err) {
+    console.error("Update-Anfrage-Mail fehlgeschlagen:", err);
+  }
 
   const platformOwner = await prisma.company.findFirst({ where: { isPlatformOwner: true } });
   if (platformOwner) {

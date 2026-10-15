@@ -75,7 +75,12 @@ export async function listInviteCodes() {
   return prisma.inviteCode.findMany({ orderBy: { createdAt: "desc" } });
 }
 
-export async function createInviteCode(data: { note?: string; maxUses: number }) {
+export async function createInviteCode(data: {
+  note?: string;
+  maxUses: number;
+  trialDays?: number;
+  maxUsers?: number;
+}) {
   await requireSession();
   // 8 statt vorher 4 Bytes (64 statt 32 Bit Entropie) -- ein 4-Byte-Code war
   // mit genug Versuchen theoretisch erratbar, gerade weil Einladungscodes ein
@@ -86,6 +91,8 @@ export async function createInviteCode(data: { note?: string; maxUses: number })
       code,
       note: data.note?.trim() || null,
       maxUses: data.maxUses > 0 ? data.maxUses : 1,
+      trialDays: data.trialDays && data.trialDays > 0 ? Math.min(Math.round(data.trialDays), 365) : null,
+      maxUsers: data.maxUsers && data.maxUsers > 0 ? Math.min(Math.round(data.maxUsers), 500) : null,
     },
   });
 }

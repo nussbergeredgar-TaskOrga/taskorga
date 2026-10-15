@@ -49,6 +49,7 @@ export function TopBar({
   isAdmin,
   updateRequestedAt,
   accessEndsAt,
+  trialEndsAt,
 }: {
   announcements: AnnouncementItem[];
   hasUnseen: boolean;
@@ -57,6 +58,8 @@ export function TopBar({
   updateRequestedAt: Date | null;
   // Gesetzt, wenn das Abo gekuendigt ist: Zugang laeuft noch bis zu diesem Zeitpunkt
   accessEndsAt?: Date | null;
+  // Gesetzt waehrend der Testphase: Ende der Testphase
+  trialEndsAt?: Date | null;
 }) {
   const { data: session } = useSession();
   const router = useRouter();
@@ -82,6 +85,18 @@ export function TopBar({
     : null;
   const accessLabel =
     daysLeft === null ? null : daysLeft === 0 ? "Zugriff endet heute" : `Noch ${daysLeft} Tag${daysLeft === 1 ? "" : "e"} Zugriff`;
+
+  // "Noch X Tage testen" waehrend der Testphase (nur wenn kein gekuendigtes Abo angezeigt wird)
+  const trialDaysLeft =
+    trialEndsAt && !accessEndsAt
+      ? Math.max(0, Math.ceil((new Date(trialEndsAt).getTime() - Date.now()) / (24 * 60 * 60 * 1000)))
+      : null;
+  const trialLabel =
+    trialDaysLeft === null
+      ? null
+      : trialDaysLeft === 0
+        ? "Testphase endet heute"
+        : `Noch ${trialDaysLeft} Tag${trialDaysLeft === 1 ? "" : "e"} testen`;
 
   const initials = session?.user?.name
     ? session.user.name.split(" ").map((p) => p[0]).slice(0, 2).join("").toUpperCase()
@@ -187,6 +202,19 @@ export function TopBar({
           <Clock size={13} />
           <span className="hidden sm:inline">{accessLabel}</span>
           <span className="sm:hidden">{daysLeft === 0 ? "heute" : `${daysLeft} T.`}</span>
+        </Link>
+      )}
+      {trialLabel && (
+        <Link
+          href={isAdmin ? "/einstellungen/firma" : "/heute"}
+          title={`Deine Testphase endet am ${new Date(trialEndsAt!).toLocaleDateString("de-DE")}.${
+            isAdmin ? " Hier schließt du das Abo ab." : ""
+          }`}
+          className="flex items-center gap-1.5 rounded-full border border-brand-500/40 bg-brand-500/10 px-3 py-1.5 text-xs font-medium text-brand-700 hover:bg-brand-500/20 transition-colors"
+        >
+          <Clock size={13} />
+          <span className="hidden sm:inline">{trialLabel}</span>
+          <span className="sm:hidden">{trialDaysLeft === 0 ? "heute" : `${trialDaysLeft} T.`}</span>
         </Link>
       )}
       <div ref={bellRef} className="relative">

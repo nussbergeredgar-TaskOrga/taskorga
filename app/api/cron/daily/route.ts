@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { startOfDay, endOfDay, subDays } from "date-fns";
 import { prisma } from "@/lib/prisma";
-import { sendTaskOverdueEmail, sendAccountDeletedEmail } from "@/lib/email";
+import { sendTaskOverdueEmail, sendAccountDeletedEmail, sendOperatorEventEmail } from "@/lib/email";
 import { sendPushToUser } from "@/lib/push";
 import { deleteCompanyData } from "@/lib/company-deletion";
 import { createDailyBackupBranch } from "@/lib/neon-backup";
@@ -33,6 +33,25 @@ export async function GET(request: Request) {
       runSignupAttemptCleanup(),
       createDailyBackupBranch(),
     ]);
+
+  // Eine fehlgeschlagene (oder uebersprungene) Sicherung faellt sonst erst im
+  // Ernstfall auf -- die Ausfallserie seit 21.09. blieb 24 Tage unbemerkt.
+  if (backupBranch.error || backupBranch.skipped) {
+    try {
+      await sendOperatorEventEmail({
+        subject: "Datenbank-Sicherung fehlgeschlagen",
+        headline: backupBranch.skipped
+          ? "Die nächtliche Datenbank-Sicherung wurde übersprungen, weil kein NEON_API_KEY gesetzt ist."
+          : "Die nächtliche Datenbank-Sicherung (Neon-Backup-Branch) ist fehlgeschlagen.",
+        facts: [
+          ["Fehler", backupBranch.error ?? "kein NEON_API_KEY"],
+          ["Zeitpunkt", new Date().toLocaleString("de-DE")],
+        ],
+      });
+    } catch (err) {
+      console.error("Backup-Alarm konnte nicht versendet werden:", err);
+    }
+  }
 
   return NextResponse.json({
     taskEscalations,

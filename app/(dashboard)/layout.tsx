@@ -76,6 +76,11 @@ export default async function DashboardLayout({
             accessEndsAt={
               !company.billingExempt && company.subscriptionStatus === "ACTIVE" && cancelAt ? cancelAt : null
             }
+            trialEndsAt={
+              !company.billingExempt && !company.isPlatformOwner && company.subscriptionStatus === "TRIALING"
+                ? company.trialEndsAt
+                : null
+            }
           />
           <TagCatalogProvider catalog={tagCatalog} isAdmin={user.role?.name === "Admin"}>
             <main className="flex-1 overflow-y-auto p-4 md:p-6 pb-20 md:pb-6">{children}</main>

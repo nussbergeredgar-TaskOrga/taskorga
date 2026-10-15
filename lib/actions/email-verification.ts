@@ -3,7 +3,7 @@
 import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
-import { sendEmailVerificationEmail } from "@/lib/email";
+import { sendEmailVerificationEmail, sendOperatorEventEmail } from "@/lib/email";
 
 const MAX_RESEND_REQUESTS_PER_HOUR = 3;
 const TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
@@ -30,9 +30,23 @@ async function issueVerificationToken(userId: string, email: string) {
 export async function sendInitialVerificationEmail(userId: string, email: string) {
   try {
     await issueVerificationToken(userId, email);
-  } catch {
+  } catch (err) {
     // Scheitert z.B. wenn RESEND_API_KEY fehlt -- Registrierung soll dadurch
     // nicht fehlschlagen, der Nutzer kann die E-Mail spaeter erneut anfordern.
+    // Der Betreiber erfaehrt es aber, sonst haengt der Neukunde unbemerkt fest.
+    console.error("Bestaetigungsmail nach Registrierung fehlgeschlagen:", err);
+    try {
+      await sendOperatorEventEmail({
+        subject: "Bestätigungsmail konnte nicht versendet werden",
+        headline: "Nach einer Registrierung ist die Bestätigungsmail nicht rausgegangen. Der Nutzer kann sie in der App erneut anfordern.",
+        facts: [
+          ["E-Mail", email],
+          ["Fehler", err instanceof Error ? err.message : String(err)],
+        ],
+      });
+    } catch {
+      // Betreiber-Mail nutzt denselben Versandweg -- hier bleibt nur das Log.
+    }
   }
 }
 
